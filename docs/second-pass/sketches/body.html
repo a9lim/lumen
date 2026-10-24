@@ -1,0 +1,256 @@
+<header class="top">
+  <a class="colophon" href="https://a9l.im/lumen/" aria-label="Lumen">{{SEAL}}<span>Lumen</span></a>
+  <p class="meta">Proposal for Lumen’s second visual pass · 24 October 2026</p>
+  <h1>What the membrane makes, the map spends</h1>
+  <p class="lede">The rebuild gave Lumen two good registers on one canvas: Goodsell’s membrane above and Beck’s carbon map below. They don’t yet talk to each other. ATP, NADH and NADPH are what the membrane makes and the map spends, and today they show up only as four bars in a key. This pass would draw that currency as molecules in the stroma between the two registers. It would also bring Goodsell’s style closer, give Lumen the plate furniture Worldline and Miasma already have, and put regulation, stress and the cell’s anatomy into the figure. Every figure below is a live sketch, and most have a Today and a Proposed drawing of the same scene.</p>
+</header>
+
+<section id="now" aria-labelledby="h-now">
+  <h2 id="h-now">Where it stands <span class="sub">after a pass through all six specimens</span></h2>
+  <div class="prose">
+    <p>I ran every specimen in light and dark themes, at desktop and phone widths, and set Lumen beside Worldline 2.0 and Miasma. The cross-section is the strongest thing on the page: the phycobilisome fanned under photosystem II, the granum stacked over the thylakoid, and the crista bent by its ATP synthase dimers are drawings no textbook animates. The weak spot is everything between and around the two registers.</p>
+  </div>
+  <div class="now">
+    <figure><img src="{{THUMB:now-cyano}}" alt="Lumen today: the cyanobacterial thylakoid above the transit map, with the key and pool bars in the lower left." loading="lazy"><figcaption>The opening frame. The pools are four bars at the lower left, far from the membrane that fills them.</figcaption></figure>
+    <figure><img src="{{THUMB:now-mem}}" alt="Close view of today's membrane: blob-shaped complexes, a dense ochre bilayer, labels in the lumen." loading="lazy"><figcaption>The lumen, the sim’s namesake: a thin strip with a few protons, shared with the complexes’ names.</figcaption></figure>
+    <figure><img src="{{THUMB:now-map}}" alt="Close view of today's map: labels FBPase and TK + SBPase on the track, a yield tag across the Calvin line." loading="lazy"><figcaption>The map: FBPase on F6P’s capsule, TK + SBPase on the corridor, and a yield tag across PRK’s track.</figcaption></figure>
+    <figure><img src="{{THUMB:now-phone}}" alt="Lumen today on a phone: the membrane small at the top, the upright map with the key squeezed beside it." loading="lazy"><figcaption>On a phone the key squeezes in beside the upright map, and G6PDH sits on top of 6PGL.</figcaption></figure>
+  </div>
+  <div class="cols diag">
+    <table class="binds">
+      <caption>What the scene doesn’t say</caption>
+      <tbody>
+        <tr><td>How the registers connect</td><td>The membrane makes ATP and NADPH and the map spends them, but nothing on the canvas moves when the Calvin cycle spends 18 ATP. The only link is the key’s bars.</td></tr>
+        <tr><td>What’s in the lumen</td><td>Two to ten protons in most frames, because ATP synthase drains the gradient as fast as it fills. The complexes’ names sit in the same strip.</td></tr>
+        <tr><td>Goodsell’s register</td><td>Each complex is one lumpy blob with a lighter offset body, so they read as stickers rather than assemblies. The cytoplasm is empty. At 1× the bilayer is an ochre rope, and ochre is also the quinones’ ink and the light’s.</td></tr>
+        <tr><td>Which pool gates which enzyme</td><td>A gate shows only when it fully stops an enzyme, as a buffer bar, or as a toast after a click. Partial inhibition, and which pool causes it, never shows.</td></tr>
+        <tr><td>Stress</td><td>ROS and cell health are numbers in the Stats tab. Nothing in the scene changes.</td></tr>
+        <tr><td>Where the cut is</td><td>The sac, granum and crista frames aren’t placed in any cell, so a first-time visitor can’t tell what they are looking at.</td></tr>
+        <tr><td>Plate furniture</td><td>There is no cartouche and no scale bar, even though the membrane is drawn to scale, and the two registers have no titles. The siblings have all three.</td></tr>
+      </tbody>
+    </table>
+    <div class="notes">
+      <div><p class="label">What already works</p><p>Two registers under one camera; the six specimens and what each can run; line weight and chevron trains bound to flux; the red spent only on protons; the live caption; the margin’s hairline structure; the warm-up that opens on a living frame. None of it changes, and the proposal builds on all of it.</p></div>
+      <div><p class="label">How the sketches work</p><p>The Today drawings port Lumen’s own code (<code>complexes.js</code>, <code>membrane.js</code>, <code>mapdraw.js</code>, the real map layout). The Proposed drawings run on a toy of Lumen’s autoplay: the 0.4 s membrane tick, Calvin’s enzymes in turn, the 1.6 s maintenance drain, the 0.5 s leak and the flux integrator. Their drawing code is written to move into the sim.</p></div>
+    </div>
+  </div>
+</section>
+
+<section id="pools" aria-labelledby="h-pools">
+  <p class="phone-note">The figures are drawn at the sim’s laptop size; scroll each one sideways.</p>
+  <h2 id="h-pools">The pools are molecules <span class="sub">the currency, drawn between the registers</span></h2>
+  <div class="prose">
+    <p>Lumen’s four cofactor pools are closed and small: 40 ATP and ADP, 40 NAD, 40 NADP, 20 FAD, 140 molecules in all. That is few enough to draw every one. They go in the stroma under the membrane, where the cell keeps them, drawn the way Goodsell draws small molecules. The count in each charged or reduced form always equals the store’s, just as the lumen’s protons equal the gradient.</p>
+    <p>Then the scene shows its economy directly. ATP synthase pulls in the nearest ADP and lets an ATP go, and FNR reduces an NADP⁺ beside photosystem I. When the Calvin cycle’s PGK spends ATP on the map, a dotted thread runs from the molecule it spent down to the enzyme that spent it. Switch ATP demand off in Fig. 1 and the adenylates fill up, ATP synthase stops, and the lumen floods with red: respiratory control, which today is visible only as a number.</p>
+  </div>
+  <figure class="fig">
+    <div class="frame scroll">
+      <canvas id="cv-plate" class="tall2" role="img" aria-label="The proposed plate: the cyanobacterial thylakoid with callouts, its stroma full of cofactor molecules, and the transit map below with cofactor glyphs, a cartouche and a locator. A toggle shows today's drawing of the same scene."></canvas>
+      <div class="colo" aria-hidden="true">{{SEAL}}<span>Lumen</span></div>
+    </div>
+    <div class="bar">
+      <p class="cap"><span class="n">Fig. 1</span><span id="cap-plate">Proposed.</span></p>
+      <div class="ctl">
+        <span class="seg" role="group" aria-label="Drawing"><button class="b" id="pl-today" type="button" aria-pressed="false">Today</button><button class="b" id="pl-prop" type="button" aria-pressed="true">Proposed</button></span>
+        <button class="b" id="pl-light" type="button" aria-pressed="true">Light</button>
+        <button class="b" id="pl-demand" type="button" aria-pressed="true">ATP demand</button>
+        <button class="b" id="pp-plate" type="button">Pause</button>
+      </div>
+    </div>
+  </figure>
+  <div class="cols">
+    <table class="binds">
+      <caption>Bound to the model</caption>
+      <thead><tr><th scope="col">On the canvas</th><th scope="col">Reads</th></tr></thead>
+      <tbody>
+        <tr><td>A molecule in the stroma</td><td>One unit of a conserved pool. Charged or reduced members number exactly <code>store.atp</code>, <code>nadh</code>, <code>nadph</code>, <code>fadh2</code>; the rest are the partners.</td></tr>
+        <tr><td>Three beads or two</td><td>ATP or ADP: the pattern, before the ochre.</td></tr>
+        <tr><td>A dark or a pale ring</td><td>Reduced or oxidised: NADH or NAD⁺, NADPH or NADP⁺ (which carries NAD’s extra phosphate bead), FADH₂ or FAD (the three-lobed flavin).</td></tr>
+        <tr><td>A molecule docking</td><td>A membrane reaction that has a place: ATP synthase (ADP in, ATP out), FNR (NADP⁺ reduced), NDH-1 or complex I (NADH oxidised), NNT (both). The nearest molecule is the one that changes.</td></tr>
+        <tr><td>A dotted thread to the map</td><td>An enzyme on the map that made or spent a cofactor. It joins the molecule that changed to the enzyme that changed it, and fades in a second.</td></tr>
+        <tr><td>A lumen filling with red</td><td>ATP has filled, so ATP synthase has stopped and the gradient backs up until the leak balances the pumps.</td></tr>
+      </tbody>
+    </table>
+    <div class="notes">
+      <div><p class="label">Build</p><p>A new <code>src/stroma.js</code> that keeps the molecules and reconciles them with the store each frame, as <code>particles.js</code> already does for protons, with queued events naming a place. The membrane reactions queue theirs through a renderer hook beside <code>spawnProton</code>. The map’s come from <code>onFlux</code>, which already knows each reaction’s segment, so the thread finds its enzyme’s label. The molecules draw after the membrane cache and before the particles; 140 small paths a frame is cheap. They keep clear of the complexes’ stromal parts (the phycobilisome, the F₁ head, complex I’s arm).</p></div>
+      <div><p class="label">What it retires</p><p>The key’s pool bars, whose counts move into the cartouche; the floating “NADPH” tag at FNR; the ATP that spills from ATP synthase like seeds; and the map’s yield tags, replaced by its connections (Fig. 4).</p></div>
+    </div>
+  </div>
+</section>
+
+<section id="goodsell" aria-labelledby="h-goodsell">
+  <h2 id="h-goodsell">Goodsell, closer <span class="sub">assemblies, a quieter bilayer, the binding change</span></h2>
+  <div class="prose">
+    <p>Goodsell paints a protein as a set of subunits that read as one molecule. It has a dark outline, flat tones of one colour and lighter seams between the chains, with no gloss. Each complex becomes a part list after its published structure, cut through the middle. Photosystem II is CP43, D1, D2 and CP47 twice, with PsbO and cytochrome c₅₅₀ on the lumenal face. The phycobilisome is stacked phycocyanin discs fanning from an allophycocyanin core. Complex I gets its membrane arm under the transverse helix. The bilayer becomes his pale band, with a row of heads on each face in a warm neutral, so ochre is left to the quinones and the light. Individual tails appear only once you zoom in.</p>
+    <p>ATP synthase’s head shows Boyer’s binding change. Its α₃β₃ ring is a stator, and each third of a turn of γ steps every β subunit from open to loose to tight. The front two show it: ADP and phosphate in the loose one, ATP in the tight one, and the ATP let go as that β swings open. Past 2.5× zoom the sim would draw what is inside each complex, with the subunits named and the cofactors in place. The electron then steps site to site, where today it slides between complexes. Press Zoomed in for a tracking shot along its road.</p>
+  </div>
+  <figure class="fig">
+    <div class="frame scroll"><canvas id="cv-close" class="close" role="img" aria-label="Photosystem II with its phycobilisome, cytochrome b6f, photosystem I and ATP synthase, drawn today, as proposed, and zoomed in with cofactors and an electron moving between them."></canvas></div>
+    <div class="bar">
+      <p class="cap"><span class="n">Fig. 2</span><span id="cap-close">Proposed.</span></p>
+      <div class="ctl">
+        <span class="seg" role="group" aria-label="Drawing"><button class="b" id="cl-today" type="button" aria-pressed="false">Today</button><button class="b" id="cl-prop" type="button" aria-pressed="true">Proposed</button><button class="b" id="cl-detail" type="button" aria-pressed="false">Zoomed in</button></span>
+        <button class="b" id="pp-close" type="button">Pause</button>
+      </div>
+    </div>
+  </figure>
+  <div class="cols">
+    <table class="binds">
+      <caption>Bound to the model</caption>
+      <thead><tr><th scope="col">On the canvas</th><th scope="col">Reads</th></tr></thead>
+      <tbody>
+        <tr><td>The β subunits’ states</td><td>The rotor’s angle, which is ATP made (a third of a turn each). It is the same count that turns the c-ring today.</td></tr>
+        <tr><td>The ATP leaving the head</td><td>One molecule of the pool changing from ADP to ATP (Fig. 1).</td></tr>
+        <tr><td>Cofactors, past 2.5×</td><td>Where the chain’s electrons are. P680, pheophytin, Qᴀ, Qʙ, the Rieske cluster, heme f, P700, A₀, A₁, Fx, Fᴀ and Fʙ become waypoints of the electron’s path. The chain’s timing and its callbacks don’t change.</td></tr>
+        <tr><td>Tails drawn one by one</td><td>Nothing: they’re detail that appears once a pixel is small enough to show it (9 px per nm and up).</td></tr>
+      </tbody>
+    </table>
+    <div class="notes">
+      <div><p class="label">Build</p><p><code>complexes.js</code> trades its blobs for part lists and one <code>assembly()</code> painter; <code>membrane.js</code> keeps its layout and cache. The binding change is a live layer over the head, next to the rotor. The zoom layer is a pass in <code>drawLive</code> that runs when <code>camera.zoom ≥ 2.5</code>. Its cofactor positions are approximate, after the structures. <code>particles.js</code> interpolates an electron’s position through the sites, so the step from P680 to Qʙ happens inside PSII’s footprint.</p></div>
+      <div><p class="label">Not in the sketch</p><p>The mitochondrial complexes (III’s matrix core proteins, IV’s Cuᴀ domain, a proper complex II) and the purple membrane’s lattice get the same treatment in the build. So does the S-layer, which today reads as a row of tables and should be a continuous canopy with pores.</p></div>
+    </div>
+  </div>
+</section>
+
+<section id="plate" aria-labelledby="h-plate">
+  <h2 id="h-plate">The plate around it <span class="sub">callouts, a cartouche, a scale, a locator</span></h2>
+  <div class="prose">
+    <p>Worldline 2.0 and Miasma are plates: a reference cartouche in a double hairline, a scale bar, numbered figures. Lumen has the numbered figure and nothing else. Fig. 1 shows the rest. The complexes’ names move out of the lumen into a row of callouts above the cut, with hairline leaders down to each complex, so the lumen holds only protons. The registers get titles, <em>a</em> for the cross-section and <em>b</em> for the network, with a hairline between them. Panel <em>a</em> has a 10 nm scale bar, since it is drawn to scale; the map isn’t, so it has none. The key becomes a cartouche like its siblings’, its rows only for what the scene shows, and it carries the pools’ counts.</p>
+    <p>A locator answers where the cut comes from. In the map’s empty upper right, a line drawing of the cell or organelle has the section boxed, the way a map carries an inset of its region. The same drawings can head the margin’s specimen list, as Miasma’s topology glyphs head its margin.</p>
+  </div>
+  <figure class="fig">
+    <div class="frame"><canvas id="cv-locator" class="strip" role="img" aria-label="Five locator drawings: a cyanobacterium with concentric thylakoids, a chloroplast with grana, a mitochondrion with cristae, a bacterium with a thick wall, and a halophile with purple patches, each with the cut boxed."></canvas></div>
+    <div class="bar"><p class="cap"><span class="n">Fig. 3</span>Where the cut is, for each specimen: the box marks the membrane panel <em>a</em> shows. The composite membrane has no cell and so no locator.</p></div>
+  </figure>
+</section>
+
+<section id="map" aria-labelledby="h-map">
+  <h2 id="h-map">Connections and gates <span class="sub">the map says what it spends and what stops it</span></h2>
+  <div class="prose">
+    <p>Beck’s map marks where a line meets another service. Lumen’s map can do the same for the pools. Each enzyme that makes or spends a cofactor carries that molecule’s glyph after its name, signed: PGK +2 ATP, GAPDH +2 NADH. Running backward the signs and cofactors change, so GAPDH spends NADPH for the Calvin cycle. The glyph pulses when the enzyme fires, which retires the floating yield tags and their collisions. These are the same glyphs as the stroma’s molecules, so the eye links the registers by shape.</p>
+    <p>Regulation becomes visible on the track. Whenever <code>regulation.js</code> returns less than 1, the effector’s glyph sits across the line from the enzyme’s name, with ⊣ when it inhibits (PFK under ATP, IDH under NADH, G6PDH under NADPH), → when it is required (RuBisCO’s activase needs ATP), and ⊕ when it spurs (G6PDH at low NADPH). The mark is dashed while the enzyme is only slowed and solid, with today’s buffer bar, once it stops. Move the sliders under Fig. 4 to watch PFK go from free to slowed to stopped as ATP rises.</p>
+    <p>Where the specimen has compartments, the map shows them as fare zones. In the animal cell the mitochondrial matrix is a zone whose boundary is drawn as a bilayer in miniature, and pyruvate crosses it to reach PDH. The prokaryotes get no zones, which is itself the point.</p>
+  </div>
+  <figure class="fig">
+    <div class="frame scroll"><canvas id="cv-map" class="mapc" role="img" aria-label="The whole transit map, today and as proposed, with cofactor glyphs at each enzyme, regulation marks on the track, and for the animal cell the mitochondrial matrix as a zone."></canvas></div>
+    <div class="bar">
+      <p class="cap"><span class="n">Fig. 4</span><span id="cap-map">Proposed.</span></p>
+      <div class="ctl">
+        <span class="seg" role="group" aria-label="Drawing"><button class="b" id="mp-today" type="button" aria-pressed="false">Today</button><button class="b" id="mp-prop" type="button" aria-pressed="true">Proposed</button></span>
+        <select id="mp-scen" class="b" aria-label="Cell"><option value="cyano">Cyanobacterium, light</option><option value="animal">Animal cell, dark</option></select>
+        <button class="b" id="pp-map" type="button">Pause</button>
+      </div>
+    </div>
+    <div class="sliders">
+      <label class="range">ATP <input id="mp-atp" type="range" min="0" max="40" step="1"><output id="mp-atp-v"></output></label>
+      <label class="range">NADH <input id="mp-nadh" type="range" min="0" max="40" step="1"><output id="mp-nadh-v"></output></label>
+      <label class="range">NADPH <input id="mp-nadph" type="range" min="0" max="40" step="1"><output id="mp-nadph-v"></output></label>
+      <label class="range">FADH₂ <input id="mp-fadh2" type="range" min="0" max="20" step="1"><output id="mp-fadh2-v"></output></label>
+    </div>
+  </figure>
+  <div class="cols">
+    <table class="binds">
+      <caption>Bound to the model</caption>
+      <thead><tr><th scope="col">On the canvas</th><th scope="col">Reads</th></tr></thead>
+      <tbody>
+        <tr><td>A signed glyph after a name</td><td>The reaction’s cofactor stoichiometry in the direction it is running, from the handlers in <code>src/reactions/</code>.</td></tr>
+        <tr><td>The glyph’s pulse</td><td>That enzyme just fired (the <code>onReaction</code> event).</td></tr>
+        <tr><td>⊣, → or ⊕ on the track</td><td><code>getRegulationFactor</code> for that segment and direction: dashed below 1, solid at 0, the effector named by its glyph.</td></tr>
+        <tr><td>A zone and its bilayer</td><td>Where the specimen’s enzymes are: cytosol and matrix in the animal cell.</td></tr>
+        <tr><td>An idle line</td><td>The same as today, a line with no flux, drawn at 2 px and two-thirds ink rather than a pale hairline, so the network still reads when it is quiet.</td></tr>
+      </tbody>
+    </table>
+    <div class="notes">
+      <div><p class="label">Collisions fixed</p><p>FBPase off F6P’s capsule; TK + SBPase off the corridor (<code>p10</code> to grid 6.35, 1.62); HACD off Keto-CoA; PRK lifted from the Calvin track; the phone overrides for 6PGL, G6PDH and the Calvin loop’s name. Without yield tags there is nothing left to cross a track.</p></div>
+      <div><p class="label">A bug it surfaces</p><p>PK’s step-9 gate applies in both directions (AGENTS.md, open work), so today’s map already draws a buffer bar across PK whenever ATP falls below 30%, and a click on PK is refused then, though only PC + PEPCK needs the ATP. Gate marks would make it plainer still. The build fixes the gate to apply in reverse only.</p></div>
+    </div>
+  </div>
+</section>
+
+<section id="z" aria-labelledby="h-z">
+  <h2 id="h-z">The margin’s figure <span class="sub">electrons by redox potential</span></h2>
+  <div class="prose">
+    <p>Miasma’s margin opens on a figure of its own, Nightingale’s rose, while Lumen’s Stats tab is all bars and numbers. The Z-scheme is the figure that belongs there: every carrier at its midpoint potential, with each electron now in flight in the membrane drawn as a bead on the same ladder. Light lifts the bead at P680 and again at P700, cyclic flow loops it back from ferredoxin to plastoquinone, and respiration (in indigo) only ever falls, from NADH to oxygen. A student can then see why the photosystems need light and why oxygen is the sink. The mitochondrion gets complexes I to IV, ubiquinone and cytochrome c on the same axis. The purple membrane shows an empty ladder with a note, since bacteriorhodopsin pumps without electrons.</p>
+  </div>
+  <figure class="fig">
+    <div class="frame scroll"><canvas id="cv-z" class="zc" role="img" aria-label="A strip of the thylakoid with electrons in flight, and beside it the margin's Stats tab with a live Z-scheme ladder where each electron is a bead."></canvas></div>
+    <div class="bar">
+      <p class="cap"><span class="n">Fig. 5</span><span id="cap-z">Proposed.</span></p>
+      <div class="ctl"><button class="b" id="pp-z" type="button">Pause</button></div>
+    </div>
+  </figure>
+  <div class="cols">
+    <div class="notes">
+      <div><p class="label">Build</p><p>A canvas at the top of the Stats tab (<code>src/dashboard.js</code>), drawn only while the tab is open, reading the same electrons <code>particles.js</code> draws. Each chain maps its membrane segments to runs of ladder nodes, and the sketch carries the mapping for the linear, respiratory and cyclic chains. The potentials are textbook midpoints at pH 7. The reference overlay should cite where they come from before this ships; I haven’t taken a citation from memory.</p></div>
+    </div>
+    <div class="notes">
+      <div><p class="label">What moves</p><p>The pools’ sparklines stay below it as a small strip chart of their own. The counters and the ATP-source split stay. The last-reaction block moves to the bottom, since the map’s pulsing glyphs now say what fired.</p></div>
+    </div>
+  </div>
+</section>
+
+<section id="stress" aria-labelledby="h-stress">
+  <h2 id="h-stress">Stress, drawn <span class="sub">radicals in the matrix, damage in the bilayer</span></h2>
+  <div class="prose">
+    <p>ROS gets a body: each unit of active ROS (produced minus scavenged) becomes a superoxide radical, two atoms and the radical’s dot. It appears beside complex I or the Q-cycle, where Lumen’s leaks happen, and drifts until it is scavenged. Cell health becomes lipid peroxidation, the damage ROS actually does. The share of tails drawn kinked at a peroxide, in a darker sienna, is the share of health lost, and they heal as health regenerates. This is a pattern before it is a hue, and it reads in grayscale. Uncoupling and oxidative stress, now among the least visible switches, become two of the most visible.</p>
+  </div>
+  <figure class="fig">
+    <div class="frame scroll"><canvas id="cv-stress" class="stressc" role="img" aria-label="A strip of crista membrane with superoxide radicals near complexes I and III and a share of lipid tails drawn kinked."></canvas></div>
+    <div class="bar">
+      <p class="cap"><span class="n">Fig. 6</span><span id="cap-stress">Proposed.</span></p>
+      <div class="ctl">
+        <span class="seg" role="group" aria-label="Drawing"><button class="b" id="st-today" type="button" aria-pressed="false">Today</button><button class="b" id="st-prop" type="button" aria-pressed="true">Proposed</button></span>
+        <button class="b" id="pp-stress" type="button">Pause</button>
+      </div>
+    </div>
+    <div class="sliders">
+      <label class="range">Cell health <input id="st-health" type="range" min="0" max="100" step="1"><output id="st-health-v"></output></label>
+      <label class="range">Active ROS <input id="st-ros" type="range" min="0" max="10" step="1"><output id="st-ros-v"></output></label>
+    </div>
+  </figure>
+</section>
+
+<section id="small" aria-labelledby="h-small">
+  <h2 id="h-small">Smaller things <span class="sub">in the same pass</span></h2>
+  <div class="tablewrap">
+    <table class="plan">
+      <thead><tr><th scope="col">Where</th><th scope="col">Change</th></tr></thead>
+      <tbody>
+        <tr><td>Light</td><td>Each wiggle’s period by its absorber’s wavelength (PSII 680 nm, PSI 700, bacteriorhodopsin 568, phycocyanin 620), so the pattern says which light. Optional: the excitation’s hop from rod to core to PSII.</td></tr>
+        <tr><td>Peptidoglycan</td><td>The anaerobe’s wall is a brick grid today. It becomes wavy glycan strands with peptide crossbridges.</td></tr>
+        <tr><td>Dark theme</td><td>The bilayer’s new neutral keeps it from glowing; the heads drop to a mid tone.</td></tr>
+        <tr><td>Phones</td><td>The cartouche moves into the sheet. The stroma’s molecules are too small to read one by one, but they still read as density of each ink. Callouts become tap-to-name, as the map’s labels already are. The upright map gets the collision overrides.</td></tr>
+        <tr><td>The c-ring (optional, a science change)</td><td>c-rings differ by organism, eight subunits in mammalian mitochondria and fourteen in chloroplasts, so protons per ATP differ too. Lumen uses four everywhere. Each specimen could draw its own ring and spend its own H⁺/ATP, which needs your call because it changes the model.</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section id="order" aria-labelledby="h-order">
+  <h2 id="h-order">Order of work</h2>
+  <ol class="steps">
+    <li><strong>The plate.</strong> Callouts, panel titles, the scale bar and the cartouche; the label collisions; idle line weight. Small, safe, and the most consistency per hour.</li>
+    <li><strong>The stroma’s pools.</strong> <code>src/stroma.js</code>, the docking hooks, the threads; the map’s connection glyphs; the key’s bars and the yield tags retired.</li>
+    <li><strong>Goodsell, closer.</strong> Part lists for every complex in all six specimens, the bilayer, the binding change, the S-layer.</li>
+    <li><strong>Gates and zones</strong> on the map, with the PK gate fixed.</li>
+    <li><strong>Locators</strong> on the plate and, if wanted, as the margin’s specimen icons.</li>
+    <li><strong>The margin’s Z-scheme</strong>, potentials cited.</li>
+    <li><strong>Stress</strong>: radicals and peroxidised lipids.</li>
+    <li><strong>The zoom layer</strong>: cofactors, subunit names, electron waypoints.</li>
+    <li><strong>Phones, docs, verify.</strong> All six specimens in both themes, phone 390, reduced motion, 60 fps on the default preset, no console errors; <code>AGENTS.md</code> and <code>about.md</code>; commit inside <code>projects/lumen</code> and stage only its pointer in the parent.</li>
+  </ol>
+</section>
+
+<section id="ask" aria-labelledby="h-ask">
+  <h2 id="h-ask">For you to decide</h2>
+  <div class="qs">
+    <div><h3>The threads</h3><p>The dotted threads from a molecule to the enzyme that changed it make the coupling literal, but at high flux they add motion between the registers. Keep them, or let the shared glyphs carry the link alone?</p></div>
+    <div><h3>Callouts or lumen labels</h3><p>Callouts above the cut free the lumen for the red, at the cost of leaders crossing it. I prefer the callouts. Today’s in-lumen labels are the alternative.</p></div>
+    <div><h3>The zoom layer</h3><p>Cofactors, subunit names and the stepping electron are the most work for a view only zoomers see. It’s last in the order. Build it, or stop after step 7?</p></div>
+    <div><h3>How crowded</h3><p>140 molecules is honest to the model but sparse next to Goodsell’s cytoplasm. Larger pools (say 2× in the model) would crowd the stroma and smooth the ratios, but would change the regulation thresholds’ feel.</p></div>
+    <div><h3>The c-ring</h3><p>Per-specimen rings and H⁺/ATP: a real science improvement, but a model change. In or out of this pass?</p></div>
+    <div><h3>Specimen icons</h3><p>Use the locator drawings as the margin’s specimen list, as Miasma does with its topologies, or keep the text list?</p></div>
+  </div>
+</section>
+
+<footer>Sketch sources: the Today drawings port Lumen’s own code at <code>5738b15</code>; the Proposed ones are toys meant to move into the sim. Potentials and structures are approximate, for illustration, and would be checked against their sources before shipping.</footer>

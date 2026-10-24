@@ -1,0 +1,21 @@
+.frame canvas.tall2 { aspect-ratio: 1160 / 800; }
+.frame canvas.strip { aspect-ratio: 1160 / 230; }
+@media (max-width: 640px) { .frame canvas.strip { aspect-ratio: 390 / 560; } }
+.frame canvas.close { aspect-ratio: 1160 / 500; }
+
+.frame canvas.mapc { aspect-ratio: 1160 / 560; }
+
+.sliders { display: flex; flex-wrap: wrap; gap: 6px 26px; padding-top: 10px; }
+.sliders .range output { min-width: 4.6em; }
+select.b { appearance: none; -webkit-appearance: none; padding-right: 22px; background-image: linear-gradient(45deg, transparent 50%, var(--muted) 50%), linear-gradient(135deg, var(--muted) 50%, transparent 50%); background-position: calc(100% - 12px) 55%, calc(100% - 8px) 55%; background-size: 4px 4px; background-repeat: no-repeat; }
+select.b { font: inherit; font-size: 15.5px; line-height: 1.2; color: var(--text2); background-color: transparent; border: 1px solid var(--rule); border-radius: 0; padding: 5px 26px 5px 12px; cursor: pointer; }
+.frame canvas.zc { aspect-ratio: 1160 / 470; }
+
+.frame canvas.stressc { aspect-ratio: 1160 / 300; }
+
+
+.frame.scroll { overflow-x: auto; overscroll-behavior-x: contain; }
+.frame.scroll canvas { min-width: 980px; }
+@media (max-width: 640px) { .frame.scroll canvas.tall2 { aspect-ratio: 1160 / 800; } .frame.scroll canvas.close { aspect-ratio: 1160 / 500; } .frame.scroll canvas.zc { aspect-ratio: 1160 / 470; } .frame.scroll canvas.stressc { aspect-ratio: 1160 / 300; } }
+.phone-note { display: none; font-style: italic; color: var(--muted); font-size: 15.5px; margin: 0 0 18px; }
+@media (max-width: 760px) { .phone-note { display: block; } }
