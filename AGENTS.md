@@ -5,10 +5,11 @@ It is a submodule of the a9l.im repository (`a9lim.github.io`, at `projects/lume
 
 ## Running and checking
 
-Preview through the parent build (serve `dist/`, open `/lumen/`), or from the working tree with `node docs/sim-overhaul/serve.mjs 8791` in the parent and `docs/sim-overhaul/check.mjs` for screenshots, console errors, overflow and fps. There is no test runner or linter; check syntax with:
+Preview through the parent build (serve `dist/`, open `/lumen/`), or from the working tree with `node docs/sim-overhaul/serve.mjs 8791` in the parent and `docs/sim-overhaul/check.mjs` for screenshots, console errors, overflow and fps. The engine's tests run headless in node (no dependencies; `tests/` isn't staged); there is no linter. Check with:
 
 ```bash
-for f in main.js colors.js src/*.js src/reactions/*.js; do node --check "$f"; done
+node --test tests/*.test.mjs
+for f in main.js colors.js src/*.js src/reactions/*.js src/engine/*.js; do node --check "$f"; done
 git diff --check
 ```
 
@@ -27,6 +28,11 @@ src/regulation.js  getRegulationFactor / getRegulationReason
 src/energetics.js  Δp in mV, each pump's stall, ATP synthase's direction (respiratory control): drive / driveReason / synthaseWay / atpThreshold
 src/autoplay.js    autoplayTick (specimen-aware membrane tick), protonLeakTick (leak, ROS damage, scavenging)
 src/reactions/     dispatch.js (advanceStep, onReaction) + glycolysis, krebs, calvin, ppp, etc, fermentation (LDH too), betaoxidation
+src/engine/        the new engine (milestone 1, being built; the app still runs src/reactions/): species.js (species, moieties),
+                   formulas.js (generated from BiGG by tools/bigg.mjs), network.js (every reaction as data), cells.js (each preset's
+                   organism: reactions, compartments, carrier potentials, pool sizes), model.js (a cell instantiated)
+tests/             headless tests of the engine (node --test tests/*.test.mjs)
+tools/bigg.mjs     regenerates src/engine/formulas.js from BiGG
 src/flux.js        reactions → map segments; leaky-integrated flux per segment
 src/complexes.js   the palette (P, readPalette, tones, mix), assembly() and every complex's part list, ATP synthase's rotor and binding-change head, carriers, the cofactor glyphs (MOL, molGlyph)
 src/membrane.js    Membrane: specimen layout in world px, callouts, frames (sac, granum, cristae, cell wall, S-layer), lipids (signature lipids, peroxidation), the stroma's band and docking sites, hit boxes
