@@ -128,27 +128,40 @@ R('ADKm', 'ADK', 'Adenylate kinase (matrix)', 'amp + atp -> 2 adp', { at: 'mito'
 R('PPAm', 'PPase', 'Inorganic pyrophosphatase (matrix)', 'ppi + h2o -> 2 pi + h', { at: 'mito' });
 // The cell's ATP demand: the work it does that the model doesn't draw (ion pumps, motility, turnover)
 R('ATPM', 'ATPase', 'ATP demand (maintenance)', 'atp + h2o -> adp + pi + h', { demand: 'atp' });
+// Biosynthetic demand: the precursors one gram of dry cell is built from, per gram, mmol. E. coli's
+// core biomass (BiGG e_coli_core, BIOMASS_Ecoli_core_w_GAM) with its nitrogen folded back onto
+// carbon: each glutamate made from α-KG by NADPH (GDH), each glutamine from that glutamate by ATP
+// (GS), so α-KG, NADPH and ATP carry the cost. The carbon and phosphorus leave the network: a sink.
+R('BIOMASS', 'to the cell', 'Biosynthetic demand (E. coli core composition)',
+    '1.496 3pg + 3.7478 accoa[m] + 60.0657 atp + 0.361 e4p + 0.0709 f6p + 0.129 g3p + 0.205 g6p + 1.0789 akg[m] + '
+    + '1.7867 oaa[m] + 0.5191 pep + 2.8328 pyr + 0.8977 r5p + 3.547 nad + 18.225 nadph + 60.0657 h2o -> '
+    + '60.0657 adp + 60.0657 pi + 3.7478 coa[m] + 3.547 nadh + 18.225 nadp', { demand: 'growth', sink: true });
 
 // ─── The drawn membrane ───
 R('NDH1', 'NDH-1', 'NADH dehydrogenase (complex I)', 'nadh + q8 + 5 h -> nad + q8h2 + 4 h[l]', { at: 'mito', membrane: 'ndh1' });
 // Cytochrome b₆f or bc₁: the Q-cycle moves four protons for every two electrons
 R('CYTBF', 'cyt b₆f', 'Cytochrome b₆f / bc₁ complex', 'q8h2 + 2 pcox[l] + 2 h -> q8 + 2 pcred[l] + 4 h[l]', { at: 'mito', membrane: 'cytb6f' });
-R('CYTOX', 'cyt oxidase', 'Cytochrome c oxidase (complex IV)', '4 pcred[l] + o2 + 8 h -> 4 pcox[l] + 2 h2o + 4 h[l]', { at: 'mito', membrane: 'cytOx' });
-// Photosystems run on absorbed light (rates.js): four photons for PSII's four electrons, one for PSI's
-R('PSII', 'PSII', 'Photosystem II', '2 h2o + 2 q8 + 4 h -> o2 + 2 q8h2 + 4 h[l]', { membrane: 'psii', photons: 4, nm: 680 });
+// Written per two electrons, like the chain's other steps, so no carrier saturates to a high power
+R('CYTOX', 'cyt oxidase', 'Cytochrome c oxidase (complex IV)', '2 pcred[l] + 0.5 o2 + 4 h -> 2 pcox[l] + h2o + 2 h[l]', { at: 'mito', membrane: 'cytOx' });
+// Photosystems run on absorbed light (rates.js): two photons for PSII's two electrons, one for PSI's
+R('PSII', 'PSII', 'Photosystem II', 'h2o + q8 + 2 h -> 0.5 o2 + q8h2 + 2 h[l]', { membrane: 'psii', photons: 2, nm: 680 });
 R('PSI', 'PSI', 'Photosystem I', 'pcred[l] + fdox -> pcox[l] + fdred', { membrane: 'psi', photons: 1, nm: 700 });
 R('FNR', 'FNR', 'Ferredoxin–NADP⁺ reductase', '2 fdred + nadp + h -> 2 fdox + nadph', { membrane: 'fnr' });
 R('CEF', 'PGR5', 'Cyclic electron flow (ferredoxin to the quinone pool)', '2 fdred + q8 + 2 h -> 2 fdox + q8h2', { membrane: 'psi' });
+R('MEHLER', 'Flv', 'Water–water cycle (ferredoxin to O₂)', '2 fdred + 0.5 o2 + 2 h -> 2 fdox + h2o', { membrane: 'psi' });
 R('BR', 'BR', 'Bacteriorhodopsin', 'h -> h[l]', { membrane: 'br', photons: 1, nm: 568 });
 // Twelve c subunits and three ATP a turn: four protons per ATP (phase B makes the ring per specimen)
 R('ATPS', 'ATP synthase', 'ATP synthase', 'adp + pi + 4 h[l] -> atp + h2o + 3 h', { at: 'mito', membrane: 'atpSyn' });
 R('NNT', 'NNT', 'Nicotinamide nucleotide transhydrogenase', 'nadh + nadp + h[l] -> nad + nadph + h', { at: 'mito', membrane: 'nnt' });
 R('LEAK', 'leak', 'Proton leak across the bilayer', 'h[l] -> h', { at: 'mito' });
-R('UCP', 'UCP', 'Uncoupling protein', 'h[l] -> h', { at: 'mito', membrane: 'ucp' });
+// Off until the uncoupling switch turns it on
+R('UCP', 'UCP', 'Uncoupling protein', 'h[l] -> h', { at: 'mito', membrane: 'ucp', off: true });
 
 // ─── Between the cytosol and the matrix (cells that have one), lumped:
 // their carriers' anatomy and charges wait for milestone 3 ───
-R('MPC', 'MPC', 'Mitochondrial pyruvate carrier (with H⁺)', 'pyr[c] + h[l] -> pyr[m] + h[m]', { transport: true });
+// The pyruvate carrier symports a proton, but electroneutrally: only ΔpH drives it. Until phase B
+// splits Δp it is a uniport, which leaves pyruvate a little too even across the membrane
+R('MPC', 'MPC', 'Mitochondrial pyruvate carrier', 'pyr[c] -> pyr[m]', { transport: true });
 // ANT moves a charge out with each ATP and the phosphate carrier a proton in with each Pᵢ; until
 // phase B splits Δψ from ΔpH, the pair's one proton's worth of Δp is charged to ANT alone
 R('ANT', 'ANT', 'Adenine nucleotide translocase', 'atp[m] + adp[c] + h[l] -> atp[c] + adp[m] + h[m]', { transport: true });
@@ -166,5 +179,7 @@ R('EX_pi', 'Pᵢ', 'Phosphate uptake', 'pi[e] -> pi[c]', { exchange: true });
 R('EX_lac', 'MCT', 'Lactate export', 'lac__L[c] -> lac__L[e]', { exchange: true });
 R('EX_etoh', 'EtOH', 'Ethanol export', 'etoh[c] -> etoh[e]', { exchange: true });
 R('EX_ac', 'Ac', 'Acetate export', 'ac[c] -> ac[e]', { exchange: true });
+// A plastid's ATP/ADP translocator: the medium of a chloroplast is its plant cell's cytosol
+R('NTT', 'NTT', 'Plastid ATP/ADP translocator', 'atp[e] + adp[c] -> atp[c] + adp[e]', { exchange: true });
 // A plastid's product goes to the cell: triose phosphate out for phosphate in
 R('TPT', 'TPT', 'Triose phosphate/phosphate translocator', 'g3p[c] + pi[e] -> g3p[e] + pi[c]', { exchange: true, demand: 'export' });

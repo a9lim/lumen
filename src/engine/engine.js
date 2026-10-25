@@ -1,0 +1,359 @@
+// Engine — a cell's chemistry on its own clock, headless. The state is every
+// species' concentration (mM); each reaction runs at its separable rate
+// (rates.js), and the state integrates by a linearly implicit Rosenbrock
+// step (ROS2: Verwer et al. 1999), since fast near-equilibrium enzymes
+// turning over small pools make the system stiff. Rosenbrock steps keep
+// every linear conservation law exactly, so the moieties never drift.
+//
+// advance(dt) takes whole steps until the clock would pass the target, and a
+// step's size depends only on the state, so a trajectory is the same however
+// the frames slice time: frame rate, viewport and hidden tabs can't change
+// the chemistry, only how much of it a frame shows.
+//
+// Units: mM, seconds, mV, kJ/mol. A reaction's rate is in mM/s of its home
+// compartment, moved as an amount (rate × its volume) into each species'
+// compartment.
+//
+// Δp is κ times what the drawn membrane has moved into the lumen. Where Δψ
+// carries most of it (mitochondria, plasma membranes), that is net charge:
+// the translocated protons plus the charge on the lumen's carriers, so each
+// complex is charged for the charges it really moves across (complex I four,
+// the Q-cycle's complex III two, complex IV four). In thylakoids, where ΔpH
+// carries it, it is the protons the lumen receives (b₆f's four). Phase B
+// splits the two.
+import { buildCell } from './model.js';
+import { PARAMS, KM, KM_DEFAULT } from './rates.js';
+import { dg0, F, RT } from './thermo.js';
+import { MOIETIES } from './species.js';
+import { makeRng } from './rng.js';
+import { EventQueue } from './events.js';
+
+const V_MEDIUM = 50;       // the medium's volume, relative to the cytosol: finite, so substrates run out
+const AIR_O2 = 0.25;       // mM O₂ in air-saturated water, 25 °C
+const AIR_CO2 = 0.015;     // mM CO₂ in water under air
+const PI_MEDIUM = 5;       // mM phosphate in the medium, held
+const RHO = 300;           // g dry weight per litre of cytosol (E. coli, about 0.3 g/mL): turns a growth rate into precursor demand
+const GAMMA = 1 + Math.SQRT1_2;   // ROS2's γ: L-stable
+
+export function createEngine(cellId, opts = {}) {
+    const model = buildCell(cellId), cell = model.cell;
+    const S = model.species, nS = S.length, R = model.reactions, nR = R.length;
+    const vol = Float64Array.from(S, s => s.comp === 'e' ? V_MEDIUM : model.comps[s.comp]);
+    const idx = (id, comp) => model.index[id + '_' + comp];
+    const iHl = idx('h', 'l');
+    const kappa = cell.kappa || 2;    // mV per mM of translocated charge (or protons)
+    const byCharge = cell.pmf === 'charge';
+    // The lumen's carriers, whose charge counts toward Δψ where charge is what Δp reads
+    const lumenCharged = S.map((s, i) => [i, s]).filter(([i, s]) => byCharge && s.comp === 'l' && s.kind === 'car' && s.charge).map(([i, s]) => [i, s.charge]);
+    const dpOf = (x) => { let q = x[iHl]; for (const [i, z] of lumenCharged) q += z * x[i]; return q * kappa; };
+
+    const env = { light: 0, o2: 1, co2: 1, ...(cell.env || {}), ...(opts.env || {}) };
+    // The dials: ATP demand (mM/s), growth (per hour), a plastid's export (mM/s)
+    const dial = { atp: cell.atpDemand ?? 0.6, growth: cell.growth ?? 0, export: cell.export ?? 0.5 };
+
+    // Species the integration leaves alone: fixed (water, buffered H⁺) and the medium's gases and Pᵢ, set by env
+    const hold = Uint8Array.from(S, s => s.fixed || (s.comp === 'e' && ['o2', 'co2', 'pi', 'atp', 'adp'].includes(s.id)) ? 1 : 0);
+    const free = [...Array(nS).keys()].filter(i => !hold[i]), nF = free.length;
+    const fpos = new Int32Array(nS).fill(-1); free.forEach((i, k) => { fpos[i] = k; });
+
+    // ─── Compile each reaction ───
+    const RX = R.map((r, j) => {
+        const par = PARAMS[r.id] || { vmax: 1 };
+        const over = (cell.kinetics || {})[r.id] || {};
+        const km = { ...(par.km || {}), ...(over.km || {}) };
+        const sub = [], pro = [];
+        // What the reaction moves into the lumen, for Δp: protons, or net charge (carriers included)
+        let nl = 0;
+        for (const [i, nu] of r.stoich) if (i === iHl || (byCharge && S[i].comp === 'l' && S[i].kind === 'car')) nl += nu * S[i].charge;
+        for (const [i, nu] of r.stoich) {
+            if (i === iHl) continue;
+            if (S[i].fixed) continue;
+            const K = km[S[i].id] ?? KM[S[i].id] ?? KM_DEFAULT;
+            const Kd = par.kmDemand ? par.kmDemand[S[i].id] ?? par.kmDemand.default : 0;
+            (nu < 0 ? sub : pro).push([i, Math.abs(nu), K, Kd]);
+        }
+        const regs = [...(par.reg || []), ...(over.reg || [])].map(e => compileReg(e, r.comp)).filter(Boolean);
+        const law = par.law || 'cm';
+        // Which species its rate reads: substrates, products, effectors, and Δp when protons cross
+        const deps = new Set([...sub, ...pro].map(([i]) => i));
+        for (const e of regs) { if (e.a != null) deps.add(e.a); if (e.bx != null) deps.add(e.bx); if (e.type === 'dp') deps.add(iHl); }
+        if (nl || law === 'leak') { deps.add(iHl); for (const [i] of lumenCharged) deps.add(i); }
+        return {
+            r, j, law, vmax: over.vmax ?? par.vmax, light: !!par.light, sub, pro, nl, regs,
+            dg0: dg0(cell, r), homeVol: model.comps[r.comp],
+            deps: [...deps].filter(i => !hold[i]),
+            stoich: r.stoich.filter(([i]) => !hold[i]),
+        };
+    });
+    function compileReg(e, home) {
+        // An effector names a species in the reaction's compartment, or another with a tag: 'accoa[m]'
+        const pick = (id) => { const m = /^(.+?)(?:\[([clme])\])?$/.exec(id); return m[2] ? idx(m[1], m[2]) ?? idx(m[1], 'c') : idx(id, home) ?? idx(id, 'c'); };
+        if (e.type === 'light' || e.type === 'dark' || e.type === 'dp') return e;
+        if (Array.isArray(e.x)) {
+            const a = pick(e.x[0]), bx = pick(e.x[1]);
+            return a == null || bx == null ? null : { ...e, a, bx };
+        }
+        const a = pick(e.x);
+        return a == null ? null : { ...e, a };
+    }
+
+    const state = {
+        x: new Float64Array(nS), t: 0, h: 1e-3,
+        activity: new Float64Array(nR).fill(1),
+        v: new Float64Array(nR), vf: new Float64Array(nR), vb: new Float64Array(nR),
+    };
+
+    // ─── Rates ───
+    const lightOn = () => env.light / (env.light + 0.05);
+
+    /** η_reg: the product of the reaction's effectors (rates.js) at state x. */
+    function regFactor(c, x, dp) {
+        let f = 1;
+        for (const e of c.regs) {
+            if (e.type === 'light') f *= e.b + (1 - e.b) * lightOn();
+            else if (e.type === 'dark') f *= e.b + (1 - e.b) * (1 - lightOn());
+            else if (e.type === 'dp') { const q = Math.pow(Math.max(dp, 0) / e.K, e.h); f *= q / (1 + q); }
+            else {
+                const val = e.bx != null ? x[e.a] / Math.max(x[e.bx], 1e-12) : x[e.a];
+                const q = Math.pow(Math.max(val, 0) / e.K, e.h);
+                f *= e.type === 'inh' ? 1 / (1 + q) : (e.b + q) / (1 + q);
+            }
+        }
+        return f;
+    }
+
+    /** Reaction j's forward and backward rates at state x, mM/s in its home compartment, into RF and RB. */
+    let RF = 0, RB = 0;
+    function rate1(j, x) {
+        const c = RX[j], dp = dpOf(x);
+        let V = c.vmax * state.activity[j];
+        if (c.r.demand === 'atp') V = dial.atp * state.activity[j];
+        else if (c.r.demand === 'export') V = dial.export * state.activity[j];
+        else if (c.r.demand === 'growth') V = dial.growth / 3600 * RHO * state.activity[j];
+        if (c.light) V *= env.light;
+        if (V === 0) { RF = RB = 0; return; }
+        if (c.law === 'leak') { RF = V * Math.max(dp, 0); RB = 0; return; }
+        if (c.law === 'diffusion') { RF = V * x[c.sub[0][0]]; RB = V * x[c.pro[0][0]]; return; }
+        if (c.law === 'demand') {
+            // Liebig: the scarcest precursor sets the pace (VISION.md: one row, every ingredient together)
+            let m = 1;
+            for (const [i, , , Kd] of c.sub) { const s = Math.max(x[i], 0); m = Math.min(m, s / (Kd + s)); }
+            RF = V * m; RB = 0; return;
+        }
+        V *= regFactor(c, x, dp);
+        let num = 1, d1 = 1, d2 = 1, prodM = 1, ksM = 1;
+        for (const [i, nu, K] of c.sub) {
+            const r = Math.max(x[i], 0) / K;
+            num *= nu === 1 ? r : Math.pow(r, nu);
+            d1 *= nu === 1 ? 1 + r : Math.pow(1 + r, nu);
+            ksM *= nu === 1 ? K / 1000 : Math.pow(K / 1000, nu);
+        }
+        for (const [i, nu, K] of c.pro) {
+            const s = Math.max(x[i], 0);
+            d2 *= nu === 1 ? 1 + s / K : Math.pow(1 + s / K, nu);
+            prodM *= nu === 1 ? s / 1000 : Math.pow(s / 1000, nu);
+        }
+        const D = d1 + d2 - 1;
+        // 1/K' with the proton-motive force: each proton carried into the lumen costs F·Δp
+        const invK = Math.exp((c.dg0 + c.nl * F * dp / 1000) / RT);
+        RF = V * num / D; RB = V * prodM * invK / ksM / D;
+    }
+
+    /** Every reaction's rate at state x: net, forward and backward. */
+    function rates(x, v, vf, vb) {
+        for (let j = 0; j < nR; j++) { rate1(j, x); vf[j] = RF; vb[j] = RB; v[j] = RF - RB; }
+    }
+
+    /** dx/dt at state x into out (free species only, by species index). */
+    const tv = new Float64Array(nR), tf = new Float64Array(nR), tb = new Float64Array(nR);
+    function deriv(x, out) {
+        rates(x, tv, tf, tb);
+        out.fill(0);
+        for (let j = 0; j < nR; j++) {
+            const c = RX[j], amount = tv[j] * c.homeVol;
+            if (amount) for (const [i, nu] of c.stoich) out[i] += nu * amount / vol[i];
+        }
+    }
+
+    /** The Jacobian over free species (dense, nF × nF), by finite differences reaction by reaction. */
+    const J = new Float64Array(nF * nF);
+    function jacobian(x) {
+        J.fill(0);
+        for (let j = 0; j < nR; j++) {
+            const c = RX[j];
+            if (!c.deps.length) continue;
+            rate1(j, x); const v0 = RF - RB;
+            for (const k of c.deps) {
+                const xk = x[k], d = Math.max(Math.abs(xk) * 1e-6, 1e-10);
+                x[k] = xk + d; rate1(j, x); x[k] = xk;
+                const dv = (RF - RB - v0) / d * c.homeVol, col = fpos[k];
+                if (dv) for (const [i, nu] of c.stoich) J[fpos[i] * nF + col] += nu * dv / vol[i];
+            }
+        }
+    }
+
+    // ─── LU of (I − γhJ), partial pivoting ───
+    const A = new Float64Array(nF * nF), piv = new Int32Array(nF);
+    function factor(h) {
+        const g = GAMMA * h;
+        for (let i = 0; i < nF * nF; i++) A[i] = -g * J[i];
+        for (let i = 0; i < nF; i++) A[i * nF + i] += 1;
+        for (let k = 0; k < nF; k++) {
+            let p = k, mx = Math.abs(A[k * nF + k]);
+            for (let i = k + 1; i < nF; i++) { const a = Math.abs(A[i * nF + k]); if (a > mx) { mx = a; p = i; } }
+            piv[k] = p;
+            if (p !== k) for (let j = 0; j < nF; j++) { const t = A[k * nF + j]; A[k * nF + j] = A[p * nF + j]; A[p * nF + j] = t; }
+            const d = A[k * nF + k];
+            if (d === 0) continue;
+            for (let i = k + 1; i < nF; i++) {
+                const f = A[i * nF + k] /= d;
+                if (f) for (let j = k + 1; j < nF; j++) A[i * nF + j] -= f * A[k * nF + j];
+            }
+        }
+    }
+    function solve(b) {
+        for (let k = 0; k < nF; k++) { const p = piv[k]; if (p !== k) { const t = b[k]; b[k] = b[p]; b[p] = t; } }
+        for (let i = 1; i < nF; i++) { let s = b[i]; for (let j = 0; j < i; j++) s -= A[i * nF + j] * b[j]; b[i] = s; }
+        for (let i = nF - 1; i >= 0; i--) { let s = b[i]; for (let j = i + 1; j < nF; j++) s -= A[i * nF + j] * b[j]; b[i] = s / A[i * nF + i]; }
+    }
+
+    // ─── ROS2 with an embedded first-order (linearly implicit Euler) error estimate ───
+    const f0 = new Float64Array(nS), f1 = new Float64Array(nS), y = new Float64Array(nS);
+    const k1 = new Float64Array(nF), k2 = new Float64Array(nF);
+    const RTOL = 2e-3, ATOL = 1e-6, HMAX = 0.05, HMIN = 1e-9;
+    function step() {
+        const x = state.x;
+        deriv(x, f0);
+        jacobian(x);
+        for (;;) {
+            const h = state.h;
+            factor(h);
+            for (let k = 0; k < nF; k++) k1[k] = f0[free[k]];
+            solve(k1);
+            y.set(x);
+            for (let k = 0; k < nF; k++) y[free[k]] += h * k1[k];
+            deriv(y, f1);
+            for (let k = 0; k < nF; k++) k2[k] = f1[free[k]] - 2 * k1[k];
+            solve(k2);
+            let err = 0, neg = false;
+            for (let k = 0; k < nF; k++) {
+                const i = free[k], yn = x[i] + h * (1.5 * k1[k] + 0.5 * k2[k]);
+                y[i] = yn;
+                if (yn < -ATOL) neg = true;
+                const e = h * 0.5 * (k1[k] + k2[k]);
+                err = Math.max(err, Math.abs(e) / (ATOL + RTOL * Math.max(Math.abs(x[i]), Math.abs(yn))));
+            }
+            if ((neg || err > 1 || !Number.isFinite(err)) && h > HMIN) {
+                state.h = Math.max(HMIN, h * (neg || !Number.isFinite(err) ? 0.25 : Math.max(0.2, 0.9 / Math.sqrt(err))));
+                continue;
+            }
+            for (let k = 0; k < nF; k++) { const i = free[k]; x[i] = y[i] < 0 ? 0 : y[i]; }
+            state.t += h;
+            state.h = Math.min(HMAX, h * Math.min(3, 0.9 / Math.sqrt(Math.max(err, 1e-6))));
+            return h;
+        }
+    }
+
+    const events = new EventQueue();
+    const rng = makeRng(opts.seed ?? 1);
+    let target = 0;
+
+    const engine = {
+        model, cell, env, dial, state, events, rng, kappa, vol,
+        get t() { return state.t; },
+        get x() { return state.x; },
+        index: model.index,
+        rIndex: Object.fromEntries(R.map((r, j) => [r.id, j])),
+        species: S, reactions: R,
+
+        /** Advance the model clock by dt seconds: whole steps only, so the trajectory is frame-independent. */
+        advance(dt) {
+            target += dt;
+            let n = 0;
+            while (state.t + state.h <= target && n < 5000) { step(); events.runUntil(state.t); n++; }
+            return n;
+        },
+        /** Run until nothing changes by more than tol per second (or maxT): returns the time it took. */
+        settle(maxT = 600, tol = 1e-3) {
+            const t0 = state.t; let last = Float64Array.from(state.x);
+            while (state.t - t0 < maxT) {
+                this.advance(1);
+                let d = 0;
+                for (const i of free) d = Math.max(d, Math.abs(state.x[i] - last[i]) / (Math.abs(last[i]) + 0.01));
+                last = Float64Array.from(state.x);
+                if (d < tol) break;
+            }
+            return state.t - t0;
+        },
+        /** Evaluate every rate at the current state (net, forward, backward). */
+        evaluate() { rates(state.x, state.v, state.vf, state.vb); return state.v; },
+        /** Concentration of a species, mM, by id and compartment; 0 if the cell has none. */
+        conc(id, comp = 'c') { const i = idx(id, comp); return i == null ? 0 : state.x[i]; },
+        set(id, comp, value) { const i = idx(id, comp); if (i != null) state.x[i] = value; },
+        /** The proton-motive force, mV. */
+        dp() { return dpOf(state.x); },
+        /** Why a reaction runs as it does: its factors and ΔG (kJ/mol). */
+        factors(j) {
+            const c = RX[j], x = state.x, dp = dpOf(x);
+            rate1(j, x);
+            // ln Q exactly: a missing substrate makes ΔG +∞, a missing product −∞
+            let lnQ = 0;
+            for (const [i, nu] of c.sub) lnQ -= nu * Math.log(Math.max(x[i], 0) / 1000);
+            for (const [i, nu] of c.pro) lnQ += nu * (x[i] > 0 ? Math.log(x[i] / 1000) : -Infinity);
+            if (Number.isNaN(lnQ)) lnQ = 0;
+            const dG = c.dg0 + RT * lnQ + c.nl * F * dp / 1000;
+            return { dG, thermo: 1 - Math.exp(dG / RT), reg: c.law === 'cm' ? regFactor(c, x, dp) : 1, vf: RF, vb: RB, v: RF - RB };
+        },
+        /** Hold the medium's gases and phosphate at the environment's values. */
+        applyEnv() {
+            const o2 = idx('o2', 'e'), co2 = idx('co2', 'e'), pi = idx('pi', 'e');
+            if (o2 != null) state.x[o2] = AIR_O2 * env.o2;
+            if (co2 != null) state.x[co2] = AIR_CO2 * env.co2;
+            if (pi != null) state.x[pi] = PI_MEDIUM;
+            // A chloroplast's medium is its cell's cytosol: ATP held at 2 mM, ADP at 0.2
+            const atp = idx('atp', 'e'), adp = idx('adp', 'e');
+            if (atp != null) { state.x[atp] = 2; state.x[adp] = 0.2; }
+        },
+        /** Fill the pools and metabolites to the cell's starting state. */
+        reset() {
+            state.x.fill(0); state.t = 0; target = 0; state.h = 1e-3; events.clear();
+            for (let j = 0; j < nR; j++) state.activity[j] = R[j].off ? 0 : 1;
+            initialState(engine);
+            this.applyEnv();
+        },
+        /** The total of a moiety in a compartment, mM. */
+        moiety(name, comp) {
+            const m = MOIETIES[name]; let s = 0;
+            for (const sp of S) if (sp.comp === comp && m[sp.id]) s += m[sp.id] * state.x[model.index[sp.key]];
+            return s;
+        },
+    };
+    engine.reset();
+    return engine;
+}
+
+/** The starting state: pools split by plausible ratios, metabolites at small amounts, the medium fed. */
+function initialState(eng) {
+    const { cell } = eng, set = (id, comp, v) => eng.set(id, comp, v);
+    for (const [comp, pools] of Object.entries(cell.pools)) {
+        const tot = (k) => pools[k] ? pools[k][0] : 0;
+        set('atp', comp, 0.85 * tot('adenine')); set('adp', comp, 0.12 * tot('adenine')); set('amp', comp, 0.03 * tot('adenine'));
+        set('nad', comp, 0.95 * tot('nad')); set('nadh', comp, 0.05 * tot('nad'));
+        set('nadp', comp, 0.4 * tot('nadp')); set('nadph', comp, 0.6 * tot('nadp'));
+        set('coa', comp, 0.7 * tot('coa')); set('accoa', comp, 0.3 * tot('coa'));
+        set('pi', comp, PI_MEDIUM);
+    }
+    const carriers = cell.carriers || { q: 1, pc: 1, fd: 0.2 };
+    const mem = 'm' in eng.model.comps ? 'm' : 'c';
+    set('q8', mem, 0.6 * carriers.q); set('q8h2', mem, 0.4 * carriers.q);
+    set('pcox', 'l', 0.5 * carriers.pc); set('pcred', 'l', 0.5 * carriers.pc);
+    set('fdox', 'c', 0.7 * carriers.fd); set('fdred', 'c', 0.3 * carriers.fd);
+    const start = { g6p: 1, f6p: 0.3, fdp: 0.5, g3p: 0.05, '13dpg': 0.01, '3pg': 1, '2pg': 0.1, pep: 0.2, pyr: 0.2,
+        rb15bp: 0.5, ru5p__D: 0.02, r5p: 0.05, xu5p__D: 0.02, s7p: 0.1, e4p: 0.02, s17bp: 0.02,
+        oaa: 0.01, cit: 1, icit: 0.05, akg: 0.3, succoa: 0.05, succ: 0.5, fum: 0.1, mal__L: 0.5, glycogen: 20, lac__L: 0.5 };
+    for (const [id, v] of Object.entries({ ...start, ...(cell.start || {}) })) for (const comp of ['c', 'm']) set(id, comp, v);
+    for (const [id, v] of Object.entries(cell.medium || {})) set(id, 'e', v);
+    // Δp starts at 150 mV
+    set('h', 'l', 0);
+    set('h', 'l', 150 / eng.kappa - eng.dp() / eng.kappa);
+}

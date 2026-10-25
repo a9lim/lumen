@@ -14,6 +14,7 @@ const baseId = (term) => term.replace(/\[[clme]\]$/, '');
 test('every reaction balances in every element and in charge', () => {
     const bad = [];
     for (const r of Object.values(REACTIONS)) {
+        if (r.sink) continue;    // biosynthetic demand takes carbon out of the network by design
         const sum = {}; let q = 0;
         for (const [term, nu] of Object.entries(r.stoich)) {
             const s = SPECIES[baseId(term)];
@@ -56,7 +57,7 @@ test('each cell conserves carbon and phosphorus, medium included', () => {
     for (const id of Object.keys(CELLS)) {
         const m = buildCell(id);
         for (const el of ['C', 'P', 'N', 'S']) {
-            for (const r of m.reactions) {
+            for (const r of m.reactions.filter(r => !r.sink)) {
                 const d = r.stoich.reduce((a, [i, nu]) => a + (m.species[i].fixed ? 0 : (m.species[i].el[el] || 0) * nu), 0);
                 assert.ok(Math.abs(d) < 1e-9, `${id}: ${r.id} changes ${el} by ${d}`);
             }
@@ -87,7 +88,7 @@ const EXPECTED = {
 test("the moieties and elements span each cell's conservation laws", () => {
     for (const id of Object.keys(CELLS)) {
         const m = buildCell(id);
-        const { N, rows } = stoichMatrix(m, s => !s.fixed);
+        const { N, rows } = stoichMatrix(m, s => !s.fixed, r => !r.sink);
         const laws = N.length - rank(N);    // dimension of the left null space
         // What we expect to be conserved: each moiety per compartment, C and P across the cell and its
         // medium, and electrons: with water and buffered H⁺ fixed, H − 2O − charge (reducing equivalents

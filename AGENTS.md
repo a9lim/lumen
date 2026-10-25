@@ -30,8 +30,12 @@ src/autoplay.js    autoplayTick (specimen-aware membrane tick), protonLeakTick (
 src/reactions/     dispatch.js (advanceStep, onReaction) + glycolysis, krebs, calvin, ppp, etc, fermentation (LDH too), betaoxidation
 src/engine/        the new engine (milestone 1, being built; the app still runs src/reactions/): species.js (species, moieties),
                    formulas.js (generated from BiGG by tools/bigg.mjs), network.js (every reaction as data), cells.js (each preset's
-                   organism: reactions, compartments, carrier potentials, pool sizes), model.js (a cell instantiated)
-tests/             headless tests of the engine (node --test tests/*.test.mjs)
+                   organism: reactions, compartments, carrier potentials, pool sizes, environment, kinetic overrides), model.js
+                   (a cell instantiated), thermo.js (ΔG'°: eQuilibrator's, and the membrane's from potentials), rates.js (kinetic
+                   parameters and regulation), engine.js (state, separable rates, the Rosenbrock integrator, Δp), rng.js, events.js
+tests/             headless tests of the engine (node --test tests/*.test.mjs): network (balances, moieties), thermo (cycles),
+                   behavior (conservation, frame independence, respiratory control, anoxia, light, demand), migration (the old
+                   handlers against the new reactions)
 tools/bigg.mjs     regenerates src/engine/formulas.js from BiGG
 src/flux.js        reactions → map segments; leaky-integrated flux per segment
 src/complexes.js   the palette (P, readPalette, tones, mix), assembly() and every complex's part list, ATP synthase's rotor and binding-change head, carriers, the cofactor glyphs (MOL, molGlyph)

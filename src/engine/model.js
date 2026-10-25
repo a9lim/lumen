@@ -55,11 +55,12 @@ export function buildCell(cellId) {
     return { id: cellId, cell, comps, species, index, reactions };
 }
 
-/** Dense stoichiometric matrix (species × reactions), optionally only some species. */
-export function stoichMatrix(model, keep = () => true) {
+/** Dense stoichiometric matrix (species × reactions), optionally only some species and reactions. */
+export function stoichMatrix(model, keep = () => true, keepR = () => true) {
     const rows = model.species.map((s, i) => keep(s, i) ? i : -1).filter(i => i >= 0);
     const at = Object.fromEntries(rows.map((i, j) => [i, j]));
-    const N = rows.map(() => new Array(model.reactions.length).fill(0));
-    model.reactions.forEach((r, j) => { for (const [i, nu] of r.stoich) if (i in at) N[at[i]][j] += nu; });
+    const rx = model.reactions.filter(keepR);
+    const N = rows.map(() => new Array(rx.length).fill(0));
+    rx.forEach((r, j) => { for (const [i, nu] of r.stoich) if (i in at) N[at[i]][j] += nu; });
     return { N, rows };
 }
