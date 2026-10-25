@@ -6,7 +6,7 @@
 // against its paired baseline. Updates are rAF-coalesced.
 import { histories } from './state.js';
 import Cell, { SYSTEM } from './cell.js';
-import { HOLD } from './engine/engine.js';
+import { HOLD, ZMV } from './engine/engine.js';
 import { MapView } from './map.js';
 import { Membrane } from './membrane.js';
 import { COMPLEX } from './mapbind.js';
@@ -137,12 +137,38 @@ export function poolShares() {
     return { atp: ad ? c('atp') / ad : 0, nadh: nad ? c('nadh') / nad : 0, nadph: nadp ? c('nadph') / nadp : 0, comp: m };
 }
 
-/** The Δp ATP synthase needs to make ATP now, mV: the phosphorylation potential over its four protons. */
+/** The Δp ATP synthase needs to make ATP now, mV: the phosphorylation potential over its protons per ATP. */
 function atpThreshold() {
     const e = Cell.engine, m = 'm' in e.model.comps ? 'm' : 'c';
+    if (!('ATPS' in e.rIndex)) return Infinity;
+    const { nH, dg0 } = e.coupling(e.rIndex.ATPS);
     const atp = e.conc('atp', m), adp = e.conc('adp', m), pi = e.conc('pi', m);
     if (!adp || !pi) return Infinity;
-    return (27.37 + RT * Math.log(atp / 1000 / (adp / 1000 * pi / 1000))) / (4 * F) * 1000;
+    return (dg0 + RT * Math.log(atp / 1000 / (adp / 1000 * pi / 1000))) / (-nH * F) * 1000;
+}
+
+/**
+ * What the membrane's stoichiometry yields, from the cell's own reactions: protons pumped per
+ * two electrons over protons per ATP (the ring's, and in mitochondria the phosphate carrier's
+ * one more, with ANT's charge: one proton-motive force's worth per ATP exported).
+ */
+export function yieldText() {
+    const e = Cell.engine, has = (r) => r in e.rIndex, nH = (r) => has(r) ? e.coupling(e.rIndex[r]).nH : 0;
+    if (!has('ATPS')) return '';
+    const ring = e.cell.ring || 12, synth = -nH('ATPS'), carrier = has('PIC') ? 1 : 0, cost = synth + carrier;
+    const f = (x) => x.toFixed(1), per = `${f(cost)} per ATP (${ring} c subunits turn for three ATP${carrier ? ', and exporting each ATP costs one more' : ''})`;
+    const out = [];
+    if (has('PSII')) {
+        const lin = nH('PSII') + nH('CYTBF');
+        out.push(`ATP per NADPH by linear flow: ${f(lin / cost)}, from ${lin} protons per two electrons and ${per}. The Calvin cycle needs 1.5, so cyclic flow makes up the rest.`);
+    }
+    if (has('NDH1') && has('CYTOX')) {
+        const nadh = nH('NDH1') + nH('CYTBF') + nH('CYTOX'), succ = nH('CYTBF') + nH('CYTOX');
+        out.push(`P/O ${f(nadh / cost)} from NADH and ${f(succ / cost)} from succinate: ${nadh} and ${succ} protons pumped per two electrons${has('PSII') ? ', ' + f(cost) + ' per ATP' : ', ' + per}.`);
+    }
+    if (has('BR') && !has('PSII')) out.push(`Bacteriorhodopsin pumps one proton per photon, so an ATP takes ${f(synth)} photons (${ring} c subunits turn for three ATP).`);
+    if (!out.length) out.push(`No chain here. Run backward, ATP synthase spends an ATP to pump ${f(synth)} protons out (${ring} c subunits turn for three ATP).`);
+    return out.join(' ');
 }
 
 /** Full refresh: after every frame's sample, coalesced. */
@@ -157,8 +183,12 @@ export function updateDashboard() {
     _set(_dom.poolsWhere, sh.comp === 'm' ? 'In the mitochondrial matrix, under the membrane' : 'In the cytoplasm, under the membrane');
 
     _set(_dom.protonMv, Math.round(e.dp()) + ' mV');
+    // Δp's two parts: charge across the membrane, and the pH difference (lumen side more acid)
+    _set(_dom.psiMv, Math.round(e.psi()) + ' mV');
+    _set(_dom.phMv, Math.round(e.dpH()) + ' mV · ' + (e.dpH() / ZMV).toFixed(1).replace('-', '−') + ' pH');
     const th = atpThreshold();
     _set(_dom.atpMv, Number.isFinite(th) ? Math.round(th) + ' mV' : 'no ADP');
+    _set(_dom.yieldNote, yieldText());
     _set(_dom.protonsLeaked, fmt(R('LEAK') + R('UCP')) + ' mM/s');
 
     const m = 'm' in e.model.comps ? 'm' : 'c';

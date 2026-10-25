@@ -147,9 +147,12 @@ p('ATPS', 15);
 p('NNT', 2);
 // The plastid's ATP/ADP translocator: at night a chloroplast lives on the cytosol's ATP
 p('NTT', 1);
-// The leaks are conductances: mM/s of protons per mV of Δp
+// The leaks are conductances: mM/s per mV of what drives them (Δp for protons, Δψ for the
+// counter-ions, ΔpH for K⁺/H⁺ exchange); each cell sets the last two (cells.js)
 p('LEAK', 0.004, { law: 'leak' });
 p('UCP', 0.5, { law: 'leak' });
+p('ION', 0.0005, { law: 'leak' });
+p('KHE', 0.0025, { law: 'leak' });
 
 // ─── Reactive oxygen: the leaks climb steeply with Δp; the scavengers are fast ───
 p('ROSI', 0.004, { km: { o2: 0.05 }, reg: [{ type: 'dp', K: 190, h: 6 }] });

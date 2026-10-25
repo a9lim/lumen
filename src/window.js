@@ -67,6 +67,10 @@ const Win = {
         this.V = slabVolume(specId);
         this.perMM = 1e-3 * this.V * NA;          // molecules in the slab per mM
         this.comp = 'm' in engine.model.comps ? 'm' : 'c';
+        // protons through ATP synthase per ATP: its ring's c subunits over three; the drawing's ring too
+        this.hPerAtp = 'ATPS' in engine.rIndex ? -engine.coupling(engine.rIndex.ATPS).nH : 4;
+        this.hAcc = 0;
+        Membrane.ring = engine.cell.ring || 12;
         this.rng = engine.rng.stream('window');
         this.pumps = []; this.credits = []; this.thin = {}; this.rate = {};
         for (const k of ['atpOxidative', 'atpHydrolyzed', 'o2Produced', 'o2Consumed', 'protonsLeaked', 'rosProduced', 'rosScavenged']) store[k] = 0;
@@ -131,9 +135,9 @@ const Win = {
         this.credits = this.credits.filter(c => c.left > 0);
         // The leak: protons back across the bilayer (or UCP), as its share of the protons spent
         const jA = e.rIndex.ATPS, jL = e.rIndex.LEAK, jU = e.rIndex.UCP;
-        const atpH = jA != null ? 4 * Math.max(0, e.state.v[jA]) : 0, leak = (jL != null ? e.state.v[jL] : 0) + (jU != null ? e.state.v[jU] : 0);
+        const atpH = jA != null ? this.hPerAtp * Math.max(0, e.state.v[jA]) : 0, leak = (jL != null ? e.state.v[jL] : 0) + (jU != null ? e.state.v[jU] : 0);
         if (atpH + leak > 0 && pos.atpSyn) {
-            const kA = Math.max(0, this.rate.ATPS || 0) * 4;
+            const kA = Math.max(0, this.rate.ATPS || 0) * this.hPerAtp;
             store.protonsLeaked += poisson(r, kA * leak / Math.max(atpH, 1e-9) * dt);
         }
         this._ros(dt);
@@ -167,7 +171,8 @@ const Win = {
     _fire(rid, fwd, n, w = 1) {
         for (let i = 0; i < n; i++) {
             if (rid === 'ATPS') {
-                if (fwd) store.atpOxidative += w; else { store.atpHydrolyzed += w; this._queue(4, 'atpSyn'); }
+                if (fwd) store.atpOxidative += w;
+                else { store.atpHydrolyzed += w; this.hAcc += this.hPerAtp; const k = Math.floor(this.hAcc); this.hAcc -= k; this._queue(k, 'atpSyn'); }
                 Renderer.poolEvent('atp', fwd ? 1 : -1, 'atpSyn');
             } else if (CHAINS[rid] && fwd) {
                 const C = CHAINS[rid], cb = { 0: () => this._effect(rid) }, gates = {};

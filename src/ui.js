@@ -38,7 +38,7 @@ export function cacheDOMElements() {
         themeBtn: $('theme-btn'), menuBtn: $('menu-btn'), closeStats: $('close-stats'), dashboard: $('dashboard'),
         modeBtn: $('mode-btn'), speedUp: $('speed-up'), speedDown: $('speed-down'), speedVal: $('speed-val'),
         organismGroup: $('organism-group'), organismDesc: $('organism-desc'),
-        protonsLeaked: $('protons-leaked'), protonMv: $('proton-mv'), atpMv: $('atp-mv'),
+        protonsLeaked: $('protons-leaked'), protonMv: $('proton-mv'), psiMv: $('psi-mv'), phMv: $('ph-mv'), atpMv: $('atp-mv'), yieldNote: $('lu-yield'),
         atpBar: $('atp-bar'), atpRatio: $('atp-ratio'), nadhBar: $('nadh-bar'), nadhRatio: $('nadh-ratio'),
         nadphBar: $('nadph-bar'), nadphRatio: $('nadph-ratio'), poolsWhere: $('pools-where'),
         co2Net: $('co2-net'), o2Net: $('o2-net'), glcNet: $('glc-net'), growthNet: $('growth-net'),

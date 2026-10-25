@@ -12,7 +12,9 @@
 //
 // kind: 'met' a metabolite, 'cof' a cofactor pool, 'car' a membrane carrier,
 // 'gas' (crosses membranes freely and lives in the cell's main compartment),
-// 'fixed' (water and buffered H⁺: constant, left out of every rate and of Q).
+// 'fixed' (water, buffered H⁺ and K⁺: constant, left out of every rate and of Q),
+// 'charge' (dq: the net charge the drawn membrane has moved to its lumen side,
+// a state, not a chemical: engine.js reads Δψ from it).
 import { FORMULAS } from './formulas.js';
 
 /** Elements of a formula: 'C10H12N5O13P3' → { C: 10, H: 12, … }. Pseudo-elements (Pc, Fd) are capitalized words. */
@@ -33,6 +35,10 @@ sp('atp', 'ATP', 'cof'); sp('adp', 'ADP', 'cof'); sp('amp', 'AMP', 'cof');
 sp('nad', 'NAD⁺', 'cof'); sp('nadh', 'NADH', 'cof'); sp('nadp', 'NADP⁺', 'cof'); sp('nadph', 'NADPH', 'cof');
 sp('coa', 'CoA', 'cof'); sp('pi', 'Pᵢ', 'cof'); sp('ppi', 'PPᵢ', 'met');
 sp('h2o', 'H₂O', 'fixed'); sp('h', 'H⁺', 'fixed');
+// K⁺ stands for the counter-ions (K⁺, Cl⁻, Mg²⁺) whose movement across the membrane
+// carries charge without protons; held constant on both sides
+sp('k', 'K⁺', 'fixed');
+sp('dq', 'Membrane charge', 'charge', { formula: '', charge: 0 });
 sp('co2', 'CO₂', 'gas'); sp('o2', 'O₂', 'gas');
 // Reactive oxygen: superoxide and hydrogen peroxide
 sp('o2s', 'Superoxide', 'met'); sp('h2o2', 'H₂O₂', 'met');

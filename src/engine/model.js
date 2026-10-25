@@ -4,8 +4,8 @@
 //
 // Compartments: c the cytosol (the one aqueous compartment of a cell without
 // a separate matrix), m the mitochondrial matrix, l the lumen side of the
-// drawn membrane (where h_l, the translocated protons, live), e the medium.
-// Water and buffered H⁺ are fixed; h_l is not.
+// drawn membrane (where h_l, the translocated protons, live, and dq, the net
+// charge moved there), e the medium. Water, buffered H⁺ and K⁺ are fixed; h_l is not.
 import { SPECIES } from './species.js';
 import { REACTIONS } from './network.js';
 import { CELLS } from './cells.js';
@@ -46,12 +46,15 @@ export function buildCell(cellId) {
         const r = REACTIONS[rid];
         if (!r) throw new Error(cellId + ': unknown reaction ' + rid);
         const stoich = [];
-        for (const [term, nu] of Object.entries(r.stoich)) {
+        // ATP synthase takes one proton per c subunit, three ATP a turn: ring/3 per ATP (cells.js)
+        const eq = rid === 'ATPS' && cell.ring ? { ...r.stoich, 'h[l]': -cell.ring / 3, h: cell.ring / 3 - 1 } : r.stoich;
+        for (const [term, nu] of Object.entries(eq)) {
             const m = /^(.+?)(?:\[([clme])\])?$/.exec(term);
             stoich.push([key(m[1], place(m[1], m[2], r.at, comps)), nu]);
         }
         reactions.push({ ...r, stoich, comp: r.at === 'mito' && 'm' in comps ? 'm' : 'c' });
     }
+    key('dq', 'l');
     return { id: cellId, cell, comps, species, index, reactions };
 }
 

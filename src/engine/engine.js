@@ -14,13 +14,16 @@
 // compartment, moved as an amount (rate × its volume) into each species'
 // compartment.
 //
-// Δp is κ times what the drawn membrane has moved into the lumen. Where Δψ
-// carries most of it (mitochondria, plasma membranes), that is net charge:
-// the translocated protons plus the charge on the lumen's carriers, so each
-// complex is charged for the charges it really moves across (complex I four,
-// the Q-cycle's complex III two, complex IV four). In thylakoids, where ΔpH
-// carries it, it is the protons the lumen receives (b₆f's four). Phase B
-// splits the two.
+// Δp = Δψ + ΔpH (in mV) across the drawn membrane, each from its own state.
+// Δψ is κψ times dq, the net charge moved to the lumen side: each reaction
+// moves z, the charge on the lumen species it makes or spends (translocated
+// protons, the lumen's carriers, counter-ions) plus any its carriers move
+// between cytosol and matrix (network.js), so complex I moves four, the
+// Q-cycle's complex III two and complex IV four. ΔpH is κH times h_l, the
+// protons the lumen side has gained, nearly all of them bound to its
+// buffers. Moving a proton into the lumen costs F·Δp; moving a charge alone
+// costs F·Δψ, and a proton with a counter-charge F·ΔpH. Counter-ions and
+// K⁺/H⁺ exchange let one relax into the other (network.js: ION, KHE).
 import { buildCell } from './model.js';
 import { PARAMS, KM, KM_DEFAULT } from './rates.js';
 import { dg0, F, RT } from './thermo.js';
@@ -44,25 +47,27 @@ const K_DMG = 40, K_REP = 0.05, REPAIR_ATP = 2, LEAK_DMG = 4, ACO_DMG = 0.8;
 // metabolic control analysis against a paired baseline (cell.js). Being functions of model time,
 // they leave a trajectory independent of frames, and a paused clock holds them.
 export const PULSE_UP = 4, PULSE_DOWN = 0.9, PULSE_TAU = 1.5, PULSE_MAX = 20, HOLD = 0.1;
+/** mV per pH unit: 2.303 RT/F. */
+export const ZMV = RT * Math.LN10 / F * 1000;
 
 export function createEngine(cellId, opts = {}) {
     const model = buildCell(cellId), cell = model.cell;
     const S = model.species, nS = S.length, R = model.reactions, nR = R.length;
     const vol = Float64Array.from(S, s => s.comp === 'e' ? V_MEDIUM : model.comps[s.comp]);
     const idx = (id, comp) => model.index[id + '_' + comp];
-    const iHl = idx('h', 'l');
-    const kappa = cell.kappa || 2;    // mV per mM of translocated charge (or protons)
-    const byCharge = cell.pmf === 'charge';
-    // The lumen's carriers, whose charge counts toward Δψ where charge is what Δp reads
-    const lumenCharged = S.map((s, i) => [i, s]).filter(([i, s]) => byCharge && s.comp === 'l' && s.kind === 'car' && s.charge).map(([i, s]) => [i, s.charge]);
-    const dpOf = (x) => { let q = x[iHl]; for (const [i, z] of lumenCharged) q += z * x[i]; return q * kappa; };
+    const iHl = idx('h', 'l'), iQ = idx('dq', 'l');
+    // κψ, mV per mM of charge; κH, mV per mM of protons the lumen gains (cells.js)
+    const pmf = { psi: 20, ph: 1, share: 0.8, ...(cell.pmf || {}) };
+    const psiOf = (x) => x[iQ] * pmf.psi, phOf = (x) => x[iHl] * pmf.ph;
+    const dpOf = (x) => psiOf(x) + phOf(x);
 
     const env = { light: 0, o2: 1, co2: 1, ...(cell.env || {}), ...(opts.env || {}) };
     // The dials: ATP demand (mM/s), growth (per hour), a plastid's export (mM/s)
     const dial = { atp: cell.atpDemand ?? 0.6, growth: cell.growth ?? 0, export: cell.export ?? 0.5 };
 
-    // Species the integration leaves alone: fixed (water, buffered H⁺) and the medium's gases and Pᵢ, set by env
-    const hold = Uint8Array.from(S, s => s.fixed || (s.comp === 'e' && ['o2', 'co2', 'pi', 'atp', 'adp'].includes(s.id)) ? 1 : 0);
+    // Species the integration leaves alone: fixed (water, buffered H⁺) and the medium's gases and Pᵢ, set by
+    // env; with opts.chemostat, the whole medium, so a steady state can exist (compare.js)
+    const hold = Uint8Array.from(S, s => s.fixed || (s.comp === 'e' && (opts.chemostat || ['o2', 'co2', 'pi', 'atp', 'adp'].includes(s.id))) ? 1 : 0);
     const free = [...Array(nS).keys()].filter(i => !hold[i]), nF = free.length;
     const fpos = new Int32Array(nS).fill(-1); free.forEach((i, k) => { fpos[i] = k; });
 
@@ -72,9 +77,10 @@ export function createEngine(cellId, opts = {}) {
         const over = (cell.kinetics || {})[r.id] || {};
         const km = { ...(par.km || {}), ...(over.km || {}) };
         const sub = [], pro = [];
-        // What the reaction moves into the lumen, for Δp: protons, or net charge (carriers included)
-        let nl = 0;
-        for (const [i, nu] of r.stoich) if (i === iHl || (byCharge && S[i].comp === 'l' && S[i].kind === 'car')) nl += nu * S[i].charge;
+        // What the reaction moves to the lumen side: charge (z: every lumen species', and its carriers'
+        // between cytosol and matrix) and protons (nH)
+        let z = r.z || 0, nH = 0;
+        for (const [i, nu] of r.stoich) { if (S[i].comp === 'l') z += nu * S[i].charge; if (i === iHl) nH += nu; }
         for (const [i, nu] of r.stoich) {
             if (i === iHl) continue;
             if (S[i].fixed) continue;
@@ -86,14 +92,14 @@ export function createEngine(cellId, opts = {}) {
         const law = par.law || 'cm';
         // Which species its rate reads: substrates, products, effectors, and Δp when protons cross
         const deps = new Set([...sub, ...pro].map(([i]) => i));
-        for (const e of regs) { if (e.a != null) deps.add(e.a); if (e.bx != null) deps.add(e.bx); if (e.type === 'dp') deps.add(iHl); }
-        if (nl || law === 'leak') { deps.add(iHl); for (const [i] of lumenCharged) deps.add(i); }
+        for (const e of regs) { if (e.a != null) deps.add(e.a); if (e.bx != null) deps.add(e.bx); if (e.type === 'dp') { deps.add(iHl); deps.add(iQ); } }
+        if (z || nH || law === 'leak') { deps.add(iHl); deps.add(iQ); }
         return {
-            r, j, law, vmax: over.vmax ?? par.vmax, light: !!par.light, sub, pro, nl, regs,
+            r, j, law, vmax: over.vmax ?? par.vmax, light: !!par.light, sub, pro, z, nH, regs,
             dmg: r.id === 'LEAK' ? 'leak' : r.id === 'ACONT' ? 'aco' : null,
             dg0: dg0(cell, r), homeVol: model.comps[r.comp],
             deps: [...deps].filter(i => !hold[i]),
-            stoich: r.stoich.filter(([i]) => !hold[i]),
+            stoich: [...r.stoich.filter(([i]) => !hold[i]), ...(z ? [[iQ, z]] : [])],
         };
     });
     function compileReg(e, home) {
@@ -145,7 +151,7 @@ export function createEngine(cellId, opts = {}) {
     /** Reaction j's forward and backward rates at state x, mM/s in its home compartment, into RF and RB. */
     let RF = 0, RB = 0;
     function rate1(j, x) {
-        const c = RX[j], dp = dpOf(x);
+        const c = RX[j], psi = psiOf(x), ph = phOf(x), dp = psi + ph;
         let V = c.vmax * state.activity[j] * (pulses.size ? pulseFactor(j, state.t) : 1);
         const act = state.activity[j] * (pulses.size ? pulseFactor(j, state.t) : 1);
         if (c.r.demand === 'atp') V = dial.atp * act;
@@ -155,7 +161,8 @@ export function createEngine(cellId, opts = {}) {
         if (c.dmg) V *= c.dmg === 'leak' ? 1 + LEAK_DMG * state.damage : 1 - ACO_DMG * state.damage;
         if (c.light) V *= env.light;
         if (V === 0) { RF = RB = 0; return; }
-        if (c.law === 'leak') { RF = V * Math.max(dp, 0); RB = 0; return; }
+        // a conductance: the flux follows what drives it, mV (Δp for a proton, Δψ for a charge alone, ΔpH for an exchange)
+        if (c.law === 'leak') { const drive = -(c.z * psi + c.nH * ph); RF = V * Math.max(drive, 0); RB = V * Math.max(-drive, 0); return; }
         if (c.law === 'diffusion') { RF = V * x[c.sub[0][0]]; RB = V * x[c.pro[0][0]]; return; }
         if (c.law === 'demand') {
             // Liebig: the scarcest precursor sets the pace (VISION.md: one row, every ingredient together)
@@ -177,8 +184,8 @@ export function createEngine(cellId, opts = {}) {
             prodM *= nu === 1 ? s / 1000 : Math.pow(s / 1000, nu);
         }
         const D = d1 + d2 - 1;
-        // 1/K' with the proton-motive force: each proton carried into the lumen costs F·Δp
-        const invK = Math.exp((c.dg0 + c.nl * F * dp / 1000) / RT);
+        // 1/K' with the proton-motive force: each charge moved to the lumen side costs F·Δψ, each proton F·ΔpH more
+        const invK = Math.exp((c.dg0 + (c.z * psi + c.nH * ph) * F / 1000) / RT);
         RF = V * num / D; RB = V * prodM * invK / ksM / D;
     }
 
@@ -262,7 +269,7 @@ export function createEngine(cellId, opts = {}) {
             for (let k = 0; k < nF; k++) {
                 const i = free[k], yn = x[i] + h * (1.5 * k1[k] + 0.5 * k2[k]);
                 y[i] = yn;
-                if (yn < -ATOL) neg = true;
+                if (yn < -ATOL && i !== iQ && i !== iHl) neg = true;   // Δψ's charge and ΔpH's protons may go either way
                 const e = h * 0.5 * (k1[k] + k2[k]);
                 err = Math.max(err, Math.abs(e) / (ATOL + RTOL * Math.max(Math.abs(x[i]), Math.abs(yn))));
             }
@@ -270,7 +277,7 @@ export function createEngine(cellId, opts = {}) {
                 state.h = Math.max(HMIN, h * (neg || !Number.isFinite(err) ? 0.25 : Math.max(0.2, 0.9 / Math.sqrt(err))));
                 continue;
             }
-            for (let k = 0; k < nF; k++) { const i = free[k]; x[i] = y[i] < 0 ? 0 : y[i]; }
+            for (let k = 0; k < nF; k++) { const i = free[k]; x[i] = y[i] < 0 && i !== iQ && i !== iHl ? 0 : y[i]; }
             // Damage, a slow variable outside the chemistry: made by reactive oxygen, cleared only as
             // fast as repair actually spends its ATP
             if (rosIdx.length) {
@@ -292,7 +299,7 @@ export function createEngine(cellId, opts = {}) {
     let target = 0;
 
     const engine = {
-        model, cell, env, dial, state, events, rng, kappa, vol,
+        model, cell, env, dial, state, events, rng, pmf, vol,
         get t() { return state.t; },
         get x() { return state.x; },
         index: model.index,
@@ -326,18 +333,20 @@ export function createEngine(cellId, opts = {}) {
         /** Concentration of a species, mM, by id and compartment; 0 if the cell has none. */
         conc(id, comp = 'c') { const i = idx(id, comp); return i == null ? 0 : state.x[i]; },
         set(id, comp, value) { const i = idx(id, comp); if (i != null) state.x[i] = value; },
-        /** The proton-motive force, mV. */
+        /** The proton-motive force, mV, and its parts: Δψ (mV) and ΔpH (mV; pH units are mV / ZMV). */
         dp() { return dpOf(state.x); },
+        psi() { return psiOf(state.x); },
+        dpH() { return phOf(state.x); },
         /** Why a reaction runs as it does: its factors and ΔG (kJ/mol). */
         factors(j) {
-            const c = RX[j], x = state.x, dp = dpOf(x);
+            const c = RX[j], x = state.x, psi = psiOf(x), ph = phOf(x), dp = psi + ph;
             rate1(j, x);
             // ln Q exactly: a missing substrate makes ΔG +∞, a missing product −∞
             let lnQ = 0;
             for (const [i, nu] of c.sub) lnQ -= nu * Math.log(Math.max(x[i], 0) / 1000);
             for (const [i, nu] of c.pro) lnQ += nu * (x[i] > 0 ? Math.log(x[i] / 1000) : -Infinity);
             if (Number.isNaN(lnQ)) lnQ = 0;
-            const dG = c.dg0 + RT * lnQ + c.nl * F * dp / 1000;
+            const dG = c.dg0 + RT * lnQ + (c.z * psi + c.nH * ph) * F / 1000;
             // η_sat: convenience kinetics' saturation, as the rate uses it
             let num = 1, d1 = 1, d2 = 1;
             for (const [i, nu, K] of c.sub) { const r = Math.max(x[i], 0) / K; num *= Math.pow(r, nu); d1 *= Math.pow(1 + r, nu); }
@@ -397,6 +406,8 @@ export function createEngine(cellId, opts = {}) {
                 return { what, how: e.type === 'inh' || e.type === 'dark' ? 'inh' : 'act', f };
             });
         },
+        /** What reaction j moves across the membrane: z charges and nH protons to the lumen side; its ΔG'° (kJ/mol). */
+        coupling(j) { return { z: RX[j].z, nH: RX[j].nH, dg0: RX[j].dg0 }; },
         /** A reaction's base capacity, mM/s in its home compartment (without pulses, switches or light). */
         capacity(j) { return RX[j].vmax; },
         /** Add to the medium (a bolus of glucose or fatty acid), mM. */
@@ -450,7 +461,7 @@ function initialState(eng) {
         oaa: 0.01, cit: 1, icit: 0.05, akg: 0.3, succoa: 0.05, succ: 0.5, fum: 0.1, mal__L: 0.5, glycogen: 20, lac__L: 0.5 };
     for (const [id, v] of Object.entries({ ...start, ...(cell.start || {}) })) for (const comp of ['c', 'm']) set(id, comp, v);
     for (const [id, v] of Object.entries(cell.medium || {})) set(id, 'e', v);
-    // Δp starts at 150 mV
-    set('h', 'l', 0);
-    set('h', 'l', 150 / eng.kappa - eng.dp() / eng.kappa);
+    // Δp starts at 150 mV, divided as the cell's membrane divides it
+    set('dq', 'l', 150 * eng.pmf.share / eng.pmf.psi);
+    set('h', 'l', 150 * (1 - eng.pmf.share) / eng.pmf.ph);
 }

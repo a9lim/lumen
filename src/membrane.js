@@ -27,6 +27,7 @@ const LIPID = 0.85;   // spacing of lipids along a leaflet, nm
 
 export const Membrane = {
     specId: 'thylakoid', spec: SPECIMENS.thylakoid,
+    ring: 12,         // ATP synthase's c subunits, the cell's (window.js sets it)
     s: 6, x0: 0, x1: 0, top: 0, mid: 0, memTop: 0, memBot: 0, upperMid: 0, bottom: 0,
     pos: {},          // engine key → { x, y } electron anchor, plus drawing data
     items: [],        // [{ key, x, n }] complexes in order along the straight membrane
@@ -242,7 +243,7 @@ export const Membrane = {
                 case 'nnt': at(x, y, () => K.nnt(c, s)); break;
                 case 'ucp': at(x, y, () => K.ucp(c, s)); break;
                 case 'br': at(x, y, () => K.brPatch(c, s, 5)); break;
-                case 'atpSyn': at(x, y, () => K.atpStator(c, s)); break;
+                case 'atpSyn': at(x, y, () => K.atpStator(c, s, spec.frame === 'slayer')); break;
             }
         }
         if (this.tip) for (const d of this.tip.dimer) at(d.x, d.y, () => K.atpStator(c, s), d.rot);
@@ -251,7 +252,7 @@ export const Membrane = {
     /** ATP synthase's rotor and head, every frame: the rotor turns, the head's β subunits step with it. */
     drawLive(c, phase) {
         const { s } = this, third = phase / (TAU / 3), step = Math.floor(third + 1e-6), f = third - step;
-        const one = (x, y, rot) => { c.save(); c.translate(x, y); if (rot) c.rotate(rot); K.atpRotor(c, s, phase); K.atpHead(c, s, step, f); c.restore(); };
+        const one = (x, y, rot) => { c.save(); c.translate(x, y); if (rot) c.rotate(rot); K.atpRotor(c, s, phase, this.ring); K.atpHead(c, s, step, f); c.restore(); };
         if (this.tip) for (const d of this.tip.dimer) one(d.x, d.y, d.rot);
         else if (this.pos.atpSyn) one(this.pos.atpSyn.x, this.mid, 0);
     },

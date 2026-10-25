@@ -62,7 +62,7 @@ export const DG0 = {
 for (const n of [6, 8, 10, 12, 14, 16]) DG0['FAS' + n] = FAS_ROUND;
 for (const n of [16, 14, 12, 10, 8, 6, 4]) { DG0['ECH' + n] = g('ECH'); DG0['HACD' + n] = g('HACD'); DG0['KAT' + n] = g('THL'); }
 // No chemistry, only the proton-motive force's (or nothing): carriers, exchanges, leaks
-for (const k of ['MPC', 'ANT', 'PIC', 'MAS', 'OAAX', 'CPT', 'LEAK', 'UCP', 'TPT', 'NTT', 'EX_glc', 'EX_fa', 'EX_o2', 'EX_co2', 'EX_pi', 'EX_lac', 'EX_etoh', 'EX_ac']) DG0[k] = 0;
+for (const k of ['MPC', 'ANT', 'PIC', 'MAS', 'OAAX', 'CPT', 'LEAK', 'UCP', 'ION', 'KHE', 'TPT', 'NTT', 'EX_glc', 'EX_fa', 'EX_o2', 'EX_co2', 'EX_pi', 'EX_lac', 'EX_etoh', 'EX_ac']) DG0[k] = 0;
 
 export const E_NAD = -0.320;                          // V
 export const E_NADP = E_NAD - g('NNT') / (2 * F);     // from NNT's ΔG'°, so the two pools agree

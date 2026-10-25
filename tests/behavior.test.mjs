@@ -27,7 +27,8 @@ test('moieties hold and nothing goes negative along a trajectory, in every cell'
             const a = before[m + c], b = e.moiety(m, c);
             assert.ok(Math.abs(a - b) <= 1e-9 + 1e-7 * a, `${id}: ${m} in ${c} went ${a} → ${b}`);
         }
-        for (let i = 0; i < e.x.length; i++) assert.ok(e.x[i] >= 0, `${id}: ${e.species[i].key} is ${e.x[i]}`);
+        // Δψ's charge and ΔpH's protons are signed: the membrane can be polarized either way
+        for (let i = 0; i < e.x.length; i++) assert.ok(e.x[i] >= 0 || e.species[i].kind === 'charge' || e.species[i].key === 'h_l', `${id}: ${e.species[i].key} is ${e.x[i]}`);
     }
 });
 
@@ -173,7 +174,7 @@ test('a hold against its paired baseline gives control coefficients at a steady 
     const C = coefficients(res, 1, e.rIndex, ['PFK', 'EX_glc', 'CYTOX']);
     assert.ok(C.EX_glc > 0.05 && C.EX_glc < 2, `PFK's control over glucose uptake ${C.EX_glc}`);
     // the baseline copy is the cell left alone: it matches a plain run from the same state
-    const b = createEngine('animalCell'); b.restore(snap); for (let t = 0; t < res.t; t++) b.advance(1);
+    const b = createEngine('animalCell', { chemostat: true }); b.restore(snap); for (let t = 0; t < res.t; t++) b.advance(1);
     b.evaluate();
     for (const r of ['PFK', 'CYTOX', 'ATPS']) assert.ok(Math.abs(b.state.v[b.rIndex[r]] - res.vb[b.rIndex[r]]) < 1e-12, r);
     assert.equal(e.pulseNow(j), 1, 'and the cell itself is untouched');
@@ -208,4 +209,31 @@ test('repair is paid for: without its enzyme or ATP, damage stays', () => {
     for (const c of ['c', 'm']) f.set('atp', c, 0);
     f.state.damage = 0.5; f.advance(5);
     assert.ok(f.state.damage > 0.49, `damage fell to ${f.state.damage} with no ATP`);
+});
+
+test('Δp divides as each membrane divides it: Δψ in mitochondria, ΔpH in thylakoids', () => {
+    const m = run('animalCell', 60), t = run('plantChloroplast', 60);
+    assert.ok(m.psi() > 0.7 * m.dp() && m.dpH() > 0, `mitochondrion: Δψ ${m.psi()} of ${m.dp()}`);
+    assert.ok(t.dpH() > 0.7 * t.dp() && t.psi() > 0, `thylakoid: ΔpH ${t.dpH()} of ${t.dp()}`);
+    // Nigericin's work: fast K⁺/H⁺ exchange collapses ΔpH, and Δψ takes up the slack
+    const psi0 = m.psi();
+    m.state.activity[m.rIndex.KHE] = 100; m.advance(30);
+    assert.ok(Math.abs(m.dpH()) < 5 && m.psi() > psi0, `with nigericin ΔpH ${m.dpH()}, Δψ ${psi0} → ${m.psi()}`);
+    // Valinomycin's (with K⁺): a fast counter-ion collapses Δψ, and ΔpH takes up the slack
+    const ph0 = t.dpH();
+    t.state.activity[t.rIndex.ION] = 100; t.advance(30);
+    assert.ok(Math.abs(t.psi()) < 5 && t.dpH() > ph0, `with valinomycin Δψ ${t.psi()}, ΔpH ${ph0} → ${t.dpH()}`);
+});
+
+test("each cell's c-ring sets ATP synthase's protons per ATP, and with the chain its P/O", () => {
+    const nH = (id, r) => { const e = createEngine(id); return e.coupling(e.rIndex[r]).nH; };
+    assert.ok(Math.abs(nH('animalCell', 'ATPS') + 8 / 3) < 1e-12);
+    assert.ok(Math.abs(nH('plantChloroplast', 'ATPS') + 14 / 3) < 1e-12);
+    // Mitochondria: 10 protons from NADH to O₂, and 8/3 + 1 per ATP exported: P/O 30/11
+    const pumped = ['NDH1', 'CYTBF', 'CYTOX'].reduce((a, r) => a + nH('animalCell', r), 0);
+    assert.equal(pumped, 10);
+    assert.ok(Math.abs(pumped / (8 / 3 + 1) - 30 / 11) < 1e-12);
+    // the pyruvate and phosphate carriers spend only ΔpH, and ANT only Δψ
+    const e = createEngine('animalCell'), c = (r) => e.coupling(e.rIndex[r]);
+    assert.deepEqual([c('MPC').z, c('MPC').nH, c('PIC').z, c('PIC').nH, c('ANT').z, c('ANT').nH], [0, -1, 0, -1, -1, 0]);
 });

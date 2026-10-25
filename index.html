@@ -344,6 +344,7 @@
             <h2 class="lu-label">Electrons, by redox potential <button class="info-trigger" type="button" data-info="ladder" aria-label="Redox ladder info">?</button></h2>
             <canvas class="lu-ladder" id="lu-ladder" role="img" aria-label="The electron transport chain's carriers at their midpoint potentials, with each electron now in flight as a bead on its carrier."></canvas>
             <p class="lu-desc" id="lu-ladder-note" hidden></p>
+            <p class="lu-desc" id="lu-yield"></p>
           </div>
 
           <div class="lu-group">
@@ -369,6 +370,8 @@
           <div class="lu-group">
             <h2 class="lu-label">Proton-motive force <button class="info-trigger" type="button" data-info="protons" aria-label="Proton-motive force info">?</button></h2>
             <div class="lu-stat"><span class="lu-name">Δp</span><span class="lu-val" id="proton-mv">0 mV</span></div>
+            <div class="lu-stat"><span class="lu-name">of it, Δψ (charge)</span><span class="lu-val" id="psi-mv">0 mV</span></div>
+            <div class="lu-stat"><span class="lu-name">and ΔpH (protons)</span><span class="lu-val" id="ph-mv">0 mV</span></div>
             <div class="lu-stat"><span class="lu-name">Needed to make ATP</span><span class="lu-val" id="atp-mv">0 mV</span></div>
             <div class="lu-stat"><span class="lu-name">Leaking back</span><span class="lu-val" id="protons-leaked">0</span></div>
             <canvas class="lu-spark lu-spark-red" id="spark-gradient"></canvas>

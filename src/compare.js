@@ -15,7 +15,8 @@ const FLOOR = 1e-3;     // mM/s: fluxes smaller than this are too small to judge
 
 /** Run a held copy and its baseline from snap until both are steady: { t, steady, va, vb }. */
 export function runCompare(cellId, snap, js, sign, onProgress) {
-    const a = createEngine(cellId), b = createEngine(cellId);
+    // The medium held where it is (a chemostat): a finite medium running out has no steady state
+    const a = createEngine(cellId, { chemostat: true }), b = createEngine(cellId, { chemostat: true });
     a.restore(snap); b.restore(snap);
     for (const j of js) a.pulse(j, sign, true);
     let last = null, calm = 0, t = 0;

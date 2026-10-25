@@ -169,16 +169,19 @@ const WIDTH_BR = 33;
 
 // ─── ATP synthase ───
 /** The stator's membrane part: the a subunit and the peripheral stalk (b₂) up to the head. */
-export function atpStator(c, s) {
+export function atpStator(c, s, atype = false) {
     const m = ink('mulberry'), t = tones(m);
     assembly(c, s, [[4.2, 0.1, 1.35, 2.7, 0, 1]], m, 12);
     c.fillStyle = t.dark; c.beginPath(); c.roundRect(4.55 * s, 2.4 * s, 0.75 * s, 15.6 * s, 0.35 * s); c.fill();
+    // An archaeal A-type synthase holds its head with two peripheral stalks, not one
+    if (atype) { c.beginPath(); c.roundRect(-5.3 * s, 2.4 * s, 0.75 * s, 15.6 * s, 0.35 * s); c.fill(); }
 }
 
-/** The rotor at angle phase: the c-ring (twelve subunits) and the bent central stalk, γ and ε. */
-export function atpRotor(c, s, phase) {
-    const t = tones(ink('mulberry')), lw = Math.max(0.6, 0.13 * s), r = 2.9, h = 4.4, ring = [];
-    for (let k = 0; k < 12; k++) { const th = phase + k * TAU / 12; ring.push({ x: r * Math.sin(th), w: Math.abs(Math.cos(th)), z: Math.cos(th) }); }
+/** The rotor at angle phase: the c-ring (n subunits, the cell's) and the bent central stalk, γ and ε. */
+export function atpRotor(c, s, phase, n = 12) {
+    // n c subunits, the ring's radius growing with them (about 2.4 nm for c8, 3.1 for c14)
+    const t = tones(ink('mulberry')), lw = Math.max(0.6, 0.13 * s), r = 1.55 + 0.11 * n, h = 4.4, ring = [];
+    for (let k = 0; k < n; k++) { const th = phase + k * TAU / n; ring.push({ x: r * Math.sin(th), w: Math.abs(Math.cos(th)), z: Math.cos(th) }); }
     ring.sort((a, b) => a.z - b.z);
     for (const q of ring) {
         const wd = (0.3 + 0.72 * q.w) * s;

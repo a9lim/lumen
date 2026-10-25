@@ -88,7 +88,8 @@ const EXPECTED = {
 test("the moieties and elements span each cell's conservation laws", () => {
     for (const id of Object.keys(CELLS)) {
         const m = buildCell(id);
-        const { N, rows } = stoichMatrix(m, s => !s.fixed, r => !r.sink);
+        // dq, the membrane's charge, is a state the engine integrates, not a chemical
+        const { N, rows } = stoichMatrix(m, s => !s.fixed && s.kind !== 'charge', r => !r.sink);
         const laws = N.length - rank(N);    // dimension of the left null space
         // What we expect to be conserved: each moiety per compartment, C and P across the cell and its
         // medium, and electrons: with water and buffered H⁺ fixed, H − 2O − charge (reducing equivalents

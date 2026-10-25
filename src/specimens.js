@@ -71,7 +71,7 @@ export const SPECIMENS = {
         frame: 'slayer', lipid: 'ether', antenna: null, psiTrimer: false,
         sides: { top: 'S-layer', lumen: 'outside', below: 'cytoplasm' },
         order: ['br', 'atpSyn', 'ndh1', 'sdh', 'pq', 'cytb6f', 'pc', 'cytOx'],
-        names: { ...N_THYL, br: 'bacteriorhodopsin', ndh1: 'NDH', pq: 'MK', cytb6f: 'cyt bc', pc: 'halocyanin', cytOx: 'cyt ba₃' },
+        names: { ...N_THYL, br: 'bacteriorhodopsin', ndh1: 'NDH', pq: 'MK', cytb6f: 'cyt bc', pc: 'halocyanin', cytOx: 'cyt ba₃', atpSyn: 'A-type ATP synthase' },
         can: { photo: false, cyclic: false, resp: true, nnt: false, brAuto: true, hydrolysis: true },
         where: 'outside the cell',
         say: 'bacteriorhodopsin, packed in a crystalline patch, pumps a proton for each photon',

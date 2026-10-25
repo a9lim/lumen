@@ -12,7 +12,7 @@ const IDS = [
     'coa', 'accoa', 'malcoa', 'succoa', 'glc__D', 'g6p', 'f6p', 'fdp', 'g3p', '13dpg', '3pg', '2pg', 'pep', 'pyr',
     'lac__L', 'lac__D', 'acald', 'etoh', 'ac', 'oaa', 'cit', 'icit', 'akg', 'succ', 'fum', 'mal__L',
     '6pgl', '6pgc', 'ru5p__D', 'r5p', 'xu5p__D', 'e4p', 's7p', 's17bp', 'rb15bp',
-    'q8', 'q8h2', 'hco3', 'hdca', 'o2s', 'h2o2',
+    'q8', 'q8h2', 'hco3', 'hdca', 'o2s', 'h2o2', 'k',
     'pmtcoa', 'tdcoa', 'ddcacoa', 'dcacoa', 'occoa', 'hxcoa', 'btcoa',
     'hdd2coa', 'td2coa', 'dd2coa', 'dc2coa', 'oc2coa', 'hx2coa', 'b2coa',
     '3hhdcoa', '3htdcoa', '3hddcoa', '3hdcoa', '3hocoa', '3hhcoa', '3hbcoa',

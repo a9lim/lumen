@@ -150,12 +150,18 @@ R('FNR', 'FNR', 'Ferredoxin–NADP⁺ reductase', '2 fdred + nadp + h -> 2 fdox 
 R('CEF', 'PGR5', 'Cyclic electron flow (ferredoxin to the quinone pool)', '2 fdred + q8 + 2 h -> 2 fdox + q8h2', { membrane: 'psi' });
 R('MEHLER', 'Flv', 'Water–water cycle (ferredoxin to O₂)', '2 fdred + 0.5 o2 + 2 h -> 2 fdox + h2o', { membrane: 'psi' });
 R('BR', 'BR', 'Bacteriorhodopsin', 'h -> h[l]', { membrane: 'br', photons: 1, nm: 568 });
-// Twelve c subunits and three ATP a turn: four protons per ATP (phase B makes the ring per specimen)
+// Twelve c subunits and three ATP a turn: four protons per ATP; each cell's ring sets its own (model.js)
 R('ATPS', 'ATP synthase', 'ATP synthase', 'adp + pi + 4 h[l] -> atp + h2o + 3 h', { at: 'mito', membrane: 'atpSyn' });
 R('NNT', 'NNT', 'Nicotinamide nucleotide transhydrogenase', 'nadh + nadp + h[l] -> nad + nadph + h', { at: 'mito', membrane: 'nnt' });
 R('LEAK', 'leak', 'Proton leak across the bilayer', 'h[l] -> h', { at: 'mito' });
 // Off until the uncoupling switch turns it on
 R('UCP', 'UCP', 'Uncoupling protein', 'h[l] -> h', { at: 'mito', membrane: 'ucp', off: true });
+// Counter-ions (K⁺ out of the lumen side, or Cl⁻ in) carry charge without protons, so Δψ relaxes
+// into ΔpH; K⁺/H⁺ exchange moves a proton without charge, so ΔpH relaxes into Δψ. Their two
+// conductances set how Δp divides (engine.js): mostly Δψ in mitochondria and bacteria, mostly
+// ΔpH in thylakoids (Kramer et al. 2003)
+R('ION', 'channels', 'Counter-ion channels (K⁺, Cl⁻)', 'k[l] -> k', { at: 'mito' });
+R('KHE', 'KHE', 'K⁺/H⁺ exchange', 'h[l] + k -> h + k[l]', { at: 'mito' });
 
 // ─── Reactive oxygen: the chain's leaks and the scavengers, in the matrix where there is one ───
 // Complex I, and the Q-cycle's semiquinone at the Qo site (one electron to O₂, the other on to cytochrome c)
@@ -170,13 +176,13 @@ R('REPAIR', 'repair', 'Membrane repair', 'atp + h2o -> adp + pi + h', { at: 'mit
 
 // ─── Between the cytosol and the matrix (cells that have one), lumped:
 // their carriers' anatomy and charges wait for milestone 3 ───
-// The pyruvate carrier symports a proton, but electroneutrally: only ΔpH drives it. Until phase B
-// splits Δp it is a uniport, which leaves pyruvate a little too even across the membrane
-R('MPC', 'MPC', 'Mitochondrial pyruvate carrier', 'pyr[c] -> pyr[m]', { transport: true });
-// ANT moves a charge out with each ATP and the phosphate carrier a proton in with each Pᵢ; until
-// phase B splits Δψ from ΔpH, the pair's one proton's worth of Δp is charged to ANT alone
-R('ANT', 'ANT', 'Adenine nucleotide translocase', 'atp[m] + adp[c] + h[l] -> atp[c] + adp[m] + h[m]', { transport: true });
-R('PIC', 'PiC', 'Phosphate carrier', 'pi[c] -> pi[m]', { transport: true });
+// z: charge moved to the lumen side (here the cytosol's) besides what the equation's lumen species
+// carry, for carriers whose charges cross between the cytosol and the matrix (engine.js)
+// The pyruvate and phosphate carriers symport a proton electroneutrally, so only ΔpH drives them;
+// ANT swaps ATP⁴⁻ out for ADP³⁻ in, one charge, so only Δψ drives it
+R('MPC', 'MPC', 'Mitochondrial pyruvate carrier', 'pyr[c] + h[l] -> pyr[m] + h[m]', { transport: true, z: 1 });
+R('ANT', 'ANT', 'Adenine nucleotide translocase', 'atp[m] + adp[c] -> atp[c] + adp[m]', { transport: true, z: -1 });
+R('PIC', 'PiC', 'Phosphate carrier', 'pi[c] + h[l] -> pi[m] + h[m]', { transport: true, z: 1 });
 R('MAS', 'MAS', 'Malate–aspartate shuttle (NADH into the matrix)', 'nadh[c] + nad[m] + h[l] -> nad[c] + nadh[m] + h[m]', { transport: true });
 R('OAAX', 'OAA out', 'Oxaloacetate out of the matrix, as malate', 'oaa[m] + nadh[m] + nad[c] -> oaa[c] + nad[m] + nadh[c]', { transport: true });
 R('CPT', 'CPT', 'Carnitine shuttle (palmitoyl-CoA into the matrix)', 'pmtcoa[c] + coa[m] -> pmtcoa[m] + coa[c]', { transport: true });
