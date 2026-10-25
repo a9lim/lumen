@@ -32,10 +32,13 @@ export const simState = {
 };
 
 // ─── Metabolite Pools ───
+// The four conserved pairs' sizes: each unit is a molecule drawn in the
+// stroma (src/stroma.js), so these set how crowded it is.
+export const POOL = { atp: 120, nad: 120, nadp: 120, fad: 60 };
 // Initial ratios: 90% ATP, 10% NADH/NADPH/FADH2 (resting cell)
 export const store = {
-    atp: 36, nadh: 4, nadph: 4, fadh2: 2,
-    totalAtpAdp: 40, totalNad: 40, totalNadp: 40, totalFad: 20,
+    atp: 0.9 * POOL.atp, nadh: 0.1 * POOL.nad, nadph: 0.1 * POOL.nadp, fadh2: 0.1 * POOL.fad,
+    totalAtpAdp: POOL.atp, totalNad: POOL.nad, totalNadp: POOL.nadp, totalFad: POOL.fad,
     protonGradient: 0, protonsPumped: 0, o2Produced: 0, o2Consumed: 0, h2oSplit: 0, h2oProduced: 0, electronsTransferred: 0, co2Fixed: 0, co2Produced: 0,
     atpSubstrate: 0, atpOxidative: 0, protonsLeaked: 0,
     rosProduced: 0, rosScavenged: 0, cellHealth: 100,
@@ -65,9 +68,9 @@ export const histories = {
 /** Reset all pools to initial values (called on organism preset change or manual reset). */
 export function resetState() {
     Object.keys(store).forEach(k => store[k] = 0);
-    store.atp = 36; store.nadh = 4; store.nadph = 4; store.fadh2 = 2; store.cellHealth = 100;
+    store.atp = 0.9 * POOL.atp; store.nadh = 0.1 * POOL.nad; store.nadph = 0.1 * POOL.nadp; store.fadh2 = 0.1 * POOL.fad; store.cellHealth = 100;
     store.glucose = 3; store.g6p = 6; store.oaa = 2; store.rubp = 6; store.fattyAcid = 4;
-    store.totalAtpAdp = 40; store.totalNad = 40; store.totalNadp = 40; store.totalFad = 20;
+    store.totalAtpAdp = POOL.atp; store.totalNad = POOL.nad; store.totalNadp = POOL.nadp; store.totalFad = POOL.fad;
     counters.krebsTurns = 0; counters.calvinTurns = 0; counters.glycRuns = 0; counters.pppRuns = 0; counters.betaoxRuns = 0;
     simState.time = 0; simState.fermenting = false;
     Object.values(histories).forEach(h => { h.head = 0; h.count = 0; h.data.fill(0); });

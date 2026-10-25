@@ -7,14 +7,18 @@
    =================================================================== */
 import { Membrane } from './membrane.js';
 import { MapView, FLIP } from './map.js';
-import { drawMap, mapTags } from './mapdraw.js';
-import { LINES } from './maplayout.js';
+import { drawMap } from './mapdraw.js';
+import { PAIR } from './maplayout.js';
 import Particles from './particles.js';
+import Stroma from './stroma.js';
 import { SPECIMENS, CLICK, specimenCan } from './specimens.js';
 import { simState, store } from './state.js';
 import { flux, onFlux } from './flux.js';
 import { ENZYMES, METABOLITES } from './info.js';
 import * as K from './complexes.js';
+import { panelTitle, scaleBar, hairline } from './plate.js';
+import { drawLocator } from './locator.js';
+import { drawDetail, drawCarrierSites } from './detail.js';
 
 const TAU = Math.PI * 2;
 const _ETC_INFO = { psii: 'PSII', ndh1: 'NDH1', sdh: 'SDH', pq: 'PQ', cytb6f: 'Cytb6f', pc: 'PC', cytOx: 'CytOx', psi: 'PSI', fd: 'Fd', fnr: 'FNR', atpSyn: 'ATPSyn', br: 'BR', nnt: 'NNT', ucp: 'UCP' };
@@ -24,7 +28,16 @@ const _SEG_INFO = { g0: 'HK', g1: 'PGI', g2: 'PFK', g3: 'ALDO', g5: 'GAPDH', g6:
     b0: 'ACAD', b1: 'ECH', b2: 'HACD', b3: 'ACAT', bspur: 'ACAT' };
 const _REV_INFO = { g0: 'G6Pase', g2: 'FBPase' };
 const buzz = () => { if (typeof _haptics !== 'undefined') _haptics.trigger('light'); };
-const _YIELD = { atp: 'ATP', nadh: 'NADH', nadph: 'NADPH', fadh2: 'FADH₂', co2Fixed: 'CO₂' };
+// Membrane reactions whose pool changes have a place: [pool, the site's key]
+const _DOCK = { atp_syn: { atp: 'atpSyn' }, etc_resp: { nadh: 'ndh1', fadh2: 'sdh' }, nnt: { nadh: 'nnt', nadph: 'nnt' } };
+// What a stroma molecule's tooltip says
+const _MOL_INFO = {
+    atp: { on: 'ATP', off: 'ADP', total: 'totalAtpAdp', pool: 'adenylates', charged: 'carry three phosphates', what: 'Adenosine triphosphate / diphosphate', does: 'ATP synthase and the kinases make ATP; nearly every pathway spends it.' },
+    nadh: { on: 'NADH', off: 'NAD⁺', total: 'totalNad', pool: 'NAD molecules', charged: 'are reduced', what: 'Nicotinamide adenine dinucleotide', does: 'Catabolism reduces NAD⁺; respiration hands NADH’s electrons to the chain.' },
+    nadph: { on: 'NADPH', off: 'NADP⁺', total: 'totalNadp', pool: 'NADP molecules', charged: 'are reduced', what: 'NAD phosphate, the cell’s reducing power for building', does: 'FNR, the pentose phosphate pathway and NNT reduce it; the Calvin cycle and fatty-acid synthesis spend it.' },
+    fadh2: { on: 'FADH₂', off: 'FAD', total: 'totalFad', pool: 'FAD molecules', charged: 'are reduced', what: 'Flavin adenine dinucleotide', does: 'Succinate dehydrogenase and β-oxidation reduce it; complex II passes its electrons to the quinone pool.' },
+};
+const _PAIR_OF = Object.fromEntries(Object.entries(PAIR).map(([a, b]) => [b, a]));   // a Calvin twin → the labelled corridor segment
 
 const Renderer = {
     canvas: null, ctx: null, W: 0, H: 0, dpr: 1, camera: null,
@@ -49,7 +62,7 @@ const Renderer = {
             onReset: () => this.resetView(),
         });
         this._initInteraction();
-        onFlux((key, step, rev, res, segs) => this._yieldTag(key, res, segs));
+        onFlux((key, step, rev, res, segs) => this._poolEvents(key, res, segs));
         K.readPalette();
     },
 
@@ -68,14 +81,18 @@ const Renderer = {
     layout() {
         const W = this.W, H = this.H, narrow = this.narrow = W < 640;
         const pad = narrow ? 12 : 18, top = narrow ? 14 : 66;
-        const memBottom = Membrane.layout(this.specId, pad, W - pad, top, narrow, narrow ? 1e9 : Math.max(180, H * 0.42 - top));
-        const mapTop = memBottom + (narrow ? 26 : 30);
+        const memBottom = Membrane.layout(this.specId, pad, W - pad, top, narrow, narrow ? 1e9 : Math.max(200, H * 0.46 - top));
+        // The registers' titles and the scale bar sit between them
+        this.titleY = memBottom + (narrow ? 15 : 18);
+        const mapTop = memBottom + (narrow ? 48 : 58);
         const mh = MapView.build(pad, mapTop, W - 2 * pad, Math.max(200, H - mapTop - 12), narrow);
         this.worldW = W; this.worldH = Math.max(H, mapTop + mh + (narrow ? 24 : 14));
         this.etcComplexes = {};
         for (const [k, p] of Object.entries(Membrane.pos)) this.etcComplexes[k] = { cx: p.x, cy: p.y };
         this.membraneY = Membrane.memTop; this.membraneH = Membrane.memBot - Membrane.memTop;
         Particles.fill();
+        Stroma.gapY = Membrane.bottom + 4;
+        Stroma.relayout();
         this._cacheKey = '';
     },
 
@@ -113,7 +130,9 @@ const Renderer = {
             for (let i = 0; i < keys.length; i++) if (callbacks && callbacks[i]) callbacks[i]();
         }
     },
-    endWarm() { this.warm = false; this._warmUntil = performance.now() + 1300; this.rotor.seen = store.atpOxidative; this._o2.out = Math.floor(store.o2Produced); this._o2.in = Math.floor(store.o2Consumed); Particles.fill(); Particles.seed(); },
+    /** A pool changed at a membrane complex (FNR's NADPH, from the chain's callback). */
+    poolEvent(pool, d, siteKey) { if (!this.warm) Stroma.event(pool, d, Membrane.sites[siteKey]); },
+    endWarm() { Stroma.fill(); this.warm = false; this._warmUntil = performance.now() + 1300; this.rotor.seen = store.atpOxidative; this._o2.out = Math.floor(store.o2Produced); this._o2.in = Math.floor(store.o2Consumed); Particles.fill(); Particles.seed(); },
 
     // ─── Per frame ───
     update(dt) {
@@ -121,19 +140,14 @@ const Renderer = {
         if (store.atpOxidative < R.seen) R.seen = store.atpOxidative;
         if (store.atpOxidative > R.seen) { R.target += (store.atpOxidative - R.seen) * TAU / 3; R.seen = store.atpOxidative; }
         if (R.target - R.phase > 2 * TAU) R.phase = R.target - 2 * TAU;
-        const before = Math.floor(R.phase / (TAU / 3));
         R.phase += (R.target - R.phase) * Math.min(1, dt * simState.speed * 2.5);
-        const after = Math.floor(R.phase / (TAU / 3));
-        if (after > before && Membrane.pos.atpSyn) {
-            const p = Membrane.pos.atpSyn, rot = p.rot || 0;
-            for (let k = before; k < after; k++) { Particles.emit('atp', p.x - Math.sin(rot) * 17 * s, p.y + Math.cos(rot) * 17 * s); R.made++; }
-        }
         const o = Math.floor(store.o2Produced), i = Math.floor(store.o2Consumed);
         if (o < this._o2.out || i < this._o2.in) { this._o2.out = o; this._o2.in = i; }
         if (o > this._o2.out && Membrane.pos.psii) Particles.emit('o2out', Membrane.pos.psii.x, Membrane.memTop - 5 * s);
         if (i > this._o2.in && Membrane.pos.cytOx) Particles.emit('o2in', Membrane.pos.cytOx.x, Membrane.memBot + 2 * s);
         this._o2.out = o; this._o2.in = i;
         Particles.update(dt);
+        Stroma.update(dt * simState.speed);
         MapView.update(dt * simState.speed);
     },
 
@@ -146,50 +160,81 @@ const Renderer = {
         this.camera.applyToCanvas(c);
         this._drawCache(c);
         Membrane.drawLive(c, this.rotor.phase);
+        Stroma.draw(c, Membrane.s * this.camera.zoom * this.dpr);
+        Stroma.drawRadicals(c);
         drawMap(c, this.hover && this.hover.kind !== 'mem' ? (this.hover.seg || this.hover.loop) : null, dt);
+        Stroma.drawThreads(c);
+        drawDetail(c, Membrane, this.camera.zoom);
         Particles.draw(c);
+        drawCarrierSites(c, Membrane, this.camera.zoom, Particles.riding || []);
         Membrane.drawLabels(c, this.hover && this.hover.kind === 'mem' ? this.hover.key : null);
+        this._drawTitles(c);
+        // Where the cut is: the map's empty top right, on wide screens (the composite has no cell)
+        if (!this.narrow && this.specId !== 'composite') {
+            const [lx, ly] = MapView.T(20.3, -0.55), [lx2, ly2] = MapView.T(24.55, 2.25);
+            if (lx2 - lx > 120) drawLocator(c, lx, ly, lx2 - lx, ly2 - ly, this.specId, { fs: 12, label: 'a' });
+        }
         c.restore();
+    },
+
+    /** Panel a's title and scale under the cross-section, a hairline, panel b's title over the map. */
+    _drawTitles(c) {
+        const n = this.narrow, fs = n ? 10.5 : 12.5, x0 = Membrane.x0, y = this.titleY, spec = Membrane.spec;
+        const r = panelTitle(c, x0 + 2, y, 'a', n ? spec.name : spec.name + ', cut through, to scale', fs);
+        scaleBar(c, r + (n ? 14 : 22), y - 2, Membrane.s, 10, fs - 1.5);
+        c.save(); c.font = `italic ${fs}px ${_FONT.text}`; c.fillStyle = K.P.muted; c.textAlign = 'right'; c.textBaseline = 'alphabetic';
+        if (!n || Membrane.x1 - r > 150) c.fillText(spec.sides.below, Membrane.x1 - 2, y);
+        c.restore();
+        hairline(c, x0, Membrane.x1, y + 9);
+        panelTitle(c, x0 + 2, y + 9 + fs + 8, 'b', n ? 'Carbon network' : 'The carbon network, by flux', fs);
     },
 
     /** The membrane's still parts, painted once per layout, theme and zoom. */
     _drawCache(c) {
         const z = this.camera.zoom, sc = Math.min(z * this.dpr, Math.sqrt(9e6 / (this.worldW * (Membrane.bottom + 4))));
-        const key = [this.specId, this.W, this.H, K.P.dark, Math.round(sc * 4) / 4].join();
+        // Cell health is drawn as peroxidised lipids, up to 60% of them, repainted in twentieths
+        const damage = Math.round(Math.min(1, Math.max(0, (100 - store.cellHealth) / 100)) * 0.6 * 20) / 20;
+        const key = [this.specId, this.W, this.H, K.P.dark, damage, Math.round(sc * 4) / 4].join();
         if (key !== this._cacheKey) {
             // While a zoom is still changing, keep scaling the old paint; repaint once it has held for 140 ms
             const now = performance.now();
             if (key !== this._wantKey) { this._wantKey = key; this._wantT = now; }
-            const sameScene = this._cache && this._cacheKey && this._cacheKey.split(',').slice(0, 4).join() === key.split(',').slice(0, 4).join();
+            const sameScene = this._cache && this._cacheKey && this._cacheKey.split(',').slice(0, 5).join() === key.split(',').slice(0, 5).join();
             if (!sameScene || now - this._wantT >= 140) {
                 const w = Math.ceil(this.worldW * sc), h = Math.ceil((Membrane.bottom + 4) * sc);
                 const cv = this._cache && this._cache.width === w && this._cache.height === h ? this._cache : Object.assign(document.createElement('canvas'), { width: w, height: h });
                 const x = cv.getContext('2d');
                 x.setTransform(1, 0, 0, 1, 0, 0); x.clearRect(0, 0, w, h); x.setTransform(sc, 0, 0, sc, 0, 0);
-                Membrane.drawStatic(x);
+                Membrane.drawStatic(x, this.camera.zoom, damage);
                 this._cache = cv; this._cacheKey = key; this._cacheScale = sc;
             }
         }
         if (this._cache) c.drawImage(this._cache, 0, 0, this._cache.width / this._cacheScale, this._cache.height / this._cacheScale);
     },
 
-    _yieldTag(key, res, segs) {
-        if (this.warm || !res || !res.yields) return;
-        let text = '';
-        for (const k in res.yields) {
-            const v = res.yields[k], name = _YIELD[k.replace('Consume', '')] || k;
-            text += (text ? ' ' : '') + (k.includes('Consume') ? '−' : '+') + v + ' ' + name;
+    /**
+     * A reaction changed the pools: at a membrane complex the molecule docks
+     * there; on the map a thread runs to the enzyme's connection (or the
+     * loop's name, for a whole turn), and that connection pulses.
+     */
+    _poolEvents(key, res, segs) {
+        if (this.warm || !res || !res.dPools) return;
+        const dock = _DOCK[key];
+        let to = null;
+        if (!dock) {
+            const loop = MapView.loops.find(L => L.key === key);
+            if (loop) { to = loop.glyphAt || loop.pos; loop.pulse = 1; }
+            else if (segs && segs.length) {
+                const id = segs[0][0], owner = _PAIR_OF[id] || id, sg = MapView.segs[owner];
+                for (const [sid] of segs) MapView.pulse[sid] = 1;
+                if (sg && sg.lab) to = sg.lab.glyphAt || [sg.lab.x, sg.lab.y];
+            }
         }
-        const loop = MapView.loops.find(L => L.key === key);
-        let x, y, line;
-        if (loop) { [x, y] = loop.pos; y -= 15; line = loop.line; }
-        else {
-            const sg = segs && segs.length && MapView.segs[segs[0][0]];
-            if (!sg) return;
-            const p = sg.lab || { x: sg.pts[sg.pts.length >> 1][0], y: sg.pts[sg.pts.length >> 1][1] };
-            x = p.x; y = p.y - 13; line = sg.line;
+        // A whole turn changes dozens of molecules; threads go from the first few of each pool
+        for (const pool in res.dPools) {
+            const d = res.dPools[pool];
+            for (let k = 0; k < Math.abs(d); k++) Stroma.event(pool, d, dock && Membrane.sites[dock[pool]], k < 3 ? to : null);
         }
-        mapTags.push({ text, x, y, color: K.ink(LINES[line].ink), age: 0, life: 1.5 });
     },
 
     // ─── Input ───
@@ -200,6 +245,8 @@ const Renderer = {
         for (const h of Membrane.hit) {
             if (Math.abs(w.x - h.x) < h.w / 2 && Math.abs(w.y - h.y) < h.h / 2) return { kind: 'mem', key: h.key };
         }
+        const B = Membrane.band;
+        if (B && w.y > B.y0 - 4 && w.y < B.y1 + 4) { const m = Stroma.pick(w.x, w.y, Math.max(tol, 1.2 * Membrane.s)); if (m) return { kind: 'mol', m }; }
         return MapView.hitTest(w.x, w.y, tol);
     },
 
@@ -218,6 +265,10 @@ const Renderer = {
         }
         if (hit.kind === 'loop') return ENZYMES[hit.loop.info] || null;
         if (hit.kind === 'station') return METABOLITES[hit.st.id] || null;
+        if (hit.kind === 'mol') {
+            const k = hit.m.pool, on = hit.m.on, M = _MOL_INFO[k], tot = store[M.total], n = store[k];
+            return { name: on ? M.on : M.off, full: M.what, desc: `One of ${tot} ${M.pool} in this cell; ${n} ${M.charged} now. ${M.does}` };
+        }
         return null;
     },
 

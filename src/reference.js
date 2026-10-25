@@ -449,4 +449,17 @@ $$\\text{PPP} \\xrightarrow{\\text{NADPH}} \\text{GR} \\xrightarrow{\\text{GSH}}
 <p>Chronic oxidative stress is implicated in aging, neurodegenerative diseases (Alzheimer's, Parkinson's), cardiovascular disease, cancer, and diabetes. However, clinical trials of antioxidant supplements have generally failed to show benefit — suggesting that the relationship between ROS and disease is more complex than simple "damage accumulation."</p>
 `,
     },
+
+    ladder: {
+        title: 'Electrons, by redox potential',
+        body: `
+<p>The figure at the top of the Stats tab is the <b>Z-scheme</b>, drawn live. Every carrier of the membrane's chains stands at its midpoint redox potential $E'_0$ (volts at pH 7), with more reducing (more negative) potentials at the top, so an electron moving down the ladder gives up free energy, $\\Delta G'_0 = -nF\\,\\Delta E'_0$. Each electron in flight in the cross-section is a bead on its carrier.</p>
+<h3>Two lifts</h3>
+<p>Electrons fall on their own, but light lifts them. A photon absorbed at P680 raises an electron by about 2 V, to P680*, from which it falls through pheophytin, the plastoquinones and the cytochrome $b_6f$ complex to plastocyanin. A second photon at P700 lifts it again, to P700*, and it falls through A₀, A₁ and the iron–sulfur clusters to ferredoxin and NADP⁺. Water, at $+0.82$ V, refills P680 through the Mn₄CaO₅ cluster. Cyclic flow (the dashed return from ferredoxin to plastoquinone) loops an electron around photosystem I and makes no NADPH.</p>
+<h3>Only down</h3>
+<p>Respiration (indigo) only falls: from NADH at $-0.32$ V to oxygen at $+0.82$ V, through complex I, the quinone pool, complex III, cytochrome c and complex IV. The cyanobacterium's respiratory chain shares the quinone pool, $b_6f$ and plastocyanin with photosynthesis, so its two chains meet on one ladder. FADH₂ enters lower, through complex II, which is why it yields less ATP than NADH.</p>
+<h3>The numbers</h3>
+<p>Potentials are rounded midpoints, and the published values for the same carrier differ by several hundredths of a volt with the method and the organism. The photosynthetic carriers follow the order and placement of the Z-scheme in A. Stirbet et al., "On the reactions in oxygenic photosynthesis as related to the Z-scheme: contributions by Govindjee", <i>LS — International Journal of Life Sciences</i> 12(3):151–185 (2023), <a href="https://doi.org/10.5958/2319-1198.2023.00015.5" target="_blank" rel="noopener">doi:10.5958/2319-1198.2023.00015.5</a>. The respiratory couples (NAD⁺/NADH $-0.32$, ubiquinone $+0.045$, cytochrome c $+0.254$, cytochrome $a_3$ $+0.385$, O₂/H₂O $+0.816$ V) follow the standard table of biochemical reduction potentials.</p>
+`,
+    },
 };

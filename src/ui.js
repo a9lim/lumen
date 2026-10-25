@@ -6,12 +6,14 @@ import { updateTheme, cycleTheme, systemTheme } from './theme.js';
 import { initDashboard, updateDashboard } from './dashboard.js';
 import { resetAutoplayTimers } from './autoplay.js';
 import { resetFlux } from './flux.js';
-import { mapTags } from './mapdraw.js';
 import Renderer from './renderer.js';
 import Particles from './particles.js';
+import Stroma from './stroma.js';
 import { ORGANISMS } from './organisms.js';
 import { SPECIMENS, SPECIMEN_OF } from './specimens.js';
 import { REFERENCE } from './reference.js';
+import { drawLocator } from './locator.js';
+import * as K from './complexes.js';
 
 const _isPhone = () => window.matchMedia('(max-width: 760px)').matches;
 const _buzz = (k) => { if (typeof _haptics !== 'undefined') _haptics.trigger(k); };
@@ -55,6 +57,19 @@ function setSpecimen(id) {
     Renderer.setSpecimen(id);
 }
 
+/** The specimen icons: each one's locator drawing, the chosen one in its inks and the rest in grey. */
+export function drawSpecimenIcons() {
+    const dpr = Math.min(2, window.devicePixelRatio || 1);
+    for (const b of document.querySelectorAll('#organism-group [data-org]')) {
+        const cv = b.querySelector('.lu-spec-icon'); if (!cv) continue;
+        const w = cv.offsetWidth, h = cv.offsetHeight; if (!w) continue;
+        cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr);
+        const c = cv.getContext('2d'); c.setTransform(dpr, 0, 0, dpr, 0, 0); c.clearRect(0, 0, w, h);
+        const on = b.getAttribute('aria-checked') === 'true';
+        drawLocator(c, 1, 1, w - 2, h - 2, SPECIMEN_OF[b.dataset.org], { caption: false, label: false, lw: 1, mono: on ? null : K.P.muted });
+    }
+}
+
 /** Open or close the margin (a bottom sheet on phones). */
 function setMargin(dom, open) {
     document.body.classList.toggle('lu-closed', !open);
@@ -73,6 +88,7 @@ export function bindEvents(dom, hooks) {
             b.setAttribute('aria-checked', String(on)); b.tabIndex = on ? 0 : -1;
         }
         setSpecimen(SPECIMEN_OF[key]);
+        drawSpecimenIcons();
         if (key === 'custom') {
             simState.lockedPathways = {};
             for (const t of Object.values(pathwayRows)) { t.disabled = false; t.closest('.lu-row').classList.remove('locked'); t.closest('.lu-row').title = ''; }
@@ -97,12 +113,14 @@ export function bindEvents(dom, hooks) {
         store.nadh = Math.round(store.totalNad * org.initialRatios.nadh);
         store.nadph = Math.round(store.totalNadp * org.initialRatios.nadph);
         store.fadh2 = Math.round(store.totalFad * org.initialRatios.fadh2);
-        resetFlux(); Particles.clear(); mapTags.length = 0;
+        resetFlux(); Particles.clear(); Stroma.fill();
         dom.organismDesc.textContent = org.desc;
         updateDashboard();
         if (!quiet) _buzz('medium');
     };
     hooks.applyOrganism = applyOrganism;
+    // The icons draw at their laid-out size, so again whenever the margin opens or resizes
+    new ResizeObserver(() => drawSpecimenIcons()).observe(dom.organismGroup);
     dom.organismGroup.addEventListener('click', (e) => {
         const b = e.target.closest('[data-org]');
         if (b) { touched(); applyOrganism(b.dataset.org); }
@@ -150,7 +168,7 @@ export function bindEvents(dom, hooks) {
     // ── Reset and feed ──
     dom.resetBtn.addEventListener('click', () => {
         touched();
-        resetState(); resetAutoplayTimers(); resetFlux(); Particles.clear(); mapTags.length = 0;
+        resetState(); resetAutoplayTimers(); resetFlux(); Particles.clear(); Stroma.fill();
         updateDashboard(); _buzz('warning');
     });
     const addGlucose = () => { touched(); store.glucose++; updateDashboard(); _buzz('light'); };
@@ -233,6 +251,7 @@ export function bindEvents(dom, hooks) {
         sunlight: { title: 'Sunlight', body: 'Powers photosynthetic electron transport where the membrane has photosystems, and bacteriorhodopsin in the archaeon.' },
         oxygen: { title: 'Ambient O₂', body: 'Enables aerobic respiration. Without it, fermentation regenerates NAD⁺.' },
         protons: { title: 'Proton gradient', body: 'Protons pumped across the membrane drive ATP synthase: four per ATP, twelve per turn.' },
+        ladder: { title: 'Electrons, by redox potential', body: 'Each carrier stands at its midpoint potential, more reducing at the top; each electron now moving in the membrane is a bead on it. Light lifts electrons at P680 and P700; respiration only falls, toward oxygen.' },
         betaox: { title: 'Beta oxidation', body: 'Breaks fatty acids into acetyl-CoA, yielding FADH₂ and NADH per round. Backward, it is fatty-acid synthesis.' },
         uncoupling: { title: 'Uncoupling', body: 'Leaks protons back across the membrane, dissipating the gradient as heat.' },
         oxStress: { title: 'Oxidative stress', body: 'ROS from electron leak damage cells; SOD, catalase, and GPx scavenge them.' },

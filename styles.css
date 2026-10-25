@@ -143,11 +143,13 @@
 
 .lu-desc { margin: 8px 0 0; font-size: var(--font-sm); line-height: 1.45; color: var(--text-secondary); }
 
-/* Specimens: a list, the chosen one in ink with a rule beside it */
-.lu-specimens { display: flex; flex-direction: column; align-items: flex-start; }
+/* Specimens: each with its locator drawing as an icon, the chosen one in its inks */
+.lu-specimens { display: flex; flex-direction: column; align-items: stretch; }
 .lu-specimens button {
-    position: relative;
-    padding: 3px 0 3px 14px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 3px 0;
     border: 0;
     background: none;
     color: var(--text-secondary);
@@ -157,15 +159,10 @@
     cursor: pointer;
     transition: color 0.15s var(--ease-out);
 }
+.lu-spec-icon { width: 56px; height: 30px; flex-shrink: 0; }
 .lu-specimens button:hover { color: var(--text); }
 .lu-specimens button[aria-checked="true"] { color: var(--text); }
-.lu-specimens button[aria-checked="true"]::before {
-    content: '';
-    position: absolute;
-    left: 0; top: 50%;
-    width: 8px;
-    border-top: 1px solid var(--text);
-}
+.lu-specimens button:focus-visible { outline: 1.5px solid var(--text); outline-offset: 1px; }
 
 /* Rows: a hairline box, a swatch of the line's ink, the name */
 .lu-row {
@@ -221,6 +218,7 @@
 .panel-hint { margin: 14px 0 0; font-size: var(--font-sm); font-style: italic; line-height: 1.45; color: var(--text-muted); }
 
 /* ─── Stats ─── */
+.lu-ladder { display: block; width: 100%; height: 330px; }
 .lu-step .step-enzyme { font-size: var(--font-lg); }
 .lu-step .step-reaction { margin-top: 2px; font-size: var(--font-sm); color: var(--text-secondary); }
 .lu-step .step-yield { margin-top: 2px; font-size: var(--font-sm); font-style: italic; color: var(--text-muted); }
@@ -265,7 +263,7 @@
 .lg-line { width: 22px; border-top: 4px solid var(--ink-prussian); }
 .lg-off { width: 22px; border-top: 1px dashed var(--ink-prussian); margin-top: 0.6em; }
 .lg-hub { width: 9px; height: 9px; border-radius: 50%; border: 1.5px solid var(--text); margin-left: 6px; }
-.lg-bar { width: 22px; height: 11px; background: linear-gradient(var(--text), var(--text)) center / 1.5px 100% no-repeat, linear-gradient(var(--ink-sienna), var(--ink-sienna)) center / 100% 3px no-repeat; }
+svg.lg { width: 26px; height: 12px; margin-top: 0.2em; overflow: visible; }
 
 .lu-ref-title { margin: 0; padding: 6px 0 9px; font-size: var(--font-lg); font-weight: 400; }
 #reference-overlay .sim-overlay-panel {
@@ -312,8 +310,8 @@
     .lu-margin-head { padding: 8px 12px 0 16px; }
     .lu-panels { padding: 2px 16px 20px; }
     .lu-tabs .tab-btn { font-size: var(--font-base); }
-    .lu-specimens { flex-direction: row; flex-wrap: wrap; gap: 0 14px; }
-    .lu-specimens button { font-size: var(--font-base); }
+    .lu-specimens { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px 8px; }
+    .lu-specimens button { flex-direction: column; gap: 2px; font-size: var(--font-sm); text-align: center; }
     .lu-row { min-height: 40px; }
 }
 

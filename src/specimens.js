@@ -50,6 +50,7 @@ export const SPECIMENS = {
         names: { ...N_THYL, ndh1: 'complex I', sdh: 'complex II', pq: 'UQ', cytb6f: 'complex III', pc: 'cyt c', cytOx: 'complex IV' },
         can: { photo: false, cyclic: false, resp: true, nnt: true, brAuto: false },
         where: 'in the crista lumen',
+        zones: ['matrix'],
         say: 'the respiratory chain lines the flat face and ATP synthase dimers bend the tip',
     },
     plasma: {

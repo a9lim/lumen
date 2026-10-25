@@ -5,34 +5,58 @@
 // pool kept equal to store.protonGradient: pumped protons cross up into it,
 // ATP synthase and NNT draw theirs out of it, and any excess leaks back
 // across the bilayer (or through UCP while uncoupling is on). Photons are
-// Feynman wiggles. Time advances by dt × simState.speed.
+// Feynman wiggles. The cofactor pools are src/stroma.js's. Time advances by
+// dt × simState.speed.
 import { simState, store } from './state.js';
 import { Membrane } from './membrane.js';
 import * as K from './complexes.js';
+import { waypoints, variant } from './detail.js';
 
 const TAU = Math.PI * 2;
 const MAXP = 600;           // protons drawn at most; the caption gives the count
 const CHAIN_TIME = 1.39;    // s for a whole chain at speed 1 (as before the rebuild)
+// Each photon's wiggle has the period of the light its absorber takes, nm: P680, P700, bacteriorhodopsin's 568
+const LAMBDA = { psii: 680, psi: 700, br: 568 };
 
 const Particles = {
     electrons: [],
     protons: [],
     photons: [],
     mols: [],
-    tags: [],
     _short: 0, _qa: 0, _ql: 0, _atpOx: 0, _leaked: 0,
 
-    /** Spawn an electron through the given complexes (keys into Membrane.pos). */
+    /**
+     * Spawn an electron through the given complexes (keys into Membrane.pos).
+     * Its road runs through each complex's cofactors (detail.js); segment i of
+     * the chain takes it from the first site of keys[i] to the first of keys[i+1].
+     */
     spawnElectronChain(keys, type, callbacks) {
-        const pts = [];
+        const pts = [], starts = [], v = variant(Membrane.spec, Membrane.specId);
         for (const k of keys) {
             const p = Membrane.pos[k];
             if (!p) return false;
-            pts.push({ x: p.x, y: p.y, key: k });
+            starts.push(pts.length);
+            for (const [x, y] of waypoints(k, p, Membrane.mid, Membrane.s, v)) pts.push({ x, y, key: k });
         }
-        if (pts.length < 2) return false;
-        this.electrons.push({ pts, keys, progress: 0, type, cb: callbacks || {}, fired: 0 });
+        if (keys.length < 2) return false;
+        // The last segment ends at the far end of the road, through the terminal complex's sites;
+        // a chain that closes on its first complex (cyclic flow) ends where it began, at P700
+        if (keys[0] !== keys[keys.length - 1]) starts[starts.length - 1] = pts.length - 1;
+        this.electrons.push({ pts, starts, keys, progress: 0, type, cb: callbacks || {}, fired: 0 });
         return true;
+    },
+
+    /**
+     * Where an electron is, and the carrier it rides, if any. Segment i runs
+     * from starts[i] to starts[i + 1] on the road; the last start is the road's end.
+     */
+    where(e) {
+        const n = e.keys.length - 1, u = Math.min(0.9999, e.progress) * n, si = Math.floor(u), f = u - si;
+        const idx = e.starts[si] + (e.starts[si + 1] - e.starts[si]) * f, i0 = Math.min(e.pts.length - 1, Math.floor(idx)), i1 = Math.min(e.pts.length - 1, i0 + 1);
+        // it rests at each site, then hops to the next
+        const fr = idx - i0, h = fr < 0.4 ? 0 : (fr - 0.4) / 0.6, ease = h * h * (3 - 2 * h);
+        const a = e.pts[i0], b = e.pts[i1];
+        return { x: a.x + (b.x - a.x) * ease, y: a.y + (b.y - a.y) * ease, ride: carrierOf(a.key, b.key) };
     },
 
     /** A proton crossing at x: 'up' into the lumen pool, 'down' out of it. */
@@ -53,18 +77,15 @@ const Particles = {
         const d = Math.max(60, ty - Membrane.top + 30);
         const sx = tx + Math.cos(a) * d / Math.abs(Math.sin(a)) * 0.6, sy = ty - d;
         const L = Math.hypot(tx - sx, ty - sy);
-        this.photons.push({ x: sx, y: sy, dx: (tx - sx) / L, dy: (ty - sy) / L, left: L, ph: Math.random() * TAU });
+        this.photons.push({ x: sx, y: sy, dx: (tx - sx) / L, dy: (ty - sy) / L, left: L, ph: Math.random() * TAU, lam: LAMBDA[key] || 680 });
     },
 
-    /** Emit a small molecule: 'atp', 'o2out', 'o2in', or a text tag. */
+    /** Emit an O₂: 'o2out' leaves PSII, 'o2in' arrives at cytochrome oxidase. */
     emit(type, x, y) {
         const s = Membrane.s, r = Math.random;
-        if (type === 'atp') this.mols.push({ type, x: x + (r() - 0.5) * 3 * s, y, vx: (r() - 0.5) * 6 * s, vy: (2 + r() * 2) * s, rot: r() * TAU, age: 0, life: 2.2 });
-        else if (type === 'o2out') this.mols.push({ type: 'o2', x: x + (r() - 0.5) * 4 * s, y, vx: (r() - 0.5) * 2 * s, vy: -(1.6 + r()) * s, rot: r() * TAU, age: 0, life: 2.6 });
+        if (type === 'o2out') this.mols.push({ type: 'o2', x: x + (r() - 0.5) * 4 * s, y, vx: (r() - 0.5) * 2 * s, vy: -(1.6 + r()) * s, rot: r() * TAU, age: 0, life: 2.6 });
         else if (type === 'o2in') this.mols.push({ type: 'o2', x: x + (r() - 0.5) * 10 * s, y: y + 9 * s, tx: x, vx: 0, vy: -3.2 * s, rot: r() * TAU, age: 0, life: 2.4, sink: true });
     },
-
-    tag(text, x, y, color) { this.tags.push({ text, x, y, color, age: 0, life: 1.6 }); },
 
     /** A representative instant for the first frame: photons and electrons already in transit. */
     seed() {
@@ -77,7 +98,7 @@ const Particles = {
         for (let i = 0; i < targets.length * 2; i++) { this.spawnPhoton(targets[i % targets.length]); const p = this.photons[this.photons.length - 1]; const f = 0.25 + 0.5 * Math.random(); p.x += p.dx * p.left * f; p.y += p.dy * p.left * f; p.left *= 1 - f; }
     },
 
-    clear() { this._atpOx = store.atpOxidative; this._leaked = store.protonsLeaked; this._qa = 0; this._ql = 0; this.electrons.length = 0; this.protons.length = 0; this.photons.length = 0; this.mols.length = 0; this.tags.length = 0; },
+    clear() { this._atpOx = store.atpOxidative; this._leaked = store.protonsLeaked; this._qa = 0; this._ql = 0; this.electrons.length = 0; this.protons.length = 0; this.photons.length = 0; this.mols.length = 0; },
 
     /** Lumen protons to start with, at rest, matching the gradient. */
     fill() {
@@ -93,9 +114,10 @@ const Particles = {
         for (let i = this.electrons.length - 1; i >= 0; i--) {
             const e = this.electrons[i];
             e.progress += sp / CHAIN_TIME;
-            const n = e.pts.length - 1, seg = Math.min(n - 1, Math.floor(e.progress * n));
+            // the chain's segments are its complexes, whatever their waypoints
+            const n = e.keys.length - 1, seg = Math.min(n - 1, Math.floor(e.progress * n));
             while (e.fired <= seg) { const f = e.cb[e.fired]; e.fired++; if (f) f(); }
-            if (e.progress >= 1) { this.electrons.splice(i, 1); if (e.type === 'photo' && Membrane.pos.fnr && !this.tags.length) this.tag('NADPH', Membrane.pos.fnr.x, Membrane.mid + 15 * s + 12, K.ink('viridian')); }
+            if (e.progress >= 1) this.electrons.splice(i, 1);
         }
         // Protons
         let inPool = 0, up = 0;
@@ -142,27 +164,23 @@ const Particles = {
         // Photons
         for (const p of this.photons) { const m = 300 * Math.max(0.6, s / 6) * sp; p.x += p.dx * m; p.y += p.dy * m; p.left -= m; p.ph += sp * 30; }
         this.photons = this.photons.filter(p => p.left > 0);
-        // Molecules and tags
+        // O₂
         for (const m of this.mols) {
             m.age += sp;
             if (m.sink) m.x += (m.tx - m.x) * Math.min(1, sp * 1.5);
             m.x += m.vx * sp; m.y += m.vy * sp; m.rot += sp * 0.5;
         }
         this.mols = this.mols.filter(m => m.age < m.life);
-        for (const t of this.tags) { t.age += sp; t.y += 9 * sp; }
-        this.tags = this.tags.filter(t => t.age < t.life);
     },
 
     draw(c) {
         const s = Membrane.s, pos = Membrane.pos, P = K.P;
         // Idle carriers at home, then the ones carrying an electron
         const busy = { pq: 0, pc: 0, fd: 0 };
+        this.riding = [];
         for (const e of this.electrons) {
-            const n = e.pts.length - 1, t = Math.min(0.9999, e.progress) * n, i = Math.floor(t), f = t - i;
-            const a = e.pts[i], b = e.pts[i + 1];
-            const x = a.x + (b.x - a.x) * f, y = a.y + (b.y - a.y) * f;
-            const ride = carrierOf(a.key, b.key);
-            if (ride) { busy[ride]++; drawCarrier(c, ride, x, y, s, true); }
+            const { x, y, ride } = this.where(e);
+            if (ride) { busy[ride]++; drawCarrier(c, ride, x, y, s, true); this.riding.push([ride, x, y]); }
             else { c.beginPath(); c.arc(x, y, Math.max(1.6, 0.36 * s), 0, TAU); c.lineWidth = 1.2; c.strokeStyle = P.text; c.fillStyle = P.canvas; c.fill(); c.stroke(); }
         }
         const idle = { pq: 3, pc: 2, fd: 1 };
@@ -188,7 +206,7 @@ const Particles = {
             c.beginPath();
             const len = 5 * s, nx = -p.dy, ny = p.dx;
             for (let k = 0; k <= 16; k++) {
-                const t = k / 16, al = -len * (1 - t), off = 0.55 * s * Math.sin(p.ph + t * 9) * Math.sin(Math.PI * t);
+                const t = k / 16, al = -len * (1 - t), off = 0.55 * s * Math.sin(p.ph + t * 9 * 680 / p.lam) * Math.sin(Math.PI * t);
                 const x = p.x + p.dx * al + nx * off, y = p.y + p.dy * al + ny * off;
                 k ? c.lineTo(x, y) : c.moveTo(x, y);
             }
@@ -196,14 +214,9 @@ const Particles = {
         }
         for (const m of this.mols) {
             c.globalAlpha = Math.max(0, Math.min(1, m.age * 3, (m.life - m.age) * 1.5));
-            if (m.type === 'atp') K.atp(c, s, m.x, m.y, m.rot); else K.o2(c, s, m.x, m.y, m.rot);
+            K.o2(c, s, m.x, m.y, m.rot);
         }
         c.globalAlpha = 1;
-        if (this.tags.length) {
-            c.font = `italic ${Membrane.narrow ? 10 : 11}px ${_FONT.text}`; c.textAlign = 'center'; c.textBaseline = 'middle';
-            for (const t of this.tags) { c.globalAlpha = Math.max(0, Math.min(1, (t.life - t.age) * 1.5)); c.fillStyle = t.color; c.fillText(t.text, t.x, t.y); }
-            c.globalAlpha = 1;
-        }
     },
 };
 
@@ -263,8 +276,8 @@ function carrierOf(a, b) {
 
 function drawCarrier(c, k, x, y, s, loaded) {
     if (k === 'pq') { c.save(); c.translate(x, y); K.quinone(c, s, loaded); c.restore(); }
-    else if (k === 'pc') K.carrier(c, s, x, y, 1.7, 19, loaded ? K.ink('prussian') : K.mix(K.ink('prussian'), K.P.canvas, 0.3));
-    else K.carrier(c, s, x, y, 1.4, 22, loaded ? K.ink('sienna') : K.mix(K.ink('sienna'), K.P.canvas, 0.3));
+    else if (k === 'pc') K.carrier(c, s, x, y, 1.7, 19, K.ink('prussian'), loaded);
+    else K.carrier(c, s, x, y, 1.4, 22, K.ink('sienna'), loaded);
 }
 
 export default Particles;

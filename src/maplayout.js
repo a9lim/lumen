@@ -77,9 +77,30 @@ export const TRACKS = {
 /** Corridor enzymes that serve two tracks: the glycolysis segment and its Calvin or PPP twin. */
 export const PAIR = { g2: 'c2', g3: 'c3', g5: 'c5', g6: 'c6', p10: 'c10' };
 
+/**
+ * Connections, as Beck marks a line meeting another service: the pools each
+ * labelled enzyme makes (+) or spends (−) running the way its line is drawn,
+ * then backward, from src/reactions/. A count is per firing; none where it
+ * varies (up to two, or three for PRK).
+ */
+export const COF = {
+    g0: [['atp-1'], []], g2: [['atp-1'], []], g5: [['nadh+2'], ['nadph-2']], g6: [['atp+2'], ['atp-2']], g9: [['atp+2'], ['atp-2']],
+    c7: [['atp-'], []], c5: [['nadph-2'], []], c6: [['atp-2'], []],
+    p0: [['nadph+'], []], p2: [['nadph+'], []], pdh: [['nadh+2'], []],
+    adh: [['nadh-2'], ['nadh+2']], aldh: [['nadh+2'], []], acs: [['atp-2'], []],
+    k2: [['nadh+'], []], k3: [['nadh+'], []], k4: [['atp+'], ['atp-']], k5: [['fadh2+'], ['fadh2-']], k7: [['nadh+'], ['nadh-']],
+    b0: [['fadh2+1'], ['nadph-1', 'atp-1']], b2: [['nadh+1'], ['nadph-1']], b3: [[], ['atp-1']],
+    // Whole turns, under each loop's name
+    run_calvin: [['atp-18', 'nadph-12'], []], run_ppp: [['nadph+12'], []], run_krebs: [['nadh+6', 'fadh2+2', 'atp+2'], []],
+    run_betaox: [['fadh2+7', 'nadh+7'], ['nadph-14', 'atp-14']],
+    run_glycolysis_upper: [['atp-2'], []], run_glycolysis_lower: [['atp+4', 'nadh+2'], ['atp-2']],
+};
+/** 'nadh+2' → ['nadh', +1, '2'] */
+export const parseCof = (t) => { const m = /^([a-z0-9]+?)([+-])(\d*)$/.exec(t); return [m[1], m[2] === '+' ? 1 : -1, m[3]]; };
+
 /** Batch services: whole-cycle reactions, clicked on the loop's name. */
 export const LOOPS = [
-    { key: 'run_calvin', line: 'calvin', at: [10, 1.85], name: 'Calvin cycle', short: 'Calvin', times: '×6', info: 'run_calvin' },
+    { key: 'run_calvin', line: 'calvin', at: [10, 1.85], narrowAt: [11, 1.9], name: 'Calvin cycle', short: 'Calvin', times: '×6', info: 'run_calvin' },
     { key: 'run_ppp', line: 'ppp', at: [4.75, 1.45], narrowAt: [5.2, 1.75], name: 'Pentose P', short: 'PPP', times: '×6', info: 'run_ppp' },
     { key: 'run_krebs', line: 'krebs', at: [KC[0], KC[1] + 0.1], name: 'Krebs cycle', short: 'Krebs', times: '×2', info: 'run_krebs' },
     { key: 'run_betaox', line: 'box', at: [22, 8], name: 'β-oxidation', short: 'β-ox', times: '×7', info: 'run_betaox' },

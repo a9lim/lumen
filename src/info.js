@@ -13,7 +13,7 @@ export const ENZYMES = {
     PGK:    { name: 'Phosphoglycerate kinase', pathway: 'Glycolysis / Calvin', eq: '1,3-BPG + ADP \u2194 3-PGA + ATP', desc: 'Transfers a phosphate directly to ADP, producing ATP without the electron transport chain.' },
     PGM:    { name: 'Phosphoglycerate mutase', pathway: 'Glycolysis', eq: '3-PGA \u2192 2-PGA', desc: 'Moves the phosphate group from carbon 3 to carbon 2, preparing the molecule for the next step.' },
     ENO:    { name: 'Enolase', pathway: 'Glycolysis', eq: '2-PGA \u2192 PEP + H\u2082O', desc: 'Removes water from 2-PGA, creating the high-energy molecule PEP.' },
-    PK:     { name: 'Pyruvate kinase', pathway: 'Glycolysis', eq: 'PEP + ADP \u2192 Pyruvate + ATP', desc: 'The final step of glycolysis, producing ATP. In gluconeogenesis, the reverse bypass (PC + PEPCK) converts pyruvate back to PEP using ATP.' },
+    PK:     { name: 'Pyruvate kinase', pathway: 'Glycolysis', eq: 'PEP + ADP \u2192 Pyruvate + ATP', desc: 'The final step of glycolysis, producing ATP. In gluconeogenesis, the reverse bypass (PC + PEPCK) converts pyruvate back to PEP using ATP.', regulation: 'Backward (PC + PEPCK) it needs ATP: slowed below 50%, stopped below 30%.' },
 
     // PPP / Calvin shared step
     'TKT+TAL': { name: 'Transketolase + transaldolase', pathway: 'PPP / Calvin', eq: '6 R5P \u2194 5 F6P', desc: 'Carbon-shuffling enzymes that rearrange pentoses into hexoses (or vice versa), linking the PPP non-oxidative branch to glycolysis and the Calvin cycle.' },

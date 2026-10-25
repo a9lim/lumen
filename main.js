@@ -10,12 +10,13 @@ import { simState, store, histories, updateAnimations, pushSample } from './src/
 import { updateDashboard } from './src/dashboard.js';
 import { advanceStep, onReaction } from './src/reactions/dispatch.js';
 import { autoplayTick, protonLeakTick } from './src/autoplay.js';
-import { cacheDOMElements, bindEvents } from './src/ui.js';
+import { cacheDOMElements, bindEvents, drawSpecimenIcons } from './src/ui.js';
 import { recordReaction, updateFlux } from './src/flux.js';
 import { lineState } from './src/mapdraw.js';
 import { LINES } from './src/maplayout.js';
 import { Membrane } from './src/membrane.js';
 import Renderer from './src/renderer.js';
+import { drawLadder } from './src/ladder.js';
 
 const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 const dom = cacheDOMElements();
@@ -65,7 +66,7 @@ warm(24);
 frozen = reduced;
 
 new ResizeObserver(() => requestAnimationFrame(() => Renderer.resize())).observe(document.getElementById('sim-container'));
-new MutationObserver(() => { Renderer.themeChanged(); updateDashboard(); })
+new MutationObserver(() => { Renderer.themeChanged(); updateDashboard(); drawSpecimenIcons(); })
     .observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
 
 // ── Caption ──
@@ -91,8 +92,9 @@ function captionText() {
 }
 
 // ── Loop ──
+const ladder = document.getElementById('lu-ladder'), ladderNote = document.getElementById('lu-ladder-note');
 let last = performance.now(), sparkT = 0, ready = false;
-Promise.race([_loadTextFonts(), new Promise(r => setTimeout(r, 1500))]).then(() => { ready = true; Renderer.themeChanged(); });
+Promise.race([_loadTextFonts(), new Promise(r => setTimeout(r, 1500))]).then(() => { ready = true; Renderer.themeChanged(); drawSpecimenIcons(); });
 
 function frame(now) {
     const dt = Math.min((now - last) / 1000, 0.1);
@@ -111,6 +113,10 @@ function frame(now) {
     if (ready) {
         Renderer.draw(frozen ? 0 : dt);
         setCaption(captionText());
+        if (dom.statsVisible()) {
+            const note = drawLadder(ladder);
+            if (ladderNote.textContent !== (note || '')) { ladderNote.textContent = note || ''; ladderNote.hidden = !note; }
+        }
     }
     requestAnimationFrame(frame);
 }

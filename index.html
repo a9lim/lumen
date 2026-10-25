@@ -280,12 +280,12 @@
           <div class="lu-group">
             <h2 class="lu-label">Specimen</h2>
             <div class="lu-specimens" role="radiogroup" aria-label="Organism preset" id="organism-group">
-              <button type="button" role="radio" data-org="cyanobacterium" aria-checked="true">Cyanobacterium</button>
-              <button type="button" role="radio" data-org="animalCell" aria-checked="false">Animal cell</button>
-              <button type="button" role="radio" data-org="obligateAnaerobe" aria-checked="false">Obligate anaerobe</button>
-              <button type="button" role="radio" data-org="plantChloroplast" aria-checked="false">Plant chloroplast</button>
-              <button type="button" role="radio" data-org="archaeon" aria-checked="false">Archaeon</button>
-              <button type="button" role="radio" data-org="custom" aria-checked="false">Custom</button>
+              <button type="button" role="radio" data-org="cyanobacterium" aria-checked="true"><canvas class="lu-spec-icon" aria-hidden="true"></canvas><span>Cyanobacterium</span></button>
+              <button type="button" role="radio" data-org="animalCell" aria-checked="false"><canvas class="lu-spec-icon" aria-hidden="true"></canvas><span>Animal cell</span></button>
+              <button type="button" role="radio" data-org="obligateAnaerobe" aria-checked="false"><canvas class="lu-spec-icon" aria-hidden="true"></canvas><span>Obligate anaerobe</span></button>
+              <button type="button" role="radio" data-org="plantChloroplast" aria-checked="false"><canvas class="lu-spec-icon" aria-hidden="true"></canvas><span>Plant chloroplast</span></button>
+              <button type="button" role="radio" data-org="archaeon" aria-checked="false"><canvas class="lu-spec-icon" aria-hidden="true"></canvas><span>Archaeon</span></button>
+              <button type="button" role="radio" data-org="custom" aria-checked="false"><canvas class="lu-spec-icon" aria-hidden="true"></canvas><span>Custom</span></button>
             </div>
             <p class="lu-desc" id="organism-desc">Photosynthetic prokaryote — all pathways available</p>
           </div>
@@ -329,6 +329,12 @@
         </section>
 
         <section class="tab-panel" id="tab-stats" role="tabpanel">
+          <div class="lu-group">
+            <h2 class="lu-label">Electrons, by redox potential <button class="info-trigger" type="button" data-info="ladder" aria-label="Redox ladder info">?</button></h2>
+            <canvas class="lu-ladder" id="lu-ladder" role="img" aria-label="The electron transport chain's carriers at their midpoint potentials, with each electron now in flight as a bead on its carrier."></canvas>
+            <p class="lu-desc" id="lu-ladder-note" hidden></p>
+          </div>
+
           <div class="lu-group">
             <h2 class="lu-label">Last reaction</h2>
             <div id="krebs-step-info" class="lu-step">
@@ -404,12 +410,17 @@
             <h2 class="lu-label">Reading the figure</h2>
             <dl class="lu-legend">
               <dt><span class="lg lg-proton"></span></dt><dd>A proton. Their number on the far side of the membrane is the stored gradient.</dd>
-              <dt><span class="lg lg-electron"></span></dt><dd>An electron in transit, alone or on a carrier (darkened while it carries one).</dd>
-              <dt><span class="lg lg-photon"></span></dt><dd>A photon arriving at a photosystem or bacteriorhodopsin.</dd>
-              <dt><span class="lg lg-line"></span></dt><dd>A line whose weight and trains read flux; chevrons point the way carbon runs.</dd>
+              <dt><span class="lg lg-electron"></span></dt><dd>An electron in transit, stepping between a complex's cofactors, alone or on a carrier (darkened while it carries one).</dd>
+              <dt><span class="lg lg-photon"></span></dt><dd>A photon arriving at a photosystem or bacteriorhodopsin; its wiggle is shorter for shorter light.</dd>
+              <dt><svg class="lg" viewBox="0 0 26 12" aria-hidden="true"><circle cx="7" cy="6" r="3.6" fill="var(--bg-panel-solid)" stroke="var(--ink-ochre)"/><circle cx="12.5" cy="5.4" r="1.9" fill="var(--ink-ochre)"/><circle cx="16" cy="6" r="1.9" fill="var(--ink-ochre)"/><circle cx="19.5" cy="6.6" r="1.9" fill="var(--ink-ochre)"/></svg></dt><dd>A molecule of a cofactor pool, one for each unit of it: ATP has three phosphates, ADP two. They fill the space under the membrane.</dd>
+              <dt><svg class="lg" viewBox="0 0 26 12" aria-hidden="true"><circle cx="7" cy="6" r="3.2" fill="var(--ink-prussian)" stroke="var(--ink-prussian)"/><circle cx="12.5" cy="6" r="1.6" fill="var(--bg-panel-solid)" stroke="var(--ink-prussian)"/><circle cx="18" cy="6" r="3.2" fill="var(--bg-panel-solid)" stroke="var(--ink-prussian)"/></svg></dt><dd>A reduced carrier (NADH, NADPH, FADH₂) has a dark ring, an oxidised one a pale ring. NADP carries one more phosphate than NAD.</dd>
+              <dt><svg class="lg" viewBox="0 0 26 12" aria-hidden="true"><path d="M3 1v5q0 2 2 2h16q2 0 2 2v1" fill="none" stroke="var(--ink-ochre)" stroke-dasharray="1.5 2.5" stroke-linecap="round"/></svg></dt><dd>An enzyme on the map just made or spent the molecule the thread starts from.</dd>
+              <dt><span class="lg lg-line"></span></dt><dd>A line whose weight and trains read flux; chevrons point the way carbon runs. Glyphs after an enzyme's name are the pools it makes (+) or spends (−).</dd>
               <dt><span class="lg lg-off"></span></dt><dd>A line switched off, or one that needs oxygen it lacks.</dd>
               <dt><span class="lg lg-hub"></span></dt><dd>An interchange: an intermediate several lines share.</dd>
-              <dt><span class="lg lg-bar"></span></dt><dd>An enzyme its regulation blocks in the running direction.</dd>
+              <dt><svg class="lg" viewBox="0 0 26 12" aria-hidden="true"><path d="M4 6h14M18 2v8" stroke="var(--text)" stroke-width="1.4" fill="none"/></svg></dt><dd>A pool gating an enzyme: ⊣ inhibits, → is needed, ⊕ activates; dashed while the enzyme is only slowed, with a bar across the line once it stops.</dd>
+              <dt><svg class="lg" viewBox="0 0 26 12" aria-hidden="true"><circle cx="10" cy="7" r="2.6" fill="none" stroke="var(--text)"/><circle cx="15" cy="7" r="2.6" fill="none" stroke="var(--text)"/><circle cx="12.5" cy="2.2" r="1" fill="var(--text)"/></svg></dt><dd>Superoxide, one for each active ROS, near where electrons leaked.</dd>
+              <dt><svg class="lg" viewBox="0 0 26 12" aria-hidden="true"><path d="M8 1v10M13 1l3 4-3 6" stroke="var(--ink-sienna)" stroke-width="1.3" fill="none" stroke-linejoin="round"/></svg></dt><dd>A peroxidised lipid. Their share is the cell health lost.</dd>
             </dl>
             <p class="lu-desc">ATP synthase turns a third of a turn, passing four protons, for each ATP.</p>
           </div>

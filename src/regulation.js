@@ -30,7 +30,7 @@ export function getRegulationFactor(pathway, stepIndex, store, direction) {
                 if (atpRatio > 0.6) return 0.5;
             }
             // PK reverse (step 9): gluconeogenesis bypass requires sufficient ATP to run backwards
-            if (stepIndex === 9) {
+            if (stepIndex === 9 && direction === 'reverse') {
                 if (atpRatio < 0.3) return 0;
                 if (atpRatio < 0.5) return 0.5;
             }
@@ -45,6 +45,11 @@ export function getRegulationFactor(pathway, stepIndex, store, direction) {
             }
             return 1;
         case 'run_glycolysis_lower':
+            // Backward, the bypass around PK (PC + PEPCK) spends ATP, as step 9 reversed
+            if (direction === 'reverse') {
+                if (atpRatio < 0.3) return 0;
+                if (atpRatio < 0.5) return 0.5;
+            }
             return 1;
 
         // ─── Krebs Cycle (per-step) ───
@@ -150,6 +155,9 @@ export function getRegulationReason(pathway, stepIndex, store, precomputedFactor
     if ((pathway === 'glycolysis' || pathway === 'run_glycolysis_upper') && atpRatio > 0.6) {
         return 'PFK inhibited by high ATP (' + Math.round(atpRatio * 100) + '%)';
     }
+    if ((pathway === 'glycolysis' && stepIndex === 9) || pathway === 'run_glycolysis_lower') {
+        return 'PC + PEPCK limited by low ATP (' + Math.round(atpRatio * 100) + '%)';
+    }
     if (pathway === 'krebs' || pathway === 'run_krebs') {
         // Report most restrictive inhibitor first
         if (nadhRatio > 0.75) return 'Isocitrate DH inhibited by high NADH (' + Math.round(nadhRatio * 100) + '%)';
@@ -173,4 +181,31 @@ export function getRegulationReason(pathway, stepIndex, store, precomputedFactor
         return 'ACAD inhibited by high FADH₂ (' + Math.round(fadh2Ratio * 100) + '%)';
     }
     return 'Allosteric inhibition';
+}
+
+/**
+ * The gate acting on a step, as the map draws it: which pool is the
+ * effector and how it acts ('⊣' inhibits, '→' is required, '⊕' activates),
+ * with getRegulationFactor's factor. null when no gate is acting.
+ */
+export function getRegulationGate(pathway, stepIndex, store, direction) {
+    const f = getRegulationFactor(pathway, stepIndex, store, direction);
+    if (f === 1) return null;
+    const rev = direction === 'reverse';
+    let eff = null, how = '⊣';
+    switch (pathway) {
+        case 'glycolysis': eff = 'atp'; how = stepIndex === 9 ? '→' : '⊣'; break;
+        case 'krebs': eff = stepIndex === 2 ? 'nadh' : 'atp'; break;
+        case 'pdh': eff = 'nadh'; break;
+        case 'ppp': eff = 'nadph'; how = f > 1 ? '⊕' : '⊣'; break;
+        case 'calvin': eff = 'atp'; how = '→'; break;
+        case 'betaox': eff = 'fadh2'; break;
+        case 'run_betaox': eff = rev ? 'nadph' : 'fadh2'; how = rev ? '→' : '⊣'; break;
+        case 'run_calvin': eff = 'atp'; how = '→'; break;
+        case 'run_ppp': eff = 'nadph'; how = f > 1 ? '⊕' : '⊣'; break;
+        case 'run_glycolysis_upper': eff = 'atp'; break;
+        case 'run_glycolysis_lower': eff = 'atp'; how = '→'; break;
+        case 'run_krebs': eff = store.nadh / store.totalNad > 0.5 ? 'nadh' : 'atp'; break;
+    }
+    return eff ? { factor: f, eff, how } : null;
 }

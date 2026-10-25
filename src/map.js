@@ -11,14 +11,15 @@ export const FLIP = new Set(['adh', 'c6', 'c5', 'c3', 'c2', 'c10']);
 /** Label anchor offsets from a segment's grid midpoint, or absolute grid points (abs). */
 const LABEL_AT = {
     g0: [0, -0.45], g1: [0, -0.45], g2: [0, -0.45], g3: [0, -0.45], g5: [0, -0.45], g6: [0, -0.45], g7: [0, -0.45], g8: [0, -0.45], g9: [0, -0.45],
-    c7: [0, -0.38], c0: [-0.2, 0], p10: { abs: [6.7, 1.95], align: 'left' },
+    c7: [0, -0.42], c0: [-0.2, 0], p10: { abs: [6.35, 1.62], align: 'left' },
     p0: [-0.25, -0.3], p1: { abs: [2.75, 0.5] }, p2: { abs: [5.35, 0.42] },
-    pdh: [0.2, 0.05], pdc: [0, -0.42], adh: [0, 0.42], aldh: [0.2, 0], acs: [0, -0.4], kin: [0.3, 0.12],
-    b0: [0, -0.4], b1: [0.22, 0], b2: [0, 0.42], b3: [-0.22, 0],
+    pdh: [0.2, -0.15], pdc: [0, -0.42], adh: [0, 0.42], aldh: [0.2, 0], acs: [0, -0.4], kin: [0.3, 0.12],
+    b0: [0, -0.4], b1: [0.22, 0], b2: [0.55, 0.42], b3: [-0.22, 0],
 };
 /** Phone overrides, in the same grid (it is transposed after). */
 const NARROW_LABEL_AT = {
-    p0: { abs: [2.55, 2.25] }, p1: { abs: [2.55, 0.7] }, b1: [-0.22, 0], b3: [0.22, 0],
+    p0: { abs: [2.6, 2.1] }, p1: { abs: [4.3, 1.1] }, b1: [-0.22, 0], b3: [0.22, 0],
+    p10: { abs: [6.75, 2.35] }, c7: [0, -0.6],
 };
 
 export const MapView = {
@@ -29,6 +30,7 @@ export const MapView = {
     tracks: {},         // track id → { line, segs: [ids] }
     loops: [],
     phase: {},          // segment id → train phase (px)
+    pulse: {},          // segment id → 1 when its enzyme fires, decaying (its connections pulse)
     vis: {},            // segment id → { a: fade 0..1, hidden: bool }
     bounds: null,
 
@@ -111,7 +113,7 @@ export const MapView = {
         const dx = p[0] - mid[0], dy = p[1] - mid[1];
         const o = (this.G.rot && NARROW_LABEL_AT[seg.id]) || LABEL_AT[seg.id];
         const align = o && o.align && !this.G.rot ? o.align : Math.abs(dx) > Math.abs(dy) * 1.2 ? (dx > 0 ? 'left' : 'right') : 'center';
-        return { x: p[0], y: p[1], align };
+        return { x: p[0], y: p[1], align, out: [dx, dy] };
     },
 
     /** Fade and hidden state per segment, from the pathway switches and locks. */
@@ -137,6 +139,8 @@ export const MapView = {
     update(dt) {
         const sp = 42 * this.G.us * dt;
         for (const id in this.segs) this.phase[id] += (flux[id] || 0) * sp * 6;
+        for (const id in this.pulse) this.pulse[id] = Math.max(0, this.pulse[id] - dt * 1.6);
+        for (const L of this.loops) if (L.pulse) L.pulse = Math.max(0, L.pulse - dt * 1.6);
     },
 
     /** The segment, loop or station under world point (x, y); tol in world px. */

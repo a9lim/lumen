@@ -65,7 +65,7 @@ export function advanceETC(pathway, stepIndex) {
             },
             4: () => { Renderer.spawnPhoton('psi'); },
             5: () => {
-                if (store.nadph < store.totalNadp) store.nadph++;
+                if (store.nadph < store.totalNadp) { store.nadph++; Renderer.poolEvent('nadph', 1, 'fnr'); }
                 updateDashboard();
             },
         });

@@ -15,11 +15,11 @@ The carbon network covers glycolysis and its reverse path, the pentose phosphate
 
 ## Electron Transport Chain
 
-The membrane is drawn in cross-section, with lipids, complexes, and carriers at roughly true relative size. The model knows fourteen membrane components: photosystems, respiratory entry points, mobile carriers, cytochrome b6f, cytochrome c oxidase, ATP synthase, bacteriorhodopsin, NNT, and UCP. The model stores a single proton-gradient value rather than separate voltage and pH terms, and the figure draws one proton for each unit of it. ATP synthase consumes four gradient units per ATP, drawn as a third of a turn of its twelve-subunit rotor; passive leak removes 2% every half-second, or 10% with uncoupling enabled.
+The membrane is drawn in cross-section in the manner of David Goodsell, with lipids, complexes, and carriers at roughly true relative size; each complex is an assembly of its subunits, and zoomed in past about 2.5× it shows its cofactors, the sites electrons actually step between. ATP synthase's head shows the binding change: its β subunits step from open to loose (holding ADP and phosphate) to tight (holding ATP) with each third of a turn. The model knows fourteen membrane components: photosystems, respiratory entry points, mobile carriers, cytochrome b6f, cytochrome c oxidase, ATP synthase, bacteriorhodopsin, NNT, and UCP. The model stores a single proton-gradient value rather than separate voltage and pH terms, and the figure draws one proton for each unit of it. ATP synthase consumes four gradient units per ATP, drawn as a third of a turn of its twelve-subunit rotor; passive leak removes 2% every half-second, or 10% with uncoupling enabled.
 
 ## Regulation
 
-The dispatcher applies explicit feedback gates before substrate mutation. High ATP inhibits phosphofructokinase and slows citrate synthase; high NADH inhibits isocitrate dehydrogenase and, together with accumulated acetyl-CoA, blocks pyruvate dehydrogenase. NADPH controls the pentose phosphate pathway, FADH2 controls beta-oxidation, and low ATP limits the Calvin cycle.
+The dispatcher applies explicit feedback gates before substrate mutation. High ATP inhibits phosphofructokinase and slows citrate synthase; high NADH inhibits isocitrate dehydrogenase and, together with accumulated acetyl-CoA, blocks pyruvate dehydrogenase. NADPH controls the pentose phosphate pathway, FADH2 controls beta-oxidation, and low ATP limits the Calvin cycle and the gluconeogenic bypass around pyruvate kinase. The map draws each acting gate on the track: the effector's glyph with ⊣ (inhibits), → (needed) or ⊕ (activates), dashed while the enzyme is slowed and solid once it stops.
 
 ## Organism Presets
 
@@ -29,15 +29,15 @@ Each preset also shows its own membrane, which carries only the complexes that o
 
 ## Educational Use
 
-Users can add glucose or fatty acid, toggle five pathway groups plus light, oxygen, and uncoupling, then compare step-by-step reactions with the autoplay schedule. The carbon network is drawn as a transit map: clicking an enzyme's segment runs it, line weight and train speed show recent flux, and trains run backward when a pathway reverses. Readouts in the margin expose cofactor ratios, gas and water balances, ATP sources, ROS, cell health, and sixty-second sparklines.
+Users can add glucose or fatty acid, toggle five pathway groups plus light, oxygen, and uncoupling, then compare step-by-step reactions with the autoplay schedule. The carbon network is drawn as a transit map: clicking an enzyme's segment runs it, line weight and train speed show recent flux, and trains run backward when a pathway reverses. Readouts in the margin expose cofactor ratios, gas and water balances, ATP sources, ROS, cell health, and sixty-second sparklines. The Stats tab opens on a live Z-scheme: every carrier at its midpoint redox potential, with each electron in flight drawn as a bead on the carrier it has reached, so light visibly lifts electrons at P680 and P700 while respiration only falls toward oxygen. Each specimen's figure shows where its cut comes from: a drawing of the cell or organelle with the section boxed.
 
 ## Proton Gradient and Chemiosmotic Coupling
 
-Respiratory NADH entry pumps four protons at NDH-1, the shared cytochrome-b6f step pumps four more, and the terminal oxidase pumps two. Linear photosynthetic flow runs from PSII to FNR; cyclic flow starts at PSI and returns through ferredoxin and the carrier chain. Electron leaks at NDH-1 and the Q-cycle produce ROS stochastically.
+Respiratory NADH entry pumps four protons at NDH-1, the shared cytochrome-b6f step pumps four more, and the terminal oxidase pumps two. Linear photosynthetic flow runs from PSII to FNR; cyclic flow starts at PSI and returns through ferredoxin and the carrier chain. Electron leaks at NDH-1 and the Q-cycle produce ROS stochastically. Active ROS is drawn as superoxide radicals near where they leaked, and lost cell health as peroxidised lipids in the membrane.
 
 ## Cofactor Conservation
 
-Four closed cofactor pairs are conserved by fixed totals: ATP/ADP, NAD+/NADH, NADP+/NADPH, and FAD/FADH2. The model does not track AMP or a closed CoA pool. Reactions check their substrates and available cofactor capacity before mutating state, so depleted oxidized or reduced pools can stall a path.
+Four closed cofactor pairs are conserved by fixed totals: ATP/ADP, NAD+/NADH, NADP+/NADPH, and FAD/FADH2, with 120, 120, 120, and 60 molecules. Each molecule is drawn in the space under the membrane, so the pools are visible directly: ATP synthase takes in an ADP and lets an ATP go, FNR reduces an NADP+, and when an enzyme on the map spends or makes a cofactor, a dotted thread runs from the molecule it changed to the enzyme. Each enzyme on the map carries the pools it makes or spends as glyphs after its name. The model does not track AMP or a closed CoA pool. Reactions check their substrates and available cofactor capacity before mutating state, so depleted oxidized or reduced pools can stall a path.
 
 ## Accessibility
 

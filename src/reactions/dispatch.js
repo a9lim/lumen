@@ -106,9 +106,14 @@ export function advanceStep(pathway, stepIndex, direction) {
         return false;
     }
 
-    const result = handler(stepIndex, direction);
+    const before = [store.atp, store.nadh, store.nadph, store.fadh2];
+    let result = handler(stepIndex, direction);
+    if (result === true) result = {};   // the membrane handlers report success alone
 
     if (result) {
+        // What the reaction did to the four pools, for the stroma's molecules
+        const after = [store.atp, store.nadh, store.nadph, store.fadh2];
+        result.dPools = { atp: after[0] - before[0], nadh: after[1] - before[1], nadph: after[2] - before[2], fadh2: after[3] - before[3] };
         // Determine pathway color — reverse direction may belong to a different pathway
         let colorPw = pathway;
         if (direction === 'reverse' && stepIndex != null) {
