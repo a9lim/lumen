@@ -128,13 +128,13 @@ ui.js wires the colophon (play, theme, help), the margin, the `shortcuts` array 
 
 ## Open work
 
-`docs/VISION.md` (not staged) is the ideation round of 2026-10-24 and a9's decisions on it: where Lumen could go, its milestones, and the faults below in detail. Milestone 0 (respiratory control, the conservation leaks) is built; the first three items are milestone 0.5.
+`docs/VISION.md` (not staged) holds the ideation rounds of 2026-10-24 and 2026-10-25 and a9's decisions on them: where Lumen could go, its milestones, the engine's design, and the faults below in detail. Milestone 0 (respiratory control, the conservation leaks) is built; the first four items are milestone 0.5, except two that belong to the engine (milestone 1): sunlight's reversal, which gets only an interim per-specimen rule in 0.5, and oxygen's rule on Krebs and PDH, which stays until the engine has compartments.
 
 - Biology: animal cells ferment to ethanol (no LDH); the chloroplast's locked reasons are false (plastids run the oxidative PPP, and plant β-oxidation is peroxisomal); gluconeogenesis omits PEPCK's GTP; fatty-acid synthesis charges 14 ATP, not 7.
 - Sunlight reverses upper glycolysis and β-oxidation in every preset, the animal cell included; oxygen gates Krebs and PDH by rule rather than through NAD⁺.
 - Batch keys add fixed flux weights, so the caption's "carries the most carbon" reflects the schedule, not stoichiometric extent.
 - Unreachable code: `canReact`, the `sod` / `catalase` / `gpx` / `run_ros_scavenge` dispatch keys (scavenging runs inline in `protonLeakTick`), and `calvin` step 5. The `ucp` hit box has no dispatch handler, so clicking UCP does nothing.
 - `pumpProtons` and ATP synthase still schedule their visual protons with `setTimeout`; the pool ignores the `'down'` ones and reconciles from the store instead.
-- Respiratory control rarely shows as NADH backing up in autoplay: the round-robin supplies NADH slower than the chain can take it, so the chain is supply-limited until Δp nears its stall. Demand and supply belong to the engine (milestone 2). The leak (2 % of the gradient every half-second) dates from when gradients sat near 10 units; at today's 50–110 it is a larger share of the proton budget.
+- Respiratory control rarely shows as NADH backing up in autoplay: the round-robin supplies NADH slower than the chain can take it, so the chain is supply-limited until Δp nears its stall. Demand and supply belong to the engine (milestone 1). The leak (2 % of the gradient every half-second) dates from when gradients sat near 10 units; at today's 50–110 it is a larger share of the proton budget.
 - Mitochondria run ATP synthase backward freely when Δp collapses; IF1, which limits that, isn't modeled. The obligate anaerobe was ATP-starved before milestone 0 (its glucose runs out); running the synthase backward now spends some of what it has.
 - The c-ring has twelve subunits and four protons per ATP in every specimen; real rings differ (eight in mammalian mitochondria, fourteen in chloroplasts). A per-specimen ring would change the model.

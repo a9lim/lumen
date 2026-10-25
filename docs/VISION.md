@@ -1,6 +1,6 @@
 # Lumen: where it could go
 
-Ideation round 1, 2026-10-24, against `c09cca0`. a9's decisions on it are recorded at the end; the rest of the plan is direction, not a contract. Two independent reads went into it: Claude's (playing every preset, 30-second state probes, reading the engine) and Codex's (gaslamp job `cx-20261024-213046-93d2`, briefed without Claude's ideas, which reproduced two conservation faults in isolation). Where the two agree, that is noted. Every reference below was checked against Crossref on the day. Tags: **[standard]** is textbook or published science, **[synthesis]** is our combination of it, **[speculative]** is a bet.
+Ideation round 1, 2026-10-24, against `c09cca0`; round 2, 2026-10-25, against `69658c2`, refined the milestones and the engine's design. a9's decisions on both are recorded at the end; the rest of the plan is direction, not a contract. Two independent reads went into it: Claude's (playing every preset, 30-second state probes, reading the engine) and Codex's (gaslamp job `cx-20261024-213046-93d2`, briefed without Claude's ideas, which reproduced two conservation faults in isolation). Where the two agree, that is noted. Every reference below was checked against Crossref on the day. Tags: **[standard]** is textbook or published science, **[synthesis]** is our combination of it, **[speculative]** is a bet.
 
 ## The thesis
 
@@ -18,7 +18,7 @@ The visual register stays. Nothing below needs it reinvented. Most of it is the 
 **Coupling made visible.** ATP and reducing power are usually arrows between two separate textbook diagrams. Here they are molecules that dock at a membrane complex and thread down to a map enzyme. This can teach *coupling* better than any pathway animation. *Further:* every connection should answer a question. Where did this carbon come from? What is limiting this enzyme? Why did oxygen uptake change? What was that ATP spent on? (both reads)
 
 **Conservation made physical.** Closed pools drawn as one molecule per unit is rare and good. *Further:*
-- **True relative counts.** The 120 drawn ATP are already about the true count. At 3 mM, a slab of the drawn stroma band about 20 nm deep holds ≈110 ATP. The band measures 188 × 16.5 nm in the 1440 px layout. The slab's depth is a free choice. Fix it once so that ATP is true, and let every other pool follow. NADP(H) would then be a handful of molecules and free FAD almost none, which is itself the lesson. The band's width in nm changes with the viewport, so true counts would scale with the layout **[synthesis; arithmetic from `Membrane.band` and `Membrane.s`]**.
+- **True relative counts.** The 120 drawn ATP are already about the true count. At 3 mM, a slab of the drawn stroma band about 20 nm deep holds ≈110 ATP. The band measures 188 × 16.5 nm in the 1440 px layout. The slab's depth is a free choice. Fix it once so that ATP is true, and let every other pool follow. At *E. coli*'s concentrations (Bennett et al. 2009: ATP 9.6 mM, NAD⁺ 2.6 mM, NADH 83 µM, NADP⁺ 2.1 µM, NADPH 0.12 mM) a 20 nm slab would hold about 360 ATP, 97 NAD⁺, 3 NADH, 4 NADPH and usually no NADP⁺, with free FAD almost none. Proportions differ by organism, though: *Synechocystis* keeps a markedly higher NADP⁺/NAD⁺ ratio than *E. coli* (Ito et al. 2023), so the flagship's NADP pool is not tiny. Each specimen's counts follow its own organism. The band's width in nm changes with the viewport today; the window (below) needs a fixed physical geometry instead **[synthesis; arithmetic from `Membrane.band` and `Membrane.s`]**.
 - **True redox poise.** In the cytosol NAD is held mostly oxidized and NADP mostly reduced. That asymmetry is *why* the cell keeps two nicotinamide pools: it can oxidize and reduce at once. Lumen starts both at 10% reduced (`state.js:34`) **[standard]**.
 - **The missing conserved moieties.** AMP, through adenylate kinase, gives Atkinson's energy charge. CoA and phosphate are the others **[standard]**.
 - **FAD drawn where it lives.** FAD is bound to its enzymes (SDH, ETF, ACAD), not free in the cytoplasm. A free FADH₂ pool is a textbook fiction that this register makes look literal (Codex) **[standard]**.
@@ -39,7 +39,7 @@ The specimens are also homologous: the crista's complex III is the b₆f's cousi
 
 ## What it gets wrong now
 
-Confirmed by probe or by reading the code. Ranked by how much it misteaches. Items 1 and 2 were fixed in milestone 0 (2026-10-24; AGENTS.md describes the result); 3–5 are milestone 0.5.
+Confirmed by probe or by reading the code. Ranked by how much it misteaches. Items 1 and 2 were fixed in milestone 0 (2026-10-24; AGENTS.md describes the result). Milestone 0.5 takes 3, 5 and an interim fix for 4; the engine (milestone 1) takes the rest of 4, and 6–8.
 
 1. **Conservation breaks.**
    - The four-step β-oxidation spiral never shortens the chain. Thiolase returns the fatty acid and adds an acetyl-CoA (`reactions/betaoxidation.js:47-50`), so each turn makes two carbons from nothing. Codex reproduced ten turns from one fatty acid yielding ten acetyl-CoA with the fatty acid intact. The batch path is balanced, so manual and autoplay modes run different chemistries.
@@ -87,22 +87,44 @@ The other specimens stay as comparative cuts that share the engine. They are not
 
 ### The engine
 
+Round 2 settled its shape. Codex's adversarial read of the round-2 proposal (gaslamp job `cx-20261025-133216-da5c`) corrected the window, the verb and the landing order; those corrections are folded in below.
+
+- **Reaction identities first.** Many of today's "reverse" directions are different reactions catalysed by different enzymes: HK and G6Pase, PFK and FBPase, PK and PC + PEPCK, and GAPDH switching from NAD to NADP (`reactions/glycolysis.js`). One reversible row can't represent such a pair, so the network splits enzyme and reaction identities before it attaches ΔG or rates (Codex).
 - **A declarative network.** Reactions become data: stoichiometry, compartment, ΔG°′, rate parameters and effectors. Tests then fall out:
-  - element and charge balance per reaction;
-  - conserved moieties from the stoichiometric matrix's left null space (the four cofactor pairs appear on their own; any new leak fails a test);
-  - thermodynamic consistency around cycles.
+  - element and charge balance per reaction, against independently specified element vectors;
+  - the conserved moieties (the four cofactor pairs, the adenylates with AMP, phosphate, CoA) asserted as independently specified vectors and checked against the stoichiometric matrix's left null space. Discovering moieties from the null space alone can't catch a network that has quietly lost one (Codex);
+  - thermodynamic consistency around cycles, with chemical species and protonation kept separate from the transformed ΔG°′ convention.
 
   The map's `COF` glyphs, the reference pages and the tooltips can be generated from the same table.
+- **Minimal compartments from the start.** Concentrations need volumes, Δψ needs a membrane between two spaces, and an isolated preparation needs a boundary, so the engine has volumes, boundaries and reservoir exchanges from its first phase. Transporter anatomy (shuttles, ANT's charge, the interchanges on the map) waits for milestone 3 (Codex).
+- **Continuous environment.** Light intensity, O₂ tension and CO₂ are inputs with values; today's switches become presets of them. A photosystem's rate is a photon flux times its cross-section.
 - **Separable rate laws** (Noor et al. 2013). Each rate is v = E · k_cat · η_thermo · η_sat · η_reg. That is enzyme amount, times the thermodynamic driving force (1 − e^{ΔG/RT}), times substrate saturation, times allosteric regulation. Each factor is drawable. The map already draws regulation gates; add the other two and "why did this stop?" (Codex's fourth experience) answers itself on the track. Directions then come from ΔG, never from a light switch **[standard method; synthesis in the drawing]**.
-- **Stochastic at the drawn counts, deterministic where it's cheap.** The existing architecture is already event-driven: `advanceStep` fires and observers draw threads, docks and flux. A Gillespie-style scheduler (Gillespie 1977) whose propensities come from the rate laws slots straight into it, so each event stays a drawable event. Fast near-equilibrium steps (PGI, TPI, aldolase, enolase) can be pooled as rapid equilibria. Codex prefers continuous kinetics for abundant species with stochastic events where useful; at Lumen's counts the two meet in the middle. Decorative Brownian motion should never be claimed as diffusion (Codex).
-- **Its own clock.** Chemistry advances on a model clock, and particles are a view of events already decided. The caption states the time scale ("slowed 300×"), the way the scale bar states space.
+  - The product is an organizing decomposition, not a finished law. Each law also needs consistent forward and reverse parameters, finite behavior at zero concentration, exact cancellation at equilibrium, positivity and convergence (Codex).
+  - The engine exposes one-way fluxes, not only net ones. Near equilibrium both directions run while the net goes to zero, and the window's dockings need the one-way rates. They follow from the net flux and ΔG through the flux–force relation, v₋/v₊ = e^{ΔG/RT} **[standard]**.
+- **Its own clock.** Chemistry advances on a model clock that runs headless in node. Particles are a view of events already decided, so nothing depends on frame rate, viewport, hidden rendering or animation speed. No single factor covers electron hops (microseconds), diffusion and turnover, so the caption states the turnover slowdown ("slowed 300×", the way the scale bar states space) and names the transitions stretched further (Codex).
+- **The window.** The cell is authoritative and continuous: its concentrations, and the populations of each kind of complex in each state (which cofactor holds an electron, which S-state a PSII centre is in). Panel a is a fixed-volume window onto it, with its own physical geometry rather than the viewport's.
+  - The drawn complexes are seeded representative centres. They step through the same kinetics as the populations but don't debit the bulk pools. Electrons, carrier reduction and the Z-scheme's beads all read one centre's sampled state, never independent samples. Kok's flashes run on the ensemble of S-state occupancies (misses, double hits, dark relaxation), and the drawn PSII is one realization of it.
+  - Pool molecules are a representative sample at true proportions, not literal instantaneous counts: each pool's drawn total is fixed at its mean count in the window, and its forms follow the cell's ratio. Their motion is illustrative, and display noise never feeds back into regulation.
+  - Threads draw coupling and sampled flux between a pool and a map enzyme, not one molecule's journey (Codex).
+
+  This settles round 1's choice between Gillespie events and continuous kinetics. A fully stochastic slab would misteach: at 6 × 10⁻²⁰ L, 1 µM averages 0.04 molecules, and diffusion exchanges the slab in microseconds, so a closed stochastic box gets both the noise and the regulation wrong. ATP synthase turns over on the order of 10² per second, so a 100–300× slowdown shows each one making about an ATP a second **[synthesis]**.
+- **The verb.** A click pulses one enzyme's activity, right-click inhibits it, and holding sustains a small perturbation against a paired baseline.
+  - The pulse scales a multiplier on catalytic capacity, not the enzyme's amount: changing the amount would mean synthesis and a biomass cost (Codex).
+  - Where a push spreads or dies is something the visitor observes, not a scripted lesson. Control of flux is shared among enzymes and depends on conditions (Kacser & Burns 1973) **[standard]**. Flux control coefficients are computed only once a steady state exists.
+  - Still to specify: amplitude, model-time duration (at a 300× slowdown one model second lasts five wall-clock minutes), stacking, recovery, behavior while paused, and keyboard and touch equivalents.
+  - Poisons act through the same multiplier at first. Binding kinetics, competition and irreversible inhibition come with the bench, and an inherited deficiency is a persistent setting, not a click (Codex).
+  - A keyboard-accessible inspector shows the η factors.
+- **Biosynthetic demand.** Carbon leaves the network to become the cell. The twelve precursors (G6P, F6P, R5P, E4P, triose phosphate, 3-PG, PEP, pyruvate, acetyl-CoA, OAA, α-KG, succinyl-CoA) leave the map on terminal spurs, "to the cell" **[standard; the spurs are synthesis]**. A growth dial sits beside an ATP-demand dial that replaces today's fixed drain. This is labelled biosynthetic demand, not predicted growth (Codex):
+  - one biomass row drawing every ingredient together in a stated composition, with its ATP and NADPH costs and the CoA and phosphate it returns, and a ledger of what accumulates. Twelve independent sinks would be a different model;
+  - withdrawing OAA and α-KG needs anaplerosis (PEP carboxylase in cyanobacteria, pyruvate carboxylase in animals), or the Krebs cycle drains away **[standard]**.
+- **Damage with consequence.** With an activity multiplier in every rate, ROS can lower it where damage is known to bite (aconitase's iron–sulfur cluster is the classic target), and peroxidised lipid can raise the leak. Repair then costs ATP and amino acids instead of regenerating for free **[standard mechanisms; synthesis in the model]**.
 - **Data with provenance.**
   - ΔG°′ from eQuilibrator (Flamholz et al. 2012; Beber et al. 2021).
-  - Absolute concentrations, fluxes and ΔG for *E. coli*, yeast and a mammalian line from Park et al. 2016 and Bennett et al. 2009. These map neatly onto three of the presets.
+  - Absolute concentrations, fluxes and ΔG for *E. coli*, yeast and a mammalian line from Park et al. 2016 and Bennett et al. 2009. These map neatly onto three of the presets. Each specimen takes its pool proportions from its own organism, not from *E. coli*.
   - Kinetic constants from SABIO-RK.
   - Network identifiers from BiGG (King et al. 2015).
 
-  Parameters keep a measured / fitted / illustrative tag, which the inspector shows.
+  Parameters keep a measured / fitted / illustrative tag and an uncertainty, which the inspector shows.
 
 ### The bench
 
@@ -119,7 +141,7 @@ Additions are marked with arrows on the trace, as in the classic figures. Experi
 | Chance & Williams' oxygen-electrode trace (1955) | adding ADP speeds O₂ uptake (state 3); running out of it slows it (state 4); an uncoupler releases it; cyanide stops it |
 | A Seahorse-style mito stress test (Brand & Nicholls 2011; Divakaruni et al. 2014) | oligomycin → FCCP → rotenone + antimycin, read as basal, ATP-linked, maximal and spare respiration |
 | Jagendorf's acid bath (Jagendorf & Uribe 1966) | thylakoids at pH 4, moved to pH 8 with ADP, make ATP in the dark: chemiosmosis from a pH jump alone |
-| Racker & Stoeckenius' vesicle (1974) | bacteriorhodopsin plus ATP synthase in one membrane make ATP in light. The Custom composite *is* this experiment |
+| Racker & Stoeckenius' vesicle (1974) | *Halobacterium* purple membrane and bovine-heart oligomycin-sensitive ATPase, reconstituted in soybean phospholipid vesicles, make ATP in light. It needs its own restricted preparation, with orientation and medium; the Custom composite, which carries every complex, is only its ancestor (Codex) |
 | Kok's flashes (Joliot et al. 1969; Kok et al. 1970) | O₂ per flash oscillates with period four and peaks on the third flash, damped by misses and double hits. PSII's S-states drawn at the zoom layer |
 | Emerson's enhancement (Emerson et al. 1957) | far-red alone does little, red alone some, and both together more than the sum: two photosystems |
 | Calvin's pulse (Bassham, Benson & Calvin) | label appears in 3-PGA first |
@@ -129,16 +151,45 @@ Additions are marked with arrows on the trace, as in the classic figures. Experi
 
 ### Milestones
 
-Each stage leaves a better simulator. This is Codex's ordering, with the bench pulled earlier.
+Each stage leaves a better simulator. Round 2 reordered round 1's list (Codex's, with the bench pulled earlier): the engine comes first, with energetics and biosynthetic demand inside it, and the bench follows.
 
-0. **Respiratory control and the conservation leaks** (a9's cut, 2026-10-24). Fix both conservation leaks. Pumping slows as Δp nears each chain's stall, and ATP synthase's direction comes from Δp against the phosphorylation potential, so it can run backward.
-0.5. **The rest of the correctness pass.** Add lactate and LDH. Correct the preset texts and the gluconeogenesis and fatty-acid synthesis costs. Weight flux by extent. Choose directions from state, not the light switch.
-1. **Declarative network and tests.** The same behavior from data, with a balance test suite and a chemistry clock separate from the renderer.
-2. **Energetics.** Δψ/ΔpH, per-specimen c-rings, separable rate laws, thermodynamic directions. A demand control replaces the fixed drain. A keyboard-accessible reaction inspector draws the η factors.
-3. **The bench.** Panel c, the poison cabinet, and the first experiments (Chance–Williams, Jagendorf, Kok) as lessons and regression tests. Kok's flashes need little beyond an S-state counter at PSII and could ship before milestone 1 as a proof of the bench.
-4. **Compartments.** Matrix, intermembrane space and cytosol; plastid stroma. Transporters as interchanges between zones.
-5. **Breadth.** Photorespiration, glycogen, nitrogen assimilation, the glyoxylate shunt, NPQ; the day–night cycle.
-6. **Growth.** Biomass, enzyme allocation and division, in *Synechocystis* first.
+0. **Respiratory control and the conservation leaks** (a9's cut, 2026-10-24; built). Fix both conservation leaks. Pumping slows as Δp nears each chain's stall, and ATP synthase's direction comes from Δp against the phosphorylation potential, so it can run backward.
+0.5. **The rest of the correctness pass.**
+   - Add lactate and LDH. Correct the preset texts and locks, PEPCK's GTP, fatty-acid synthesis's cost (7 ATP), and the NADPH that reverse GAPDH spends in the animal cell. Weight flux by carbon extent. Clear the unreachable code.
+   - Sunlight's reversal becomes an interim rule for the photosynthetic specimens only; real directions come from ΔG in the engine and aren't built twice.
+   - Oxygen's rule on Krebs and PDH stays until the engine has compartments. Without them, cytosolic LDH would regenerate the matrix's NAD⁺ and keep the cycle turning in anoxia (Codex).
+   - *What you see:* the animal cell ferments to lactate, light no longer makes it gluconeogenic, the chloroplast gets its PPP back, and line weights are honest. Mostly the presets stop misstating the biology.
+1. **The engine,** one milestone developed in two phases.
+   - *Phase A, the core.* Landing order (Codex):
+     1. species, units, compartments (volumes, boundaries, reservoir exchanges) and reaction identities;
+     2. headless state, injected randomness and model-time events;
+     3. declarative transactions under the old schedule, checked by store-diff equivalence. That is a migration check, not a chemistry oracle, and it compares everything (acyl lengths, reservations, pending events, counters), not frame-by-frame callback timing;
+     4. balances and thermodynamic constraints, independently specified;
+     5. kinetics qualified on one small complete subsystem, then expanded;
+     6. the window, the verb, biosynthetic demand and the inspector.
+   - *Phase B, membrane energetics.* Δψ and ΔpH; per-specimen c-rings (c8 in animal mitochondria, c14 in chloroplasts, c13–15 in cyanobacteria); ETF entry for β-oxidation; the halophile's A-type synthase; ferredoxin-fed NDH-1 in cyanobacteria; the P/O ratio derived on the Stats ladder.
+   - *Behavioral tests, headless, landing throughout* (Codex), so the rewrite is never unguarded while the bench waits:
+     - conservation including enzyme-bound intermediates, external exchanges and pending events; no species negative at depletion;
+     - identical model trajectories across frame rates, viewport sizes, hidden rendering and animation speeds; replayable seeds; a reset cancels old events;
+     - equilibrium gives zero net flux, and perturbing the reaction quotient reverses it; enzyme activity can't move an equilibrium; an undriven closed cycle can't make ATP;
+     - adding ADP stimulates respiration and exhausting it slows it; more leak lowers Δp and can speed a backpressured chain;
+     - anoxia stops oxygen reduction at once but allows transient upstream turnover; NAD⁺ exhaustion and reoxygenation shut down and recover. Every Krebs step need not stop in anoxia;
+     - NADP⁺ limitation keeps electrons balanced; phosphate and the adenylates constrain ATP synthesis;
+     - demand gives a bounded response, and sustained overload exhausts reserves without creating substrate;
+     - the window's samples have the right ensemble means, and display noise never reaches bulk regulation.
+   - *What you see:* the schedule is gone. Lines run because they are downhill and fed, and a stalled line shows on its track whether thermodynamics, saturation or regulation stopped it. The stroma holds each organism's true proportions (a large NADP pool in *Synechocystis*, scarce free NADH in the animal cell, no free FAD anywhere) and the caption states the slowdown. Carbon leaves the map at "to the cell" spurs, ATP demand and growth are dials, and a click pulses an enzyme. After phase B the Stats tab reads Δψ and ΔpH, the c-rings differ per specimen at the zoom layer, and the ladder derives the P/O ratio.
+2. **The bench.** Panel c; the poison cabinet, with binding kinetics; the experiments as setups and regression tests (Chance–Williams, the stress test, Jagendorf, Kok, Emerson, Hill). Light spectrum joins the inputs for Emerson. Seeded replay, saved setups, paired controls and time-series export.
+   - *What you see:* a third register under the plate with an instrument trace, additions marked by arrows as in the classic figures, and inhibitors drawn bound at their sites in the zoom layer.
+3. **Transport and named preparations.** Matrix, intermembrane space and cytosol, and the plastid stroma, drawn as fare zones; ANT, the phosphate carrier, MPC, the malate–aspartate shuttle and the triose-phosphate translocator as out-of-station interchanges between them. The specimens are named for the preparations the canonical experiments used:
+   - rat liver mitochondria (Chance & Williams' part I used rat and guinea-pig liver mitochondria);
+   - spinach chloroplasts (Jagendorf & Uribe);
+   - the Racker–Stoeckenius vesicle as its own restricted preparation;
+   - *Synechocystis* PCC 6803 stays the one intact cell;
+   - the bench can isolate mitochondria from a hepatocyte, which removes the cytosol and makes the visitor supply substrates.
+
+   *What you see:* NADH stops crossing membranes for free, and the cost of exporting ATP (ANT spends Δψ) shows on the map.
+4. **Breadth and a day.** Photorespiration, glycogen, nitrogen assimilation, the glyoxylate shunt, NPQ; the day–night cycle.
+5. **Growth.** Enzyme allocation, a cell that grows, and division, in *Synechocystis* first.
 
 A whole cell cycle predicted from the genome is a research programme with large parameter uncertainty (Codex). A disciplined central-metabolism model with coarse growth is achievable over sustained work, and Lumen becomes exceptional well before the far edge.
 
@@ -183,10 +234,13 @@ Ranked roughly by delight per unit of work. All stay true to the science.
   - eQuilibrator: 10.1093/nar/gkr874 and 10.1093/nar/gkab1106.
   - Park et al. 2016, *Nat Chem Biol*, 10.1038/nchembio.2077.
   - Bennett et al. 2009, *Nat Chem Biol*, 10.1038/nchembio.186.
+  - Ito, Watanabe & Osanai 2023, *Plant Physiol*, 10.1093/plphys/kiad580: *Synechocystis*'s high NADP⁺/NAD⁺ ratio.
   - SABIO-RK.
   - Escher, for data-rich metabolic maps (Codex).
   - VCell, for separating model, geometry and solver (Codex).
 - **Kinetics.**
+  - Kacser & Burns 1973, *Symp Soc Exp Biol* 27: "The control of flux", reprinted with a commentary in 1995, *Biochem Soc Trans*, 10.1042/bst0230341.
+  - Heinrich & Rapoport 1974, *Eur J Biochem*, 10.1111/j.1432-1033.1974.tb03318.x.
   - Noor et al. 2013, *FEBS Lett*, 10.1016/j.febslet.2013.07.028.
   - Liebermeister et al. 2010, *Bioinformatics*, 10.1093/bioinformatics/btq141.
   - Gillespie 1977, *J Phys Chem*, 10.1021/j100540a008.
@@ -201,7 +255,7 @@ Ranked roughly by delight per unit of work. All stay true to the science.
   - Lane & Martin 2012, *Cell*, 10.1016/j.cell.2012.11.050.
   - Nakajima et al. 2005, *Science*, 10.1126/science.1108451.
 - **Experiments.**
-  - Chance & Williams 1955, *JBC*, 10.1016/s0021-9258(19)57190-3.
+  - Chance & Williams 1955, *JBC* 217: part I, the kinetics of oxygen utilization in rat and guinea-pig liver mitochondria, 10.1016/s0021-9258(19)57189-7; part II, difference spectra, 10.1016/s0021-9258(19)57190-3.
   - Jagendorf & Uribe 1966, *PNAS*, 10.1073/pnas.55.1.170.
   - Racker & Stoeckenius 1974, *JBC*, 10.1016/s0021-9258(19)43080-9.
   - Joliot et al. 1969, *Photochem Photobiol*, 10.1111/j.1751-1097.1969.tb05696.x.
@@ -218,10 +272,20 @@ Ranked roughly by delight per unit of work. All stay true to the science.
 
 ## Decisions
 
-a9, 2026-10-24. Each of these is a direction for later sessions; only milestone 0 is being built now.
+Round 1, a9, 2026-10-24. Each of these is a direction for later sessions; milestone 0 is built.
 
 1. **North star: approved.** *Synechocystis* building itself, on a bench, with the other specimens as comparative cuts on a shared engine.
-2. **Truth beats tidiness.** True relative counts (a tiny NADPH pool, almost no free FAD) and a stated slow-motion factor, so that every number on the plate is defensible.
+2. **Truth beats tidiness.** True relative counts (a tiny NADPH pool, almost no free FAD) and a stated slow-motion factor, so that every number on the plate is defensible. *Round 2:* the tiny NADPH pool is *E. coli*'s; *Synechocystis* keeps a large one, so counts follow each specimen's organism.
 3. **Named cells.** "Animal cell", "obligate anaerobe" and "archaeon" become named cells, and the name decides the chemistry. A hepatocyte makes glucose and a muscle fibre doesn't; the archaeon is *Halobacterium* in all but name. Which cells is still open.
 4. **Mostly a sandbox.** The bench's experiments are things a visitor can set up, not a guided course; puzzles, if any, stay light.
 5. **Milestone 0 first,** cut to respiratory control and the two conservation leaks. The other correctness fixes are milestone 0.5, for a later session.
+
+Round 2, a9, 2026-10-25, on Claude's proposal for the milestones. Codex's read came after a9's decisions and refined them; its changes are marked.
+
+6. **The verb changes.** A click pulses an enzyme instead of firing one reaction. Codex made the pulse a multiplier on catalytic capacity, added a sustained mode against a paired baseline, and made "where the push dies" an observation rather than a script.
+7. **Engine first, then the bench.** a9 leans engine-first and would accept either order. The engine's headless behavioral tests land with it, so the rewrite isn't unguarded while the bench waits.
+8. **Biosynthetic demand moves into the engine,** not growth: precursors leave the map on terminal spurs, with an ATP-demand dial and a growth dial.
+9. **The realism improvements:** the window onto the cell at true proportions, the stated slowdown, one model clock. Codex reshaped the window: centre states and concentrations are authoritative, drawn centres and pool molecules are representative samples, and threads draw coupling, not trajectories.
+10. **Energetics belongs to the engine:** one milestone, developed as a core phase and a membrane-energetics phase.
+11. **Named preparations** answer decision 3. The specimens are named for the preparations the canonical experiments used; *Synechocystis* is the one intact cell.
+12. **The smaller points stand,** with two changes from Codex. Oxygen's rule on Krebs and PDH stays in milestone 0.5, since dropping it before compartments exist would let cytosolic LDH keep the matrix's cycle turning in anoxia. Minimal compartments (volumes, boundaries, reservoir exchanges) move into the engine's first phase; transporter anatomy stays in milestone 3.
