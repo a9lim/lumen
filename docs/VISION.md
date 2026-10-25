@@ -1,6 +1,6 @@
 # Lumen: where it could go
 
-Ideation round 1, 2026-10-24, against `c09cca0`. **Not ratified**: a9's decisions are still open (see the end). Two independent reads went into it: Claude's (playing every preset, 30-second state probes, reading the engine) and Codex's (gaslamp job `cx-20261024-213046-93d2`, briefed without Claude's ideas, which reproduced two conservation faults in isolation). Where the two agree, that is noted. Every reference below was checked against Crossref on the day. Tags: **[standard]** is textbook or published science, **[synthesis]** is our combination of it, **[speculative]** is a bet.
+Ideation round 1, 2026-10-24, against `c09cca0`. a9's decisions on it are recorded at the end; the rest of the plan is direction, not a contract. Two independent reads went into it: Claude's (playing every preset, 30-second state probes, reading the engine) and Codex's (gaslamp job `cx-20261024-213046-93d2`, briefed without Claude's ideas, which reproduced two conservation faults in isolation). Where the two agree, that is noted. Every reference below was checked against Crossref on the day. Tags: **[standard]** is textbook or published science, **[synthesis]** is our combination of it, **[speculative]** is a bet.
 
 ## The thesis
 
@@ -39,7 +39,7 @@ The specimens are also homologous: the crista's complex III is the b₆f's cousi
 
 ## What it gets wrong now
 
-Confirmed by probe or by reading the code. Ranked by how much it misteaches.
+Confirmed by probe or by reading the code. Ranked by how much it misteaches. Items 1 and 2 were fixed in milestone 0 (2026-10-24; AGENTS.md describes the result); 3–5 are milestone 0.5.
 
 1. **Conservation breaks.**
    - The four-step β-oxidation spiral never shortens the chain. Thiolase returns the fatty acid and adds an acetyl-CoA (`reactions/betaoxidation.js:47-50`), so each turn makes two carbons from nothing. Codex reproduced ten turns from one fatty acid yielding ten acetyl-CoA with the fatty acid intact. The batch path is balanced, so manual and autoplay modes run different chemistries.
@@ -131,7 +131,8 @@ Additions are marked with arrows on the trace, as in the classic figures. Experi
 
 Each stage leaves a better simulator. This is Codex's ordering, with the bench pulled earlier.
 
-0. **Correctness pass on today's engine** (one session). Fix both conservation leaks. Add lactate and LDH. Correct the preset texts and the gluconeogenesis and fatty-acid synthesis costs. Weight flux by extent. Choose directions from state, not the light switch. Add a simple respiratory control: pumping slows as the gradient rises, and the synthase can run backward.
+0. **Respiratory control and the conservation leaks** (a9's cut, 2026-10-24). Fix both conservation leaks. Pumping slows as Δp nears each chain's stall, and ATP synthase's direction comes from Δp against the phosphorylation potential, so it can run backward.
+0.5. **The rest of the correctness pass.** Add lactate and LDH. Correct the preset texts and the gluconeogenesis and fatty-acid synthesis costs. Weight flux by extent. Choose directions from state, not the light switch.
 1. **Declarative network and tests.** The same behavior from data, with a balance test suite and a chemistry clock separate from the renderer.
 2. **Energetics.** Δψ/ΔpH, per-specimen c-rings, separable rate laws, thermodynamic directions. A demand control replaces the fixed drain. A keyboard-accessible reaction inspector draws the η factors.
 3. **The bench.** Panel c, the poison cabinet, and the first experiments (Chance–Williams, Jagendorf, Kok) as lessons and regression tests. Kok's flashes need little beyond an S-state counter at PSII and could ship before milestone 1 as a proof of the bench.
@@ -215,10 +216,12 @@ Ranked roughly by delight per unit of work. All stay true to the science.
   - Divakaruni et al. 2014, *Methods Enzymol*, 10.1016/b978-0-12-801415-8.00016-3.
 - **Pedagogy.** PhET's inquiry design: predict, manipulate, explain, around one carefully chosen experiment (Codex).
 
-## Open decisions for a9
+## Decisions
 
-1. **The flagship.** Make *Synechocystis* growth the north star, with the other specimens as comparative cuts on a shared engine? Or keep the five-way comparison primary?
-2. **Truth over tidiness.** Accept true relative counts (a tiny NADPH pool, almost no free FAD) and a stated slow-motion factor, in exchange for every number on the plate being defensible?
-3. **Named cells.** "Animal cell" can't fix its own pathway set: a hepatocyte makes glucose and a muscle fibre doesn't. The same goes for "obligate anaerobe" (which fermentation? which ATPase?) and "archaeon" (it is *Halobacterium* in all but name). Name them, and let the name decide the chemistry?
-4. **How guided.** Pure sandbox, guided experiments on the bench, or puzzles ("run the animal cell on fat alone")? Or all three, layered?
-5. **First move.** The correctness pass (milestone 0) is cheap and needed whatever the answers above. Run it next, before or alongside the engine design?
+a9, 2026-10-24. Each of these is a direction for later sessions; only milestone 0 is being built now.
+
+1. **North star: approved.** *Synechocystis* building itself, on a bench, with the other specimens as comparative cuts on a shared engine.
+2. **Truth beats tidiness.** True relative counts (a tiny NADPH pool, almost no free FAD) and a stated slow-motion factor, so that every number on the plate is defensible.
+3. **Named cells.** "Animal cell", "obligate anaerobe" and "archaeon" become named cells, and the name decides the chemistry. A hepatocyte makes glucose and a muscle fibre doesn't; the archaeon is *Halobacterium* in all but name. Which cells is still open.
+4. **Mostly a sandbox.** The bench's experiments are things a visitor can set up, not a guided course; puzzles, if any, stay light.
+5. **Milestone 0 first,** cut to respiratory control and the two conservation leaks. The other correctness fixes are milestone 0.5, for a later session.

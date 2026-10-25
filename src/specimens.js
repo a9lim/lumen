@@ -3,7 +3,10 @@
 // crista, a cell envelope), the complexes it carries in order along the cut,
 // what each is called in that organism, and which membrane reactions it can
 // run. Widths are footprints along the membrane in nanometres, so complexes
-// sit at roughly true relative size (Goodsell's rule).
+// sit at roughly true relative size (Goodsell's rule). can.hydrolysis says
+// whether its ATP synthase may run backward: true, or 'light' for the
+// photosynthetic ones, which are braked in the dark (thioredoxin switches the
+// chloroplast's on in the light; cyanobacteria brake theirs too).
 //
 // Engine keys: psii ndh1 sdh pq cytb6f pc cytOx psi fd fnr atpSyn br nnt ucp.
 // Others are drawn but not part of the chain: lhcii (antenna trimers).
@@ -26,7 +29,7 @@ export const SPECIMENS = {
         sides: { top: 'cytoplasm', lumen: 'thylakoid lumen', below: 'cytoplasm' },
         order: ['psii', 'ndh1', 'sdh', 'pq', 'cytb6f', 'pc', 'cytOx', 'psi', 'fd', 'fnr', 'atpSyn', 'nnt'],
         names: N_THYL,
-        can: { photo: true, cyclic: true, resp: true, nnt: true, brAuto: false },
+        can: { photo: true, cyclic: true, resp: true, nnt: true, brAuto: false, hydrolysis: 'light' },
         where: 'in the thylakoid lumen',
         say: 'respiration and photosynthesis share one membrane, its plastoquinone and its plastocyanin',
     },
@@ -37,7 +40,7 @@ export const SPECIMENS = {
         // Reversed so the photosystem II end sits under the granum, on the right
         order: ['atpSyn', 'fnr', 'fd', 'psi', 'pc', 'cytb6f', 'pq', 'psii', 'lhcii', 'lhcii'],
         names: N_THYL,
-        can: { photo: true, cyclic: true, resp: false, nnt: false, brAuto: false },
+        can: { photo: true, cyclic: true, resp: false, nnt: false, brAuto: false, hydrolysis: 'light' },
         where: 'in the thylakoid lumen',
         say: 'photosystem II packs into the stacked granum, photosystem I and ATP synthase into the stroma lamella',
     },
@@ -48,7 +51,7 @@ export const SPECIMENS = {
         // The tip, lined with ATP synthase dimers, is on the left
         order: ['atpSyn', 'nnt', 'ucp', 'ndh1', 'sdh', 'pq', 'cytb6f', 'pc', 'cytOx'],
         names: { ...N_THYL, ndh1: 'complex I', sdh: 'complex II', pq: 'UQ', cytb6f: 'complex III', pc: 'cyt c', cytOx: 'complex IV' },
-        can: { photo: false, cyclic: false, resp: true, nnt: true, brAuto: false },
+        can: { photo: false, cyclic: false, resp: true, nnt: true, brAuto: false, hydrolysis: true },
         where: 'in the crista lumen',
         zones: ['matrix'],
         say: 'the respiratory chain lines the flat face and ATP synthase dimers bend the tip',
@@ -59,7 +62,7 @@ export const SPECIMENS = {
         sides: { top: 'cell wall', lumen: 'outside', below: 'cytoplasm' },
         order: ['atpSyn', 'nnt'],
         names: N_THYL,
-        can: { photo: false, cyclic: false, resp: false, nnt: true, brAuto: false },
+        can: { photo: false, cyclic: false, resp: false, nnt: true, brAuto: false, hydrolysis: true },
         where: 'outside the membrane',
         say: 'no chain pumps here, so every ATP is made in the cytoplasm',
     },
@@ -69,7 +72,7 @@ export const SPECIMENS = {
         sides: { top: 'S-layer', lumen: 'outside', below: 'cytoplasm' },
         order: ['br', 'atpSyn', 'ndh1', 'sdh', 'pq', 'cytb6f', 'pc', 'cytOx'],
         names: { ...N_THYL, br: 'bacteriorhodopsin', ndh1: 'NDH', pq: 'MK', cytb6f: 'cyt bc', pc: 'halocyanin', cytOx: 'cyt ba₃' },
-        can: { photo: false, cyclic: false, resp: true, nnt: false, brAuto: true },
+        can: { photo: false, cyclic: false, resp: true, nnt: false, brAuto: true, hydrolysis: true },
         where: 'outside the cell',
         say: 'bacteriorhodopsin, packed in a crystalline patch, pumps a proton for each photon',
     },
@@ -79,7 +82,7 @@ export const SPECIMENS = {
         sides: { top: 'outside', lumen: 'lumen', below: 'cytoplasm' },
         order: ['psii', 'ndh1', 'sdh', 'pq', 'cytb6f', 'pc', 'cytOx', 'psi', 'fd', 'fnr', 'atpSyn', 'br', 'nnt', 'ucp'],
         names: N_THYL,
-        can: { photo: true, cyclic: true, resp: true, nnt: true, brAuto: false },
+        can: { photo: true, cyclic: true, resp: true, nnt: true, brAuto: false, hydrolysis: true },
         where: 'in the lumen',
         say: 'every complex the model knows, on one membrane',
     },

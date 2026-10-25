@@ -98,6 +98,9 @@ const Particles = {
         for (let i = 0; i < targets.length * 2; i++) { this.spawnPhoton(targets[i % targets.length]); const p = this.photons[this.photons.length - 1]; const f = 0.25 + 0.5 * Math.random(); p.x += p.dx * p.left * f; p.y += p.dy * p.left * f; p.left *= 1 - f; }
     },
 
+    /** Land every electron's remaining chemistry at once, before a clear that keeps the store (a new specimen). */
+    flush() { for (const e of this.electrons) while (e.fired < e.keys.length) { const f = e.cb[e.fired]; e.fired++; if (f) f(); } },
+
     clear() { this._atpOx = store.atpOxidative; this._leaked = store.protonsLeaked; this._qa = 0; this._ql = 0; this.electrons.length = 0; this.protons.length = 0; this.photons.length = 0; this.mols.length = 0; },
 
     /** Lumen protons to start with, at rest, matching the gradient. */

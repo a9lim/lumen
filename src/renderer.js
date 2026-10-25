@@ -46,7 +46,7 @@ const Renderer = {
     specId: 'thylakoid',
     onEnzymeClick: null, onInteract: null,
     hover: null, warm: false, _warmUntil: 0,
-    rotor: { phase: 0, target: 0, seen: 0, made: 0 },
+    rotor: { phase: 0, target: 0, seen: 0, split: 0 },
     _o2: { out: 0, in: 0 },
     _cache: null, _cacheKey: '', _wantKey: '', _wantT: 0,
 
@@ -99,7 +99,7 @@ const Renderer = {
     setSpecimen(id) {
         if (!SPECIMENS[id] || id === this.specId) return;
         this.specId = id;
-        Particles.clear();
+        Particles.flush(); Particles.clear();
         this.layout();
     },
 
@@ -132,14 +132,15 @@ const Renderer = {
     },
     /** A pool changed at a membrane complex (FNR's NADPH, from the chain's callback). */
     poolEvent(pool, d, siteKey) { if (!this.warm) Stroma.event(pool, d, Membrane.sites[siteKey]); },
-    endWarm() { Stroma.fill(); this.warm = false; this._warmUntil = performance.now() + 1300; this.rotor.seen = store.atpOxidative; this._o2.out = Math.floor(store.o2Produced); this._o2.in = Math.floor(store.o2Consumed); Particles.fill(); Particles.seed(); },
+    endWarm() { Stroma.fill(); this.warm = false; this._warmUntil = performance.now() + 1300; this.rotor.seen = store.atpOxidative; this.rotor.split = store.atpHydrolyzed; this._o2.out = Math.floor(store.o2Produced); this._o2.in = Math.floor(store.o2Consumed); Particles.fill(); Particles.seed(); },
 
     // ─── Per frame ───
     update(dt) {
-        const R = this.rotor, s = Membrane.s;
-        if (store.atpOxidative < R.seen) R.seen = store.atpOxidative;
-        if (store.atpOxidative > R.seen) { R.target += (store.atpOxidative - R.seen) * TAU / 3; R.seen = store.atpOxidative; }
-        if (R.target - R.phase > 2 * TAU) R.phase = R.target - 2 * TAU;
+        const R = this.rotor, s = Membrane.s, ox = store.atpOxidative, hy = store.atpHydrolyzed;
+        // A third of a turn forward per ATP made, back per ATP split (a reset zeroes both tallies)
+        if (ox < R.seen || hy < R.split) { R.seen = ox; R.split = hy; }
+        R.target += (ox - R.seen - (hy - R.split)) * TAU / 3; R.seen = ox; R.split = hy;
+        R.phase = Math.max(R.target - 2 * TAU, Math.min(R.target + 2 * TAU, R.phase));
         R.phase += (R.target - R.phase) * Math.min(1, dt * simState.speed * 2.5);
         const o = Math.floor(store.o2Produced), i = Math.floor(store.o2Consumed);
         if (o < this._o2.out || i < this._o2.in) { this._o2.out = o; this._o2.in = i; }

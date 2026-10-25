@@ -40,7 +40,10 @@ export const store = {
     atp: 0.9 * POOL.atp, nadh: 0.1 * POOL.nad, nadph: 0.1 * POOL.nadp, fadh2: 0.1 * POOL.fad,
     totalAtpAdp: POOL.atp, totalNad: POOL.nad, totalNadp: POOL.nadp, totalFad: POOL.fad,
     protonGradient: 0, protonsPumped: 0, o2Produced: 0, o2Consumed: 0, h2oSplit: 0, h2oProduced: 0, electronsTransferred: 0, co2Fixed: 0, co2Produced: 0,
-    atpSubstrate: 0, atpOxidative: 0, protonsLeaked: 0,
+    atpSubstrate: 0, atpOxidative: 0, atpHydrolyzed: 0, protonsLeaked: 0,
+    // NADP⁺ held for linear electrons still in flight, so each has an acceptor at FNR;
+    // protons those electrons have yet to pump, which the pumps' drive counts
+    nadpBound: 0, protonsPending: 0,
     rosProduced: 0, rosScavenged: 0, cellHealth: 100,
 
     glucose: 3, g6p: 6, f6p: 0, f16bp: 0, g3p: 0, bpg: 0, pga3: 0, pga2: 0, pep: 0, pyruvate: 0, ethanol: 0, acetaldehyde: 0, aceticAcid: 0,
@@ -50,6 +53,15 @@ export const store = {
     fattyAcid: 4, enoylCoA: 0, hydroxyCoA: 0, ketoCoA: 0,
 };
 simState.store = store;
+
+/** NADP⁺ free to be reduced: the pool's oxidized half, less what FNR holds. */
+export const nadpFree = () => store.totalNadp - store.nadph - store.nadpBound;
+
+// Chain lengths (carbons) behind β-oxidation's stations, so the spiral
+// conserves carbon. short lists the fatty acyl-CoAs it has shortened, which
+// store.fattyAcid also counts (the rest are palmitoyl-CoA, C16); enoyl,
+// hydroxy and keto hold one length per molecule on each intermediate.
+export const acyl = { short: [], enoyl: [], hydroxy: [], keto: [] };
 
 export const counters = { krebsTurns: 0, calvinTurns: 0, glycRuns: 0, pppRuns: 0, betaoxRuns: 0 };
 
@@ -71,6 +83,7 @@ export function resetState() {
     store.atp = 0.9 * POOL.atp; store.nadh = 0.1 * POOL.nad; store.nadph = 0.1 * POOL.nadp; store.fadh2 = 0.1 * POOL.fad; store.cellHealth = 100;
     store.glucose = 3; store.g6p = 6; store.oaa = 2; store.rubp = 6; store.fattyAcid = 4;
     store.totalAtpAdp = POOL.atp; store.totalNad = POOL.nad; store.totalNadp = POOL.nadp; store.totalFad = POOL.fad;
+    for (const k in acyl) acyl[k].length = 0;
     counters.krebsTurns = 0; counters.calvinTurns = 0; counters.glycRuns = 0; counters.pppRuns = 0; counters.betaoxRuns = 0;
     simState.time = 0; simState.fermenting = false;
     Object.values(histories).forEach(h => { h.head = 0; h.count = 0; h.data.fill(0); });

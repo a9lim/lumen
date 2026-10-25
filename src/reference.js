@@ -353,7 +353,17 @@ $$\\Delta p = \\Delta\\psi - \\frac{2.3\\,RT}{F}\\,\\Delta\\text{pH}$$
 <li>$\\Delta\\psi$: membrane potential (~150–180 mV in mitochondria, inside negative)</li>
 <li>$\\Delta\\text{pH}$: pH difference (~0.5–1.0 units in mitochondria, ~3 units in chloroplasts)</li>
 </ul>
-<p>The simulation tracks only a single "proton gradient" value (analogous to $\\Delta\\text{pH}$) for simplicity.</p>
+<p>The simulation tracks a single gradient value rather than the two terms, and counts each unit of it as 2 mV of $\\Delta p$.</p>
+
+<h3>Respiratory control</h3>
+<p>Pumping a proton against $\\Delta p$ costs energy, so each pump slows as the gradient grows and stops at its stall potential, where the work of pumping equals what its electrons release. For the respiratory chain, two electrons falling from NADH ($-320$ mV) to $\\text{O}_2$ ($+815$ mV) pay for ten protons:</p>
+$$\\Delta p_{\\text{stall}} = \\frac{2 \\times 1135\\ \\text{mV}}{10} \\approx 227\\ \\text{mV}$$
+<p>In the simulation a pump's rate falls as $1 - e^{(\\Delta p - \\Delta p_{\\text{stall}})/15\\,\\text{mV}}$. The light-driven pumps are assumed to stall at 200 mV, where an acid lumen slows cytochrome $b_6f$ (photosynthetic control). With no ADP, ATP synthase can't drain the gradient, so respiration slows to the rate of the leak (state 4); adding ADP releases it (state 3), and an uncoupler releases it without making ATP. The ratio of the two rates is the respiratory control ratio, a standard measure of how tightly mitochondria are coupled.</p>
+
+<h3>ATP synthase runs both ways</h3>
+<p>ATP synthase is reversible. It makes ATP only while the gradient's energy exceeds the phosphorylation potential:</p>
+$$4F\\,\\Delta p > \\Delta G_p = \\Delta G^{\\circ\\prime} + RT \\ln\\frac{[\\text{ATP}]}{[\\text{ADP}][\\text{P}_i]}$$
+<p>with $\\Delta G^{\\circ\\prime} = 30.5$ kJ/mol and, in the simulation, 10 mM phosphate at 25 °C. Below that balance point it runs backward, splitting ATP to pump protons out. Fermenting bacteria rely on this to keep their membranes energized. Mitochondria limit it with an inhibitor protein, IF1, which the simulation does not model; photosynthetic ATP synthases are switched off for hydrolysis in the dark, and the simulation brakes them there.</p>
 
 <h3>The chemiosmotic revolution</h3>
 <p>Before Mitchell's hypothesis (1961), the prevailing model assumed a "high-energy chemical intermediate" directly linking the ETC to ATP synthesis (the chemical coupling hypothesis). Mitchell's radical idea — that the intermediate was a proton gradient, not a molecule — was initially met with fierce resistance but was vindicated by decades of experimental evidence. It unified photosynthetic and respiratory ATP synthesis under a single mechanism.</p>

@@ -2,6 +2,7 @@
 // pools with their 60-second sparklines, the gradient, oxidative stress,
 // ATP source and net exchange. Updates are rAF-coalesced.
 import { store, counters, histories } from './state.js';
+import { deltaP, atpThreshold } from './energetics.js';
 
 let _dom;
 export function initDashboard(dom) { _dom = dom; }
@@ -82,6 +83,8 @@ export function updateDashboard() {
     updateBar(_dom.fadh2Bar, _dom.fadh2Ratio, store.fadh2, store.totalFad);
 
     _set(_dom.protonGradient, '' + store.protonGradient);
+    _set(_dom.protonMv, Math.round(deltaP()) + ' mV');
+    _set(_dom.atpMv, store.atp >= store.totalAtpAdp ? 'no ADP' : Math.round(atpThreshold()) + ' mV');
     _set(_dom.protonsLeaked, '' + store.protonsLeaked);
     _set(_dom.co2Net, '' + (store.co2Produced - store.co2Fixed));
     _set(_dom.o2Net, (store.o2Produced - store.o2Consumed).toFixed(1));

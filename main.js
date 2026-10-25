@@ -15,6 +15,7 @@ import { recordReaction, updateFlux } from './src/flux.js';
 import { lineState } from './src/mapdraw.js';
 import { LINES } from './src/maplayout.js';
 import { Membrane } from './src/membrane.js';
+import { deltaP } from './src/energetics.js';
 import Renderer from './src/renderer.js';
 import { drawLadder } from './src/ladder.js';
 
@@ -32,11 +33,13 @@ bindEvents(dom, hooks);
 hooks.applyOrganism('cyanobacterium', true);
 
 // ATP synthase's turning rate, from the ATP it makes (a third of a turn each)
-let turnRate = 0, lastOx = 0;
+// less the ATP it splits running backward; negative while it runs backward
+let turnRate = 0, lastOx = 0, lastHy = 0;
 function trackTurns(dt) {
-    if (store.atpOxidative < lastOx) { lastOx = store.atpOxidative; turnRate = 0; }
-    turnRate += ((store.atpOxidative - lastOx) / 3 / dt - turnRate) * (1 - Math.exp(-dt / 3));
-    lastOx = store.atpOxidative;
+    const ox = store.atpOxidative, hy = store.atpHydrolyzed;
+    if (ox < lastOx || hy < lastHy) { lastOx = ox; lastHy = hy; turnRate = 0; }
+    turnRate += ((ox - lastOx - (hy - lastHy)) / 3 / dt - turnRate) * (1 - Math.exp(-dt / 3));
+    lastOx = ox; lastHy = hy;
 }
 
 function sample() {
@@ -78,16 +81,16 @@ function captionText() {
         const st = lineState(id);
         if (st && st.on && (!busiest || st.flux > busiest.flux)) busiest = st;
     }
-    const g = store.protonGradient, turns = turnRate;
+    const g = store.protonGradient, turns = turnRate, mv = Math.round(deltaP()), back = turns < -0.05;
     if (Renderer.narrow) {
         return `${spec.name}, ${simState.lightOn ? 'light' : 'dark'}${simState.oxygenAvailable ? '' : ', no O₂'}${frozen ? ', still' : simState.autoPlay ? '' : ', paused'}. `
             + (busiest && busiest.flux > 0.02 ? `${busiest.name} ${Math.round(busiest.flux * 60)}/min. ` : '')
-            + `${g} H⁺ ${spec.where}` + (Membrane.pos.atpSyn ? `; ATP synthase ${turns.toFixed(1)} turns/s.` : '.');
+            + `${g} H⁺ ${spec.where}, ${mv} mV` + (Membrane.pos.atpSyn ? `; ATP synthase ${back ? 'back ' : ''}${Math.abs(turns).toFixed(1)} turns/s.` : '.');
     }
     let s = `${spec.name} ${simState.lightOn ? 'in the light' : 'in the dark'}${simState.oxygenAvailable ? '' : ', without oxygen'}${frozen ? ', held still' : simState.autoPlay ? '' : ', paused'}: ${spec.say}. `;
     s += busiest && busiest.flux > 0.02 ? `${busiest.name} carries the most carbon, ${Math.round(busiest.flux * 60)} reactions a minute. ` : 'No line is running. ';
-    s += `${g} proton${g === 1 ? '' : 's'} ${spec.where}`;
-    s += Membrane.pos.atpSyn ? `; ATP synthase turns ${turns < 0.05 ? 'not at all' : turns.toFixed(1) + ' times a second'}.` : '.';
+    s += `${g} proton${g === 1 ? '' : 's'} ${spec.where}, Δp ${mv} mV`;
+    s += Membrane.pos.atpSyn ? `; ATP synthase turns ${back ? 'backward ' + (-turns).toFixed(1) + ' times a second' : turns < 0.05 ? 'not at all' : turns.toFixed(1) + ' times a second'}.` : '.';
     return s;
 }
 

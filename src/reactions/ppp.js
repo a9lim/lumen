@@ -1,7 +1,7 @@
 // Pentose Phosphate Pathway — oxidative phase only (3 steps).
 // Primary role: NADPH production for biosynthesis and antioxidant defense.
 // Non-oxidative rearrangement is handled by glycolysis step 10 (TKT+TAL).
-import { store, simState, counters } from '../state.js';
+import { store, simState, counters, nadpFree } from '../state.js';
 
 
 export function advancePPP(idx, direction) {
@@ -9,8 +9,8 @@ export function advancePPP(idx, direction) {
 
     // Step 0: G6PDH — rate-limiting, allosterically regulated by NADPH/NADP+ ratio
     if (idx === 0) {
-        if (store.g6p > 0 && store.nadph < store.totalNadp) {
-            let t = Math.min(store.g6p, store.totalNadp - store.nadph, 2);
+        if (store.g6p > 0 && nadpFree() > 0) {
+            let t = Math.min(store.g6p, nadpFree(), 2);
             store.g6p -= t; store.pgl6 += t; store.nadph += t;
             return { enzyme: 'G6PDH', reaction: 'G6P → 6-PGL + NADPH', yields: { nadph: t } };
         }
@@ -21,8 +21,8 @@ export function advancePPP(idx, direction) {
     }
     // Step 2: 6PGDH — oxidative decarboxylation, second NADPH + CO2
     else if (idx === 2) {
-        if (store.pga6 > 0 && store.nadph < store.totalNadp) {
-            let t = Math.min(store.pga6, store.totalNadp - store.nadph, 2);
+        if (store.pga6 > 0 && nadpFree() > 0) {
+            let t = Math.min(store.pga6, nadpFree(), 2);
             store.pga6 -= t; store.r5p += t; store.nadph += t; store.co2Produced += t;
             counters.pppRuns += t;
             return { enzyme: '6PGDH', reaction: '6-PGA → R5P + CO₂ + NADPH', yields: { nadph: t } };
@@ -33,7 +33,7 @@ export function advancePPP(idx, direction) {
 
 /** Batch: 6 PPP turns (net: G6P → 12 NADPH + 6 CO2, R5P recycled to G6P) */
 export function runPPPCycle() {
-    if (!simState.pppEnabled || store.g6p < 6 || store.totalNadp - store.nadph < 12) return false;
+    if (!simState.pppEnabled || store.g6p < 6 || nadpFree() < 12) return false;
     store.g6p--;
     store.nadph += 12;
     store.co2Produced += 6;

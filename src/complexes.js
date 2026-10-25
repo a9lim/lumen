@@ -204,7 +204,7 @@ export function atpHead(c, s, step, f) {
     assembly(c, s, [[-1.6, hy - 0.4, 2.3, 3.7, 0, 2], [1.6, hy - 0.4, 2.3, 3.7, 0, 2]], m, 30);
     const SW = [26, 8, -3], DX = [1.5, 0.35, -0.3];   // swing (°) and shift (nm) of a β in each state
     for (let i = 0; i < 2; i++) {
-        const sg = i ? 1 : -1, st = (step + i) % 3, nx = (st + 1) % 3;
+        const sg = i ? 1 : -1, st = ((step + i) % 3 + 3) % 3, nx = (st + 1) % 3;
         const rot = (SW[st] + (SW[nx] - SW[st]) * e) * sg, dx = DX[st] + (DX[nx] - DX[st]) * e;
         c.save(); c.translate(sg * (3.3 + dx) * s, (hy + 0.2) * s); c.rotate(rot * Math.PI / 180);
         assembly(c, s, [[0, 0, 2.35, 4.0, 0, 1]], m, 31 + i);

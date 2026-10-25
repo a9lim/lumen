@@ -4,6 +4,7 @@ import { _TWO_PI } from '../anim.js';
 import { simState, store } from '../state.js';
 import { showActiveStep, updateDashboard, markDashboardDirty } from '../dashboard.js';
 import { getRegulationFactor, getRegulationReason } from '../regulation.js';
+import { drive, driveReason } from '../energetics.js';
 import { advanceGlycolysis, runGlycolysisUpper, runGlycolysisLower, runGlycolysisLowerReverse, runGlycolysisUpperReverse } from './glycolysis.js';
 import { advanceKrebs, runKrebsCycle } from './krebs.js';
 import { advanceCalvin, runCalvinCycle } from './calvin.js';
@@ -35,7 +36,7 @@ const _dispatch = {
     run_ppp:                ()     => runPPPCycle(),
     run_glycolysis_upper:   (_i, d) => d === 'reverse' ? runGlycolysisUpperReverse() : runGlycolysisUpper(),
     run_glycolysis_lower:   (_i, d) => d === 'reverse' ? runGlycolysisLowerReverse() : runGlycolysisLower(),
-    atp_syn:                ()     => advanceATPSynthase(),
+    atp_syn:                (_i, d) => advanceATPSynthase(d),
     br:                     ()     => advanceBacteriorhodopsin(),
     nnt:                    ()     => advanceNNT(),
     betaox:                 (i, d) => advanceBetaOx(i, d),
@@ -87,21 +88,23 @@ export function advanceStep(pathway, stepIndex, direction) {
     const handler = _dispatch[pathway];
     if (!handler) { markDashboardDirty(); return false; }
 
-    // Allosteric gate — blocks fully inhibited reactions
+    // Allosteric gate and thermodynamic drive (energetics.js) — either blocks at 0
     const regFactor = getRegulationFactor(pathway, stepIndex, store, direction);
-    if (regFactor <= 0) {
+    const driveFactor = drive(pathway, direction, stepIndex);
+    if (regFactor <= 0 || driveFactor <= 0) {
         // Toast only on manual clicks, not autoplay (avoids notification spam)
         if (!simState.autoPlay) {
-            const reason = getRegulationReason(pathway, stepIndex, store, regFactor, direction);
+            const reason = regFactor <= 0 ? getRegulationReason(pathway, stepIndex, store, regFactor, direction) : driveReason(pathway, direction);
             if (reason && typeof showToast === 'function') showToast(reason);
         }
         markDashboardDirty();
         return false;
     }
 
-    // Partial inhibition in autoplay: probabilistic gate (e.g. 0.5 factor
-    // means ~50% chance of proceeding, modeling reduced enzyme activity)
-    if (regFactor < 1 && simState.autoPlay && Math.random() > regFactor) {
+    // Partial inhibition or a weak drive in autoplay: probabilistic gate (e.g.
+    // 0.5 means ~50% chance of proceeding, modeling a slower reaction)
+    const factor = regFactor * driveFactor;
+    if (factor < 1 && simState.autoPlay && Math.random() > factor) {
         markDashboardDirty();
         return false;
     }

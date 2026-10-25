@@ -6,6 +6,7 @@ import { markDashboardDirty } from './dashboard.js';
 import { advanceStep } from './reactions/dispatch.js';
 import Renderer from './renderer.js';
 import { SPECIMENS } from './specimens.js';
+import { synthaseWay } from './energetics.js';
 
 let etcTimer = 0;
 let metabolicTimer = 0;
@@ -37,12 +38,12 @@ export function autoplayTick(dt) {
     }
 
     // ── ETC fast tick (400ms) — continuous membrane processes ──
-    // Triple ATP synthase reflects ~3:1 H+ consumption vs single ETC reaction
+    // Triple ATP synthase reflects ~3:1 H+ consumption vs single ETC reaction;
+    // it runs whichever way Δp and the ATP:ADP ratio say (energetics.js)
     if (etcTimer > 0.4) {
         etcTimer = 0;
-        advanceStep('atp_syn');
-        advanceStep('atp_syn');
-        advanceStep('atp_syn');
+        const way = synthaseWay();
+        if (way) for (let i = 0; i < 3; i++) advanceStep('atp_syn', 0, way);
         advanceStep('etc_resp');
         advanceStep('etc_photo');
         // The specimen's membrane decides the rest: NNT only where it has one,
