@@ -2,8 +2,9 @@
 // what each segment shows (hidden, switched off, idle, running), hit-tests
 // clicks, and advances the trains. Drawing is in mapdraw.js.
 import { STATIONS, TRACKS, LOOPS, LINES, GRID, GRID_NARROW, KC, KR, NARROW_LABEL, NARROW_SIDE, PAIR, offsetPts, rounded, withLengths } from './maplayout.js';
-import { simState } from './state.js';
-import { flux } from './flux.js';
+import { flux, segmentState } from './flux.js';
+import { segmentLabels, stationLabel, synthesisOnly, cofactorGlyphs } from './mapbind.js';
+import { REACTIONS } from './engine/network.js';
 
 /** Segments whose running direction is the engine's reverse (left click runs the line's way). */
 export const FLIP = new Set(['adh', 'c6', 'c5', 'c3', 'c2', 'c10']);
@@ -32,6 +33,8 @@ export const MapView = {
     phase: {},          // segment id → train phase (px)
     pulse: {},          // segment id → 1 when its enzyme fires, decaying (its connections pulse)
     vis: {},            // segment id → { a: fade 0..1, hidden: bool }
+    cof: {},            // segment id → [glyphs running the drawn way, backward], from its main reaction
+    cell: null,         // { seg, has, plastid }: the cell the map is drawn for
     bounds: null,
 
     T(x, y) { const G = this.G, R = this.grid; return G.rot ? [G.ox + (y - R.y0) * G.U, G.oy + (x - R.x0) * G.U] : [G.ox + (x - R.x0) * G.U, G.oy + (y - R.y0) * G.U]; },
@@ -61,7 +64,28 @@ export const MapView = {
         for (const id in this.segs) if (!(id in this.phase)) this.phase[id] = 0;
         const c0 = this.T(GR.x0, GR.y0), c1 = this.T(GR.x1, GR.y1);
         this.bounds = { x0: Math.min(c0[0], c1[0]), y0: Math.min(c0[1], c1[1]), x1: Math.max(c0[0], c1[0]), y1: Math.max(c0[1], c1[1]) };
+        if (this.cell) this.applyCell(this.cell);
         return this.bounds.y1 - y;
+    },
+
+    /**
+     * Name the map for a cell: its segments' enzymes where they differ from
+     * the usual (glycogen's, or fatty-acid synthesis's where there is no
+     * β-oxidation), its stations' (glycogen or starch at the corridor's head),
+     * and each segment's connections from its main reaction's stoichiometry.
+     */
+    applyCell(cell) {
+        this.cell = cell;
+        const { seg, has, plastid } = cell, fas = synthesisOnly(has);
+        for (const [id, s] of Object.entries(this.segs)) {
+            s.label0 ??= s.label; s.rev0 ??= s.rev;
+            const L = segmentLabels(id, has);
+            s.label = L && L[0] || s.label0; s.rev = L && L[1] || s.rev0;
+            if (fas && id[0] === 'b' && s.rev0) s.label = s.rev0;
+            const main = (seg[id] || [])[0];
+            this.cof[id] = main ? cofactorGlyphs(REACTIONS[main[0]].stoich, Math.sign(main[1])) : null;
+        }
+        for (const S of Object.values(this.st)) { S.label0 ??= S.label; S.label = stationLabel(S.id, has, plastid) || S.label0; }
     },
 
     _track(id, def) {
@@ -116,23 +140,18 @@ export const MapView = {
         return { x: p[0], y: p[1], align, out: [dx, dy] };
     },
 
-    /** Fade and hidden state per segment, from the pathway switches and locks. */
-    updateVis() {
-        const s = simState, lk = s.lockedPathways || {};
-        const gA = s.glycolysisFade.value, cA = s.calvinFade.value, pA = s.pppFade.value, kA = s.krebsFade.value, bA = s.betaoxFade.value, fmA = s.fermentFade.value;
-        const set = (id, a, hidden) => { this.vis[id] = { a, hidden }; };
-        for (const id of ['g0', 'g2', 'g3', 'g5', 'g6', 'g7', 'g8', 'g9']) set(id, gA, !!lk.glycolysis);
-        set('g1', Math.max(gA, pA), !!lk.glycolysis && !!lk.ppp);
-        for (const id of ['c7', 'c0', 'c6', 'c5', 'c3', 'c2', 'c10']) set(id, cA, !!lk.calvin);
-        for (const id of ['p0', 'p1', 'p2', 'p10']) set(id, pA, !!lk.ppp);
-        set('pdh', Math.max(kA, bA), !!lk.krebs && !!lk.betaox);
-        // Each fermentation only where the organism has it: PDC for ethanol, LDH for lactate
-        set('pdc', fmA, !!lk.glycolysis || !s.ferments.ethanol);
-        set('adh', Math.max(fmA, kA), !!lk.glycolysis && !!lk.krebs);
-        set('ldh', Math.max(fmA, kA), !!lk.glycolysis || !s.ferments.lactate);
-        for (const id of ['aldh', 'acs']) set(id, Math.max(kA, bA), !!lk.krebs && !!lk.betaox);
-        for (const id of ['kin', 'k0', 'k1', 'k2', 'k3', 'k4', 'k5', 'k6', 'k7']) set(id, kA, !!lk.krebs);
-        for (const id of ['b0', 'b1', 'b2', 'b3', 'bspur']) set(id, bA, !!lk.betaox);
+    /**
+     * Fade and hidden state per segment: a segment none of whose enzymes the
+     * cell has leaves the map; one whose enzymes are switched off fades to a
+     * dashed hairline. dt eases the fades (seconds; 0 snaps them).
+     */
+    updateVis(dt = 0) {
+        const k = dt > 0 ? 1 - Math.exp(-dt / 0.25) : 1;
+        for (const id in this.segs) {
+            const st = segmentState(id), want = st.on ? 1 : 0, v = this.vis[id];
+            if (!v) { this.vis[id] = { a: want, hidden: !st.present }; continue; }
+            v.hidden = !st.present; v.a += (want - v.a) * k;
+        }
         for (const S of Object.values(this.st)) S.hidden = true;
         for (const seg of Object.values(this.segs)) if (!this.vis[seg.id].hidden) { this.st[seg.from].hidden = false; this.st[seg.to].hidden = false; }
     },
@@ -140,7 +159,8 @@ export const MapView = {
     /** Trains move at a speed set by each segment's flux. */
     update(dt) {
         const sp = 42 * this.G.us * dt;
-        for (const id in this.segs) this.phase[id] += (flux[id] || 0) * sp;
+        // mM of carbon per second: a few at full flow
+        for (const id in this.segs) this.phase[id] += (flux[id] || 0) * sp * 1.5;
         for (const id in this.pulse) this.pulse[id] = Math.max(0, this.pulse[id] - dt * 1.6);
         for (const L of this.loops) if (L.pulse) L.pulse = Math.max(0, L.pulse - dt * 1.6);
     },

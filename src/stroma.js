@@ -1,13 +1,12 @@
-// Stroma — the four cofactor pools as molecules, in the band under the
-// membrane where the cell keeps them. There is one molecule per unit of each
-// conserved pair (store.totalAtpAdp, totalNad, totalNadp, totalFad), and the
-// number in the charged or reduced form always equals the store's, as the
-// lumen's protons equal the gradient. A change with a place moves the
-// molecule nearest that place: a membrane reaction pulls one in to dock
-// (ATP synthase, FNR, NDH-1, SDH, NNT) and lets it go changed; an enzyme on
-// the map changes one and a thread runs from it to that enzyme, down, across
-// and down. Changes without a place (the maintenance drain, GPx, a reset)
-// change one at random. Time advances by dt × simState.speed.
+// Stroma — the cofactor pools as molecules, in the band under the membrane
+// where the cell keeps them. The window (window.js) sets each pool's count,
+// the slab's mean at the cell's concentrations (store.totalAtpAdp, totalNad,
+// totalNadp; FAD stays bound to its enzymes), and how many are in the charged
+// or reduced form; the drawing follows. A sampled event with a place moves
+// the molecule nearest that place: a membrane complex pulls one in to dock
+// (ATP synthase, FNR, NDH-1, NNT) and lets it go changed; an enzyme on the
+// map changes one and a thread runs from it to that enzyme, down, across and
+// down. What remains to match the cell's ratio changes at random.
 import { store } from './state.js';
 import { Membrane } from './membrane.js';
 import * as K from './complexes.js';

@@ -15,6 +15,13 @@
 // compartment; Km is mM. VISION.md: parameters keep a provenance tag, and
 // SABIO-RK's measured constants replace these over time.
 
+/**
+ * Each drawn complex's turnover at full capacity, s⁻¹ (illustrative): the
+ * window samples a representative centre's events at this times the share
+ * of capacity in use (window.js).
+ */
+export const KCAT = { ATPS: 300, NDH1: 300, SDH: 100, CYTBF: 400, CYTOX: 400, PSII: 200, PSI: 400, FNR: 200, CEF: 100, BR: 100, NNT: 30, MEHLER: 50 };
+
 /** Km by species when a reaction doesn't name its own, mM. */
 export const KM = {
     atp: 0.5, adp: 0.2, amp: 0.1, pi: 5, ppi: 0.05, nad: 0.2, nadh: 0.02, nadp: 0.02, nadph: 0.02,
@@ -81,7 +88,7 @@ p('TKT2', 100, { km: { f6p: 1 } });
 
 // ─── Calvin cycle: thioredoxin turns its enzymes on in the light ───
 // RuBisCO's apparent Km for CO₂ includes a carbon-concentrating mechanism's help
-p('RBPC', 5, { km: { co2: 0.01 }, reg: [light()] });
+p('RBPC', 4, { km: { co2: 0.01 }, reg: [light()] });
 p('PRUK', 20, { km: { ru5p__D: 0.02 }, reg: [light()] });
 p('SBA', 100);
 p('SBP', 10, { reg: [light()] });
@@ -128,7 +135,7 @@ p('CYTBF', 20);
 p('CYTOX', 30);
 // Photosystems and bacteriorhodopsin: Vmax at full light, scaled by the light's intensity
 // PSII lets its O₂ go: no product holds it back
-p('PSII', 2, { light: true, km: { o2: 100 } });
+p('PSII', 3, { light: true, km: { o2: 100 } });
 p('PSI', 10, { light: true });
 p('FNR', 20);
 p('CEF', 1.5);
@@ -143,6 +150,14 @@ p('NTT', 1);
 // The leaks are conductances: mM/s of protons per mV of Δp
 p('LEAK', 0.004, { law: 'leak' });
 p('UCP', 0.5, { law: 'leak' });
+
+// ─── Reactive oxygen: the leaks climb steeply with Δp; the scavengers are fast ───
+p('ROSI', 0.004, { km: { o2: 0.05 }, reg: [{ type: 'dp', K: 190, h: 6 }] });
+p('ROSQ', 0.008, { km: { o2: 0.05 }, reg: [{ type: 'dp', K: 190, h: 6 }] });
+p('SOD', 50, { km: { o2s: 0.0005 } });
+p('CAT', 20, { km: { h2o2: 1 } });
+p('GPX', 3, { km: { h2o2: 0.005, nadph: 0.01 } });
+p('REPAIR', 0, { km: { atp: 0.5, adp: 100, pi: 100 } });
 
 // ─── Carriers between the cytosol and the matrix ───
 p('MPC', 5); p('ANT', 20); p('PIC', 50); p('MAS', 5); p('OAAX', 1);

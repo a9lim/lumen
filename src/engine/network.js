@@ -157,6 +157,17 @@ R('LEAK', 'leak', 'Proton leak across the bilayer', 'h[l] -> h', { at: 'mito' })
 // Off until the uncoupling switch turns it on
 R('UCP', 'UCP', 'Uncoupling protein', 'h[l] -> h', { at: 'mito', membrane: 'ucp', off: true });
 
+// ─── Reactive oxygen: the chain's leaks and the scavengers, in the matrix where there is one ───
+// Complex I, and the Q-cycle's semiquinone at the Qo site (one electron to O₂, the other on to cytochrome c)
+R('ROSI', 'leak', 'Superoxide from complex I', 'nadh + 2 o2 -> nad + 2 o2s + h', { at: 'mito', ros: 'ndh1' });
+R('ROSQ', 'leak', 'Superoxide from the Q-cycle', 'q8h2 + o2 + pcox[l] -> q8 + o2s + pcred[l] + 2 h', { at: 'mito', ros: 'cytb6f' });
+R('SOD', 'SOD', 'Superoxide dismutase', '2 o2s + 2 h -> h2o2 + o2', { at: 'mito' });
+R('CAT', 'CAT', 'Catalase', '2 h2o2 -> 2 h2o + o2', { at: 'mito' });
+// Glutathione peroxidase, with glutathione reductase spending the NADPH
+R('GPX', 'GPx', 'Glutathione peroxidase', 'h2o2 + nadph + h -> 2 h2o + nadp', { at: 'mito' });
+// Repairing peroxidised membrane costs ATP (engine.js sets its rate from the damage)
+R('REPAIR', 'repair', 'Membrane repair', 'atp + h2o -> adp + pi + h', { at: 'mito', demand: 'repair' });
+
 // ─── Between the cytosol and the matrix (cells that have one), lumped:
 // their carriers' anatomy and charges wait for milestone 3 ───
 // The pyruvate carrier symports a proton, but electroneutrally: only ΔpH drives it. Until phase B

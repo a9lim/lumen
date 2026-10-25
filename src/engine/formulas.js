@@ -55,6 +55,8 @@ export const FORMULAS = {
     "q8h2": ["C49H76O4",0,"Ubiquinol-8"],
     "hco3": ["CHO3",-1,"Bicarbonate"],
     "hdca": ["C16H31O2",-1,"Hexadecanoate (n-C16:0)"],
+    "o2s": ["O2",-1,"Superoxide anion"],
+    "h2o2": ["H2O2",0,"Hydrogen peroxide"],
     "pmtcoa": ["C37H62N7O17P3S",-4,"Palmitoyl-CoA (n-C16:0CoA)"],
     "tdcoa": ["C35H58N7O17P3S",-4,"Tetradecanoyl-CoA (n-C14:0CoA)"],
     "ddcacoa": ["C33H54N7O17P3S",-4,"Dodecanoyl-CoA (n-C12:0CoA)"],

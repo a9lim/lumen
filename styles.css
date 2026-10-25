@@ -211,6 +211,30 @@
 .lu-row.locked .lu-name { text-decoration: line-through; text-decoration-thickness: 1px; }
 .lu-row.locked .lu-swatch { opacity: 0.4; }
 
+/* Dials: a hairline track, a dot, the value; under its switch, or named on their own row */
+.lu-dial { display: grid; grid-template-columns: 1fr 4.6em; align-items: center; gap: 8px; min-height: 26px; padding-left: 21px; }
+.lu-dial-named { grid-template-columns: 6.6em 1fr 4.6em; padding-left: 0; font-size: var(--font-base); }
+.lu-dial output { font-size: var(--font-sm); color: var(--text-secondary); font-variant-numeric: lining-nums tabular-nums; text-align: right; }
+.lu-dial.locked { color: var(--text-muted); }
+.lu-dial input[type=range] {
+    --slider-color: var(--text);
+    -webkit-appearance: none; appearance: none;
+    width: 100%; height: 18px; margin: 0; background: transparent; cursor: pointer;
+}
+.lu-dial input[type=range]:disabled { cursor: not-allowed; opacity: 0.4; }
+.lu-dial input[type=range]::-webkit-slider-runnable-track { height: 1px; background: var(--border-strong); }
+.lu-dial input[type=range]::-moz-range-track { height: 1px; background: var(--border-strong); }
+.lu-dial input[type=range]::-moz-range-progress { height: 1px; background: var(--slider-color); }
+.lu-dial input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 11px; height: 11px; margin-top: -5px; border-radius: 50%; border: 2px solid var(--bg-canvas); background: var(--slider-color); }
+.lu-dial input[type=range]::-moz-range-thumb { width: 7px; height: 7px; border-radius: 50%; border: 2px solid var(--bg-canvas); background: var(--slider-color); }
+.lu-dial input[type=range]:focus-visible { outline: none; }
+.lu-dial input[type=range]:focus-visible::-webkit-slider-thumb { outline: 1.5px solid var(--accent); outline-offset: 1px; }
+
+/* The inspector: a plain select on a hairline, its factors in small type */
+.lu-select { width: 100%; padding: 3px 0; font: inherit; font-size: var(--font-base); color: var(--text); background: transparent; border: 0; border-bottom: 1px solid var(--border-strong); border-radius: 0; }
+.lu-select:focus-visible { outline: 1.5px solid var(--text); outline-offset: 2px; }
+.lu-factors { min-height: 3.6em; margin: 6px 0 4px; font-variant-numeric: lining-nums tabular-nums; }
+
 .lu-actions { display: flex; flex-wrap: wrap; gap: 4px 10px; margin: 0 0 6px -6px; }
 .lu-seg .lu-btn { padding: 2px 4px; }
 .lu-val { font-size: var(--font-sm); color: var(--text-secondary); font-variant-numeric: lining-nums tabular-nums; min-width: 2.2em; text-align: center; }
@@ -219,11 +243,6 @@
 
 /* ─── Stats ─── */
 .lu-ladder { display: block; width: 100%; height: 330px; }
-.lu-step .step-enzyme { font-size: var(--font-lg); }
-.lu-step .step-reaction { margin-top: 2px; font-size: var(--font-sm); color: var(--text-secondary); }
-.lu-step .step-yield { margin-top: 2px; font-size: var(--font-sm); font-style: italic; color: var(--text-muted); }
-.lu-counters { display: flex; flex-wrap: wrap; gap: 2px 14px; margin-top: 10px; font-size: var(--font-sm); font-variant-numeric: lining-nums tabular-nums; }
-.lu-counters .lu-name { color: var(--text-muted); font-style: italic; }
 
 .lu-pool { display: grid; grid-template-columns: 1fr auto; align-items: baseline; gap: 3px 8px; margin-bottom: 12px; font-size: var(--font-sm); }
 .lu-pool .lu-name { color: var(--text-secondary); }

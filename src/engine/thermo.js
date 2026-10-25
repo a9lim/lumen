@@ -67,6 +67,9 @@ for (const k of ['MPC', 'ANT', 'PIC', 'MAS', 'OAAX', 'CPT', 'LEAK', 'UCP', 'TPT'
 export const E_NAD = -0.320;                          // V
 export const E_NADP = E_NAD - g('NNT') / (2 * F);     // from NNT's ΔG'°, so the two pools agree
 export const E_O2 = 0.816;
+// Oxygen's one-electron steps, V (Wood 1988): O₂/O₂•⁻ and O₂•⁻/H₂O₂; H₂O₂/H₂O then follows from O₂/H₂O,
+// so the four steps sum to it and every cycle through the scavengers is consistent
+const E_SO = -0.16, E_SH = 0.89, E_HW = (4 * E_O2 - E_SO - E_SH) / 2;
 /** A mole of photons at λ nm, kJ/mol. */
 export const photon = (nm) => HC / nm;
 
@@ -89,6 +92,12 @@ export function dg0(cell, r, chemical = false) {
         case 'BR': return chemical ? 0 : -F * 0.280;
         case 'MEHLER': return -2 * F * (E_O2 - fd);
         case 'SDH': return SUCC_NAD - 2 * F * (q - E_NAD);
+        case 'ROSI': return -2 * F * (E_SO - E_NAD);
+        case 'ROSQ': return -F * (E_SO - q) - F * (pc - q);
+        case 'SOD': return -F * (E_SH - E_SO);
+        case 'CAT': return -2 * F * (E_HW - (E_SO + E_SH) / 2);
+        case 'GPX': return -2 * F * (E_HW - E_NADP);
+        case 'REPAIR': return DG0.ATPM;
     }
     if (r.group === 'ACAD') return ACYL_NAD - 2 * F * (q - E_NAD);
     if (r.sink) return -Infinity;    // demand rows run one way only: their products aren't the network's

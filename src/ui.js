@@ -1,25 +1,28 @@
-// UI wiring — the colophon, the margin (specimen, lines, conditions, feed),
-// organism presets and their specimens, keyboard shortcuts, the about panel,
-// info tips and the reference overlay.
-import { simState, store, resetState } from './state.js';
+// UI wiring — the colophon, the margin (specimen, lines, conditions, dials,
+// feed), organism presets and their cells and specimens, keyboard shortcuts,
+// the about panel, info tips and the reference overlay.
+import { simState, clearHistories } from './state.js';
 import { updateTheme, cycleTheme, systemTheme } from './theme.js';
-import { initDashboard, updateDashboard } from './dashboard.js';
-import { resetAutoplayTimers } from './autoplay.js';
+import { initDashboard, updateDashboard, fillInspector } from './dashboard.js';
 import { resetFlux } from './flux.js';
 import Renderer from './renderer.js';
 import Particles from './particles.js';
 import Stroma from './stroma.js';
-import { ORGANISMS, CUSTOM } from './organisms.js';
+import { MapView } from './map.js';
+import { ORGANISMS } from './organisms.js';
 import { SPECIMENS, SPECIMEN_OF } from './specimens.js';
 import { REFERENCE } from './reference.js';
 import { drawLocator } from './locator.js';
+import { LINE_REACTIONS } from './mapbind.js';
+import Cell, { SLOWDOWNS } from './cell.js';
+import Win from './window.js';
 import * as K from './complexes.js';
 
 const _isPhone = () => window.matchMedia('(max-width: 760px)').matches;
 const _buzz = (k) => { if (typeof _haptics !== 'undefined') _haptics.trigger(k); };
 
-let reverseMode = false;
-window._lumenReverseMode = () => reverseMode;
+let inhibitMode = false;
+window._lumenReverseMode = () => inhibitMode;
 
 /** The DOM cache. Only IDs matter. */
 export function cacheDOMElements() {
@@ -27,33 +30,29 @@ export function cacheDOMElements() {
     return {
         canvas: $('sim-canvas'), caption: $('lu-caption'),
         lightToggle: $('light-toggle'), oxygenToggle: $('oxygen-toggle'), uncouplingToggle: $('uncoupling-toggle'),
+        lightDial: $('light-dial'), lightVal: $('light-val'), o2Dial: $('o2-dial'), o2Val: $('o2-val'),
+        atpDial: $('atp-dial'), atpVal: $('atp-val'), growthDial: $('growth-dial'), growthVal: $('growth-val'), growthName: $('growth-name'),
         glycToggle: $('glyc-toggle'), pppToggle: $('ppp-toggle'), calvinToggle: $('calvin-toggle'),
         krebsToggle: $('krebs-toggle'), betaoxToggle: $('betaox-toggle'),
         resetBtn: $('reset-btn'), addGlucoseBtn: $('add-glucose-btn'), addFattyAcidBtn: $('add-fatty-acid-btn'),
         themeBtn: $('theme-btn'), menuBtn: $('menu-btn'), closeStats: $('close-stats'), dashboard: $('dashboard'),
         modeBtn: $('mode-btn'), speedUp: $('speed-up'), speedDown: $('speed-down'), speedVal: $('speed-val'),
         organismGroup: $('organism-group'), organismDesc: $('organism-desc'),
-        protonsLeaked: $('protons-leaked'), protonGradient: $('proton-gradient'), protonMv: $('proton-mv'), atpMv: $('atp-mv'),
+        protonsLeaked: $('protons-leaked'), protonMv: $('proton-mv'), atpMv: $('atp-mv'),
         atpBar: $('atp-bar'), atpRatio: $('atp-ratio'), nadhBar: $('nadh-bar'), nadhRatio: $('nadh-ratio'),
-        nadphBar: $('nadph-bar'), nadphRatio: $('nadph-ratio'), fadh2Bar: $('fadh2-bar'), fadh2Ratio: $('fadh2-ratio'),
-        co2Net: $('co2-net'), o2Net: $('o2-net'), h2oNet: $('h2o-net'),
-        krebsEnzyme: $('krebs-enzyme'), krebsReaction: $('krebs-reaction'), krebsYield: $('krebs-yield'),
-        krebsTurn: $('krebs-turn'), calvinTurn: $('calvin-turn'), glycolysisRun: $('glycolysis-run'),
-        pppRun: $('ppp-run'), betaoxRun: $('betaox-run'),
+        nadphBar: $('nadph-bar'), nadphRatio: $('nadph-ratio'), poolsWhere: $('pools-where'),
+        co2Net: $('co2-net'), o2Net: $('o2-net'), glcNet: $('glc-net'), growthNet: $('growth-net'),
         atpSubstrate: $('atp-substrate'), atpOxidative: $('atp-oxidative'), atpSourceSub: $('atp-source-sub'), atpSourceOx: $('atp-source-ox'),
-        rosProduced: $('ros-produced'), rosScavenged: $('ros-scavenged'), activeROS: $('active-ros'),
+        superoxide: $('superoxide'), peroxide: $('peroxide'), rosMade: $('ros-made'),
         healthBar: $('health-bar'), healthRatio: $('health-ratio'),
+        enzymeSelect: $('lu-enzyme'), enzymeFactors: $('lu-enzyme-factors'), enzymePulse: $('lu-enzyme-pulse'), enzymeInhibit: $('lu-enzyme-inhibit'), enzymeHold: $('lu-enzyme-hold'), enzymeControl: $('lu-enzyme-control'),
         statsVisible: () => document.getElementById('tab-stats').classList.contains('active') && !document.body.classList.contains('lu-closed'),
     };
 }
 
-/** Put the specimen's membrane under the microscope and set what it can run. */
+/** Put the specimen's membrane under the microscope. */
 function setSpecimen(id) {
-    const can = SPECIMENS[id].can;
     simState.specimen = id;
-    simState.linearLightEnabled = can.photo;
-    simState.cyclicLightEnabled = can.cyclic;
-    simState.oxphosEnabled = can.resp;
     Renderer.setSpecimen(id);
 }
 
@@ -76,48 +75,62 @@ function setMargin(dom, open) {
     dom.menuBtn.setAttribute('aria-expanded', String(open));
 }
 
+const LINE_NAME = { glycolysis: 'glycolysis', ppp: 'pentose phosphate pathway', calvin: 'Calvin cycle', krebs: 'Krebs cycle', betaox: 'β-oxidation' };
+
 export function bindEvents(dom, hooks) {
     initDashboard(dom);
     const touched = () => hooks.onInteract && hooks.onInteract();
     const pathwayRows = { glycolysis: dom.glycToggle, ppp: dom.pppToggle, calvin: dom.calvinToggle, krebs: dom.krebsToggle, betaox: dom.betaoxToggle };
+    let lastLight = 1;
 
-    // ── Organism presets: switches, pools and the specimen ──
+    /** Show the cell's own state in the margin: its lines, conditions and dials. */
+    const syncMargin = () => {
+        const e = Cell.engine, org = ORGANISMS[simState.activeOrganism];
+        for (const [pw, t] of Object.entries(pathwayRows)) {
+            const present = LINE_REACTIONS[pw].some(Cell.has);
+            const reason = present ? '' : (org && org.lockedReason?.[pw]) || `This cell has no ${LINE_NAME[pw]}`;
+            t.checked = present && Cell.lines[pw]; t.disabled = !present;
+            t.closest('.lu-row').classList.toggle('locked', !present);
+            t.closest('.lu-row').title = reason;
+            simState.lockedPathways[pw] = present ? undefined : reason;
+        }
+        dom.lightToggle.checked = e.env.light > 0; dom.oxygenToggle.checked = e.env.o2 > 0;
+        if (e.env.light > 0) lastLight = e.env.light;
+        setDial(dom.lightDial, dom.lightVal, e.env.light, v => Math.round(v * 100) + '%');
+        setDial(dom.o2Dial, dom.o2Val, e.env.o2, v => Math.round(v * 100) + '% air');
+        setDial(dom.atpDial, dom.atpVal, e.dial.atp, v => v.toFixed(1) + ' mM/s');
+        const exporter = Cell.has('TPT');
+        dom.growthName.textContent = exporter ? 'Export to the cell' : 'Growth';
+        dom.growthDial.max = exporter ? 2 : 0.3; dom.growthDial.step = exporter ? 0.05 : 0.01;
+        setDial(dom.growthDial, dom.growthVal, exporter ? e.dial.export : e.dial.growth, v => exporter ? v.toFixed(2) + ' mM/s' : v.toFixed(2) + ' /h');
+        dom.growthDial.disabled = !exporter && !Cell.has('BIOMASS');
+        dom.growthDial.closest('.lu-dial').classList.toggle('locked', dom.growthDial.disabled);
+        dom.addGlucoseBtn.disabled = !Cell.has('EX_glc'); dom.addFattyAcidBtn.disabled = !Cell.has('EX_fa');
+    };
+    const setDial = (el, out, v, fmt) => { el.value = v; el.dispatchEvent(new Event('input')); out.textContent = fmt(v); };
+
+    /** Refill the scene's picture for the cell now under the microscope. */
+    const refresh = () => {
+        MapView.applyCell({ seg: Cell.seg, has: Cell.has, plastid: simState.specimen === 'chloroplast' });
+        resetFlux(); clearHistories();
+        Particles.clear(); Stroma.fill(); Particles.fill();
+        fillInspector(); syncMargin(); updateDashboard();
+    };
+
+    // ── Organism presets: the cell, its switches and the specimen ──
     const applyOrganism = (key, quiet) => {
         for (const b of dom.organismGroup.querySelectorAll('[data-org]')) {
             const on = b.dataset.org === key;
             b.setAttribute('aria-checked', String(on)); b.tabIndex = on ? 0 : -1;
         }
-        setSpecimen(SPECIMEN_OF[key]);
+        const spec = SPECIMEN_OF[key];
+        setSpecimen(spec);
         drawSpecimenIcons();
-        if (key === 'custom') {
-            simState.lockedPathways = {};
-            simState.ferments = { ...CUSTOM.ferments }; simState.oneWay = CUSTOM.oneWay;
-            for (const t of Object.values(pathwayRows)) { t.disabled = false; t.closest('.lu-row').classList.remove('locked'); t.closest('.lu-row').title = ''; }
-            dom.organismDesc.textContent = 'Manual control of all pathways, on a membrane with every complex';
-            return;
-        }
-        const org = ORGANISMS[key];
         simState.activeOrganism = key;
-        simState.lockedPathways = org.lockedReason || {};
-        simState.ferments = { ...org.ferments }; simState.oneWay = org.oneWay || {};
-        for (const [pw, t] of Object.entries(pathwayRows)) {
-            const reason = org.lockedReason?.[pw];
-            t.checked = org.pathways[pw];
-            t.dispatchEvent(new Event('change'));
-            t.disabled = !org.pathways[pw] && !!reason;
-            t.closest('.lu-row').classList.toggle('locked', !!reason);
-            t.closest('.lu-row').title = reason || simState.oneWay[pw] || '';
-        }
-        dom.lightToggle.checked = org.environment.light; dom.lightToggle.dispatchEvent(new Event('change'));
-        dom.oxygenToggle.checked = org.environment.oxygen; dom.oxygenToggle.dispatchEvent(new Event('change'));
-        resetState();
-        store.atp = Math.round(store.totalAtpAdp * org.initialRatios.atp);
-        store.nadh = Math.round(store.totalNad * org.initialRatios.nadh);
-        store.nadph = Math.round(store.totalNadp * org.initialRatios.nadph);
-        store.fadh2 = Math.round(store.totalFad * org.initialRatios.fadh2);
-        resetFlux(); Particles.clear(); Stroma.fill();
-        dom.organismDesc.textContent = org.desc;
-        updateDashboard();
+        simState.uncouplingEnabled = false; dom.uncouplingToggle.checked = false;
+        Cell.use(key, spec);
+        dom.organismDesc.textContent = key === 'custom' ? 'Every pathway and every complex on one membrane: a composite, not an organism' : ORGANISMS[key].desc;
+        refresh();
         if (!quiet) _buzz('medium');
     };
     hooks.applyOrganism = applyOrganism;
@@ -134,47 +147,53 @@ export function bindEvents(dom, hooks) {
         e.preventDefault(); const n = bs[(i + d + bs.length) % bs.length]; n.focus(); n.click();
     });
 
-    // ── Switches ──
-    _forms.bindToggle(dom.lightToggle, v => { simState.lightOn = v; updateTheme(dom.themeBtn); touched(); });
-    _forms.bindToggle(dom.oxygenToggle, v => { simState.oxygenAvailable = v; touched(); });
-    _forms.bindToggle(dom.glycToggle, v => { simState.glycolysisEnabled = v; touched(); });
-    _forms.bindToggle(dom.pppToggle, v => { simState.pppEnabled = v; touched(); });
-    _forms.bindToggle(dom.calvinToggle, v => { simState.calvinEnabled = v; touched(); });
-    _forms.bindToggle(dom.krebsToggle, v => { simState.krebsEnabled = v; touched(); });
-    _forms.bindToggle(dom.betaoxToggle, v => { simState.betaoxEnabled = v; touched(); });
-    _forms.bindToggle(dom.uncouplingToggle, v => { simState.uncouplingEnabled = v; touched(); });
+    // ── Switches: lines are knockouts; light and O₂ switch their dials between off and on ──
+    for (const [pw, t] of Object.entries(pathwayRows)) _forms.bindToggle(t, v => { Cell.setLine(pw, v); touched(); });
+    _forms.bindToggle(dom.lightToggle, v => { Cell.setEnv('light', v ? lastLight || 1 : 0); syncMargin(); updateTheme(dom.themeBtn); touched(); });
+    _forms.bindToggle(dom.oxygenToggle, v => { Cell.setEnv('o2', v ? 1 : 0); syncMargin(); touched(); });
+    _forms.bindToggle(dom.uncouplingToggle, v => { simState.uncouplingEnabled = v; Cell.applySwitches(); touched(); });
     const flip = (el) => { if (el.disabled) return; el.checked = !el.checked; el.dispatchEvent(new Event('change')); };
 
-    // ── Taps run forward or backward ──
+    // ── Dials ──
+    _forms.bindSlider(dom.lightDial, dom.lightVal, v => { if (!Cell.engine || Cell.engine.env.light === v) return; Cell.setEnv('light', v); dom.lightToggle.checked = v > 0; if (v > 0) lastLight = v; updateTheme(dom.themeBtn); }, v => Math.round(v * 100) + '%');
+    _forms.bindSlider(dom.o2Dial, dom.o2Val, v => { if (!Cell.engine || Cell.engine.env.o2 === v) return; Cell.setEnv('o2', v); dom.oxygenToggle.checked = v > 0; }, v => Math.round(v * 100) + '% air');
+    _forms.bindSlider(dom.atpDial, dom.atpVal, v => { if (Cell.engine) Cell.setDial('atp', v); }, v => v.toFixed(1) + ' mM/s');
+    _forms.bindSlider(dom.growthDial, dom.growthVal, v => { if (!Cell.engine) return; Cell.setDial(Cell.has('TPT') ? 'export' : 'growth', v); },
+        v => Cell.has('TPT') ? v.toFixed(2) + ' mM/s' : v.toFixed(2) + ' /h');
+
+    // ── Taps pulse or inhibit ──
     const syncMode = () => {
-        dom.modeBtn.textContent = reverseMode ? 'backward' : 'forward';
-        dom.modeBtn.setAttribute('aria-pressed', String(reverseMode));
-        dom.modeBtn.setAttribute('aria-label', reverseMode ? 'Reverse mode' : 'Forward mode');
-        dom.modeBtn.title = (reverseMode ? 'Reverse mode' : 'Forward mode') + ' (X)';
+        dom.modeBtn.textContent = inhibitMode ? 'inhibit' : 'pulse';
+        dom.modeBtn.setAttribute('aria-pressed', String(inhibitMode));
+        dom.modeBtn.setAttribute('aria-label', inhibitMode ? 'Taps inhibit' : 'Taps pulse');
+        dom.modeBtn.title = (inhibitMode ? 'Taps inhibit' : 'Taps pulse') + ' (X)';
     };
-    dom.modeBtn.addEventListener('click', () => { reverseMode = !reverseMode; syncMode(); });
+    dom.modeBtn.addEventListener('click', () => { inhibitMode = !inhibitMode; syncMode(); });
     syncMode();
 
-    // ── Particle speed ──
-    const SPEEDS = [0.25, 0.5, 1, 2, 4];
-    let speedIdx = 2;
-    const setSpeed = (d) => {
-        speedIdx = Math.max(0, Math.min(SPEEDS.length - 1, speedIdx + d));
-        simState.speed = SPEEDS[speedIdx];
-        dom.speedVal.textContent = SPEEDS[speedIdx] + '×';
-        showToast('Speed ' + SPEEDS[speedIdx] + '×');
+    // ── The slowdown: how much slower than life the chemistry runs ──
+    let slowIdx = SLOWDOWNS.indexOf(Win.slow);
+    const setSlow = (d) => {
+        slowIdx = Math.max(0, Math.min(SLOWDOWNS.length - 1, slowIdx + d));
+        Win.slow = SLOWDOWNS[slowIdx];
+        dom.speedVal.textContent = SLOWDOWNS[slowIdx] + '×';
+        showToast('Chemistry slowed ' + SLOWDOWNS[slowIdx] + '×');
     };
-    dom.speedUp.addEventListener('click', () => setSpeed(1));
-    dom.speedDown.addEventListener('click', () => setSpeed(-1));
+    dom.speedVal.textContent = Win.slow + '×';
+    dom.speedUp.addEventListener('click', () => setSlow(1));
+    dom.speedDown.addEventListener('click', () => setSlow(-1));
 
     // ── Reset and feed ──
     dom.resetBtn.addEventListener('click', () => {
-        touched();
-        resetState(); resetAutoplayTimers(); resetFlux(); Particles.clear(); Stroma.fill();
-        updateDashboard(); _buzz('warning');
+        touched(); Cell.reset(simState.specimen); refresh(); _buzz('warning');
     });
-    const addGlucose = () => { touched(); store.glucose++; updateDashboard(); _buzz('light'); };
-    const addFat = () => { touched(); store.fattyAcid++; updateDashboard(); _buzz('light'); };
+    const feed = (id, mM, name) => {
+        touched();
+        if (!Cell.has(id === 'glc__D' ? 'EX_glc' : 'EX_fa')) { showToast(`This cell takes up no ${name}`); return; }
+        Cell.engine.feed(id, mM); showToast(`+${mM} mM ${name} in the medium`); _buzz('light');
+    };
+    const addGlucose = () => feed('glc__D', 5, 'glucose');
+    const addFat = () => feed('hdca', 0.2, 'palmitate');
     dom.addGlucoseBtn.addEventListener('click', addGlucose);
     dom.addFattyAcidBtn.addEventListener('click', addFat);
 
@@ -188,12 +207,12 @@ export function bindEvents(dom, hooks) {
     const zoomAt = (f) => Renderer.camera.zoomBy(f, Renderer.W / 2, Renderer.H / 2);
     const shortcuts = [
         { key: 'Space', label: 'Play or pause', group: 'Simulation', action: () => document.querySelector('[data-colophon="play"]')?.click() },
-        { key: ',', label: 'Slower particles', group: 'Simulation', action: () => setSpeed(-1) },
-        { key: '.', label: 'Faster particles', group: 'Simulation', action: () => setSpeed(1) },
+        { key: ',', label: 'Slower chemistry', group: 'Simulation', action: () => setSlow(-1) },
+        { key: '.', label: 'Faster chemistry', group: 'Simulation', action: () => setSlow(1) },
         { key: 'R', label: 'Reset', group: 'Simulation', action: () => dom.resetBtn.click() },
         { key: 'G', label: 'Add glucose', group: 'Simulation', action: addGlucose },
         { key: 'F', label: 'Add fatty acid', group: 'Simulation', action: addFat },
-        { key: 'X', label: 'Taps run forward or backward', group: 'Simulation', action: () => dom.modeBtn.click() },
+        { key: 'X', label: 'Taps pulse or inhibit', group: 'Simulation', action: () => dom.modeBtn.click() },
         { key: 'L', label: 'Toggle light', group: 'Conditions', action: () => flip(dom.lightToggle) },
         { key: 'O', label: 'Toggle oxygen', group: 'Conditions', action: () => flip(dom.oxygenToggle) },
         { key: 'U', label: 'Toggle uncoupling', group: 'Conditions', action: () => flip(dom.uncouplingToggle) },
@@ -217,16 +236,17 @@ export function bindEvents(dom, hooks) {
     const about = initAboutPanel({
         title: 'Lumen',
         lastUpdated: '2026-10-25',
-        description: 'Explore how cells make energy. A membrane in cross-section sits above the cell’s carbon network, drawn as a transit map. Each organism puts its own membrane under the microscope. Click an enzyme on the map or a complex in the membrane to run it, or let it play, and watch protons pile up, ATP synthase turn, and the busiest lines thicken.',
+        description: 'Explore how cells make energy. A membrane in cross-section sits above the cell’s carbon network, drawn as a transit map, and both run on one model of the cell’s chemistry, slowed so you can watch it. Each organism puts its own membrane under the microscope. Pulse an enzyme on the map or a complex in the membrane and watch where the push spreads and where it dies; change the light, the oxygen, the cell’s demand for ATP and its growth.',
         controls: [
-            { label: 'Run a reaction', value: 'Click an enzyme on the map or a complex' },
-            { label: 'Run it backward', value: 'Right-click (or X on touch)' },
-            { label: 'A whole turn', value: 'Click a loop’s name' },
+            { label: 'Pulse an enzyme', value: 'Click it on the map or in the membrane' },
+            { label: 'Inhibit it', value: 'Right-click (or X on touch)' },
+            { label: 'Hold the pulse', value: 'Press and hold' },
+            { label: 'A whole line', value: 'Click a loop’s name' },
             { label: 'Add substrate', value: 'Glucose (G) / fatty acid (F)' },
-            { label: 'Toggle a line', value: 'Margin or keys 1–5' },
+            { label: 'Knock out a line', value: 'Margin or keys 1–5' },
             { label: 'Conditions', value: 'Light (L) / oxygen (O) / uncoupling (U)' },
             { label: 'Play / pause', value: 'Space' },
-            { label: 'Particle speed', value: ', and .' },
+            { label: 'Slow the chemistry', value: ', and .' },
             { label: 'Zoom / pan', value: '= / - / 0, scroll, drag' },
             { label: 'Margin', value: 'S, Esc, and [ / ] for tabs' },
         ],
@@ -243,23 +263,25 @@ export function bindEvents(dom, hooks) {
     dom.themeBtn.addEventListener('click', () => { cycleTheme(dom.themeBtn); _buzz('selection'); });
     updateTheme(dom.themeBtn);
 
-
     // ── Info tips and the reference overlay ──
     registerInfoTips({
-        glycolysis: { title: 'Glycolysis', body: 'Splits glucose into 2 pyruvate, netting 2 ATP and 2 NADH. Run backward it is gluconeogenesis.' },
-        ppp: { title: 'Pentose phosphate pathway', body: 'Produces NADPH for biosynthesis and antioxidant defense.' },
-        calvin: { title: 'Calvin cycle', body: 'Fixes CO₂ into sugar using ATP and NADPH from the light reactions. It runs back along the glycolysis corridor on its own track.' },
-        krebs: { title: 'Krebs cycle (TCA)', body: 'Oxidizes acetyl-CoA to CO₂, producing NADH, FADH₂, and GTP. Needs oxygen.' },
-        sunlight: { title: 'Sunlight', body: 'Powers photosynthetic electron transport where the membrane has photosystems, and bacteriorhodopsin in the archaeon.' },
-        oxygen: { title: 'Ambient O₂', body: 'Enables aerobic respiration. Without it, fermentation (to lactate or to ethanol, as the organism has it) regenerates NAD⁺.' },
-        protons: { title: 'Proton gradient', body: 'Protons pumped across the membrane drive ATP synthase: four per ATP, twelve per turn.' },
+        glycolysis: { title: 'Glycolysis', body: 'Splits glucose into 2 pyruvate, netting 2 ATP and 2 NADH. Its bypasses (G6Pase, FBPase, PC and PEPCK) run it back as gluconeogenesis. Switching a line off knocks out its enzymes.' },
+        ppp: { title: 'Pentose phosphate pathway', body: 'Produces NADPH for biosynthesis and antioxidant defense, and the pentoses for nucleotides. Light switches it off in plastids and cyanobacteria.' },
+        calvin: { title: 'Calvin cycle', body: 'Fixes CO₂ into sugar using ATP and NADPH from the light reactions; light switches its enzymes on. It runs back along the glycolysis corridor on its own track.' },
+        krebs: { title: 'Krebs cycle (TCA)', body: 'Oxidizes acetyl-CoA to CO₂, producing NADH, GTP, and the quinol that succinate dehydrogenase hands straight to the chain. It stops when its NADH can’t be reoxidized.' },
+        sunlight: { title: 'Sunlight', body: 'The light’s intensity, as a share of full sun. It drives the photosystems where the membrane has them, and bacteriorhodopsin in the archaeon.' },
+        oxygen: { title: 'Ambient O₂', body: 'Oxygen in the medium, as a share of air. Without it the oxidase stops and fermentation (to lactate or to ethanol, as the organism has it) regenerates NAD⁺.' },
+        engine: { title: 'The model', body: 'Each organism is a kinetic model: every reaction runs at its capacity times thermodynamics (1 − e^(ΔG/RT)), saturation and regulation, advanced in model time. The figure runs it slowed so it can be followed; slowing it changes how much chemistry a second shows, not the chemistry.' },
+        demand: { title: 'Demand', body: 'ATP demand is the work the cell does that the model doesn’t draw: ion pumps, motility, turnover. Growth draws the precursors of new cell from the map, in E. coli’s core proportions; a plastid exports triose phosphate to its cell instead.' },
+        protons: { title: 'Proton-motive force', body: 'Δp drives ATP synthase: four protons per ATP, twelve per turn. Each red dot in the lumen stands for 2 mV of it.' },
         ladder: { title: 'Electrons, by redox potential', body: 'Each carrier stands at its midpoint potential, more reducing at the top; each electron now moving in the membrane is a bead on it. Light lifts electrons at P680 and P700; respiration only falls, toward oxygen.' },
-        betaox: { title: 'Beta oxidation', body: 'Breaks fatty acids into acetyl-CoA, yielding FADH₂ and NADH per round. Backward, it is fatty-acid synthesis, the only way it runs in cyanobacteria and chloroplasts.' },
-        uncoupling: { title: 'Uncoupling', body: 'Leaks protons back across the membrane, dissipating the gradient as heat.' },
-        oxStress: { title: 'Oxidative stress', body: 'ROS from electron leak damage cells; SOD, catalase, and GPx scavenge them.' },
+        betaox: { title: 'Beta oxidation', body: 'Breaks fatty acids into acetyl-CoA, two carbons a round, handing its electrons to NADH and the quinone pool. Fatty-acid synthesis is a separate pathway drawn running it backward: the only way the line runs in cyanobacteria and chloroplasts.' },
+        uncoupling: { title: 'Uncoupling', body: 'Opens an uncoupling protein: protons leak back across the membrane, dissipating the gradient as heat, and the chain runs faster to keep up.' },
+        oxStress: { title: 'Oxidative stress', body: 'Complex I and the Q-cycle leak electrons to O₂ as superoxide, more as Δp climbs. SOD, catalase and glutathione peroxidase (on NADPH) take it; what they miss peroxidises the membrane, which leaks protons and costs ATP to repair.' },
+        inspector: { title: 'Inspect an enzyme', body: 'Its rate, and why: ΔG (thermodynamics: 1 − e^(ΔG/RT)), how saturated it is with its substrates, and how much its regulators hold it back. The rate is their product times its capacity. Hold raises its activity 10% and keeps it there. Two copies of the cell, one held and one not, then run to a steady state. Each flux’s response is the enzyme’s control coefficient over it: 1 means the flux follows the enzyme, 0 means it ignores it (Kacser & Burns 1973).' },
     });
     const openReference = initReferenceOverlay(document.getElementById('reference-overlay'), document.getElementById('reference-title'),
         document.getElementById('reference-body'), document.getElementById('reference-close'), REFERENCE);
     bindReferenceTriggers(openReference);
-    setMobileHint('hint', 'Tap an enzyme or a complex to run it; X makes taps run backward. Long-press for what it is; pinch to zoom.', '.panel-hint');
+    setMobileHint('hint', 'Tap an enzyme or a complex to pulse it; X makes taps inhibit. Long-press for what it is and to hold it 10% up, compared in Stats; pinch to zoom.', '.panel-hint');
 }

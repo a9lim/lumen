@@ -30,6 +30,7 @@ const KREBS = ['CS', 'ACONT', 'ICDH', 'AKGDH', 'SUCOAS', 'SDH', 'FUM', 'MDH'];
 const BETAOX = [16, 14, 12, 10, 8, 6, 4].flatMap(n => ['ACAD' + n, 'ECH' + n, 'HACD' + n, 'KAT' + n]);
 const FAS = ['ACC', 'FAS4', 'FAS6', 'FAS8', 'FAS10', 'FAS12', 'FAS14', 'FAS16'];
 const RESP = ['NDH1', 'CYTBF', 'CYTOX'];
+const ROS = ['ROSI', 'ROSQ', 'SOD', 'CAT', 'GPX', 'REPAIR'];
 const PHOTO = ['PSII', 'CYTBF', 'PSI', 'FNR', 'CEF', 'MEHLER'];
 const STORE = ['GLGS', 'GLGP'];
 const HOUSE = ['ADK', 'PPA', 'ATPM', 'ATPS', 'LEAK', 'EX_pi', 'EX_co2'];
@@ -47,7 +48,7 @@ const E_PQ = 0.080, E_UQ = 0.045, E_PC = 0.370, E_CYTC = 0.260, E_FD = -0.428;
 export const CELLS = {
     cyanobacterium: {
         name: 'Synechocystis sp. PCC 6803',
-        reactions: uniq(HOUSE, GROW, GLYC, PPP_OX, PPP_NONOX, CALVIN, STORE, KREBS, FAS, RESP, PHOTO,
+        reactions: uniq(HOUSE, GROW, GLYC, PPP_OX, PPP_NONOX, CALVIN, STORE, KREBS, FAS, RESP, ROS, PHOTO,
             ['PPS', 'PPC', 'PDH', 'LDH', 'EX_lac', 'EX_glc', 'EX_o2', 'NNT']),
         compartments: { c: 1, l: 0.1 },
         potentials: { q: E_PQ, pc: E_PC, fd: E_FD },
@@ -60,7 +61,7 @@ export const CELLS = {
         // Glycolysis is held back in the light, where the Calvin cycle needs its triose and PGA
         // and G6PDH is switched off by light, so the pentose phosphate pathway doesn't burn what the Calvin cycle fixes
         kinetics: { ATPS: { reg: [light(0.05)] }, GAPD: { vmax: 2 }, PFK: { reg: [dark(0.05)] }, PYK: { reg: [dark(0.05)] },
-            G6PDH: { reg: [dark(0.01)] }, TALA: { vmax: 5 },
+            G6PDH: { reg: [dark(0.01)] }, TALA: { vmax: 1 },
             // Respiration shares the thylakoid's carriers but takes only a little of light's electrons
             CYTOX: { vmax: 3 },
             // D-lactate dehydrogenase is a minor activity, for dark anoxia
@@ -72,7 +73,7 @@ export const CELLS = {
     },
     animalCell: {
         name: 'Animal cell',
-        reactions: uniq(HOUSE, GROW, GLYC, PPP_OX, PPP_NONOX, KREBS, BETAOX, RESP, MATRIX,
+        reactions: uniq(HOUSE, GROW, GLYC, PPP_OX, PPP_NONOX, KREBS, BETAOX, RESP, ROS, MATRIX,
             ['G6PP', 'FBP', 'PC', 'PPCK', 'PDH', 'LDH', 'ADH', 'ALDH', 'ACS', 'FACS', 'EX_lac', 'EX_glc', 'EX_fa', 'EX_etoh', 'EX_ac', 'EX_o2', 'NNT', 'UCP']),
         compartments: { c: 1, m: 0.2, l: 0.02 },
         potentials: { q: E_UQ, pc: E_CYTC, fd: E_FD },
@@ -115,7 +116,7 @@ export const CELLS = {
     },
     custom: {
         name: 'Composite cell',
-        reactions: uniq(HOUSE, GROW, GLYC, PPP_OX, PPP_NONOX, CALVIN, STORE, KREBS, BETAOX, FAS, RESP, PHOTO,
+        reactions: uniq(HOUSE, GROW, GLYC, PPP_OX, PPP_NONOX, CALVIN, STORE, KREBS, BETAOX, FAS, RESP, ROS, PHOTO,
             ['G6PP', 'PC', 'PPCK', 'PPS', 'PPC', 'PDH', 'LDH', 'PDC', 'ADH', 'ALDH', 'ACS', 'FACS',
              'EX_lac', 'EX_glc', 'EX_fa', 'EX_etoh', 'EX_ac', 'EX_o2', 'NNT', 'UCP', 'BR']),
         compartments: { c: 1, l: 0.1 },

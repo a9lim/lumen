@@ -6,10 +6,10 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Lumen — Interactive Cellular Metabolism Simulator | a9l.im</title>
   <meta name="description"
-    content="Trace connected carbon metabolism, electron transport, conserved cofactor pools, enzyme feedback, and reactive oxygen species across five stylized cell presets.">
+    content="Pulse the enzymes of a kinetic model of cellular energy metabolism (glycolysis, the Krebs and Calvin cycles, electron transport, ATP synthase) and watch flux, cofactor pools and the proton gradient answer, in five organisms.">
   <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1">
   <meta property="og:title" content="Lumen — Interactive Cellular Metabolism Simulator">
-  <meta property="og:description" content="Trace connected carbon metabolism, electron transport, conserved cofactor pools, enzyme feedback, and reactive oxygen species across five stylized cell presets.">
+  <meta property="og:description" content="Pulse the enzymes of a kinetic model of cellular energy metabolism (glycolysis, the Krebs and Calvin cycles, electron transport, ATP synthase) and watch flux, cofactor pools and the proton gradient answer, in five organisms.">
   <meta property="og:type" content="website">
   <meta property="og:url" content="https://a9l.im/lumen">
   <meta property="og:site_name" content="a9l.im">
@@ -25,7 +25,7 @@
   <meta name="twitter:creator" content="@_a9lim">
   <meta property="og:locale" content="en_US">
   <meta name="twitter:title" content="Lumen — Interactive Cellular Metabolism Simulator">
-  <meta name="twitter:description" content="Trace connected carbon metabolism, electron transport, conserved cofactor pools, enzyme feedback, and reactive oxygen species across five stylized cell presets.">
+  <meta name="twitter:description" content="Pulse the enzymes of a kinetic model of cellular energy metabolism (glycolysis, the Krebs and Calvin cycles, electron transport, ATP synthase) and watch flux, cofactor pools and the proton gradient answer, in five organisms.">
   <meta name="author" content="a9lim">
   <link rel="icon" href="/favicon.ico">
   <meta name="theme-color" content="#FCFCFB">
@@ -64,7 +64,7 @@
     "@type": ["WebApplication", "LearningResource"],
     "name": "Lumen",
     "url": "https://a9l.im/lumen",
-    "description": "Trace connected carbon metabolism, electron transport, conserved cofactor pools, enzyme feedback, and reactive oxygen species across five stylized cell presets.",
+    "description": "Pulse the enzymes of a kinetic model of cellular energy metabolism (glycolysis, the Krebs and Calvin cycles, electron transport, ATP synthase) and watch flux, cofactor pools and the proton gradient answer, in five organisms.",
     "speakable": {
       "@type": "SpeakableSpecification",
       "cssSelector": ["meta[name='description']"]
@@ -102,6 +102,9 @@
       "Electron transport chain and oxidative phosphorylation",
       "Photosynthesis and the Calvin cycle",
       "Allosteric enzyme regulation and feedback inhibition",
+      "Thermodynamic driving force and the direction of reactions",
+      "Respiratory control and the proton-motive force",
+      "Metabolic control analysis and flux control coefficients",
       "Reactive oxygen species production and scavenging",
       "Cofactor conservation and pathway feedback"
     ],
@@ -153,7 +156,7 @@
         "name": "What metabolic pathways does Lumen simulate?",
         "acceptedAnswer": {
           "@type": "Answer",
-          "text": "Lumen connects glycolysis and its reverse path, the pentose phosphate pathway, the Calvin and Krebs cycles, pyruvate processing, ethanol fermentation and salvage, beta-oxidation, simplified fatty-acid synthesis, respiratory and photosynthetic electron flow, ATP synthesis, NNT, bacteriorhodopsin, and ROS scavenging through one shared metabolite store."
+          "text": "Lumen models glycolysis and gluconeogenesis, the pentose phosphate pathway, the Calvin and Krebs cycles, pyruvate dehydrogenase, lactate and ethanol fermentation, beta-oxidation and fatty-acid synthesis, glycogen and starch, respiratory and photosynthetic electron transport, ATP synthase, bacteriorhodopsin, NNT and reactive-oxygen scavenging. Each organism is one kinetic model whose reactions are balanced in elements and charge and named by their BiGG identifiers."
         }
       },
       {
@@ -161,7 +164,7 @@
         "name": "How does the electron transport chain work in Lumen?",
         "acceptedAnswer": {
           "@type": "Answer",
-          "text": "The membrane view renders 14 proteins and electron carriers spanning respiratory and photosynthetic flow. A single proton-gradient store drives ATP synthase at four gradient units per ATP; passive or UCP-enhanced leak dissipates it, while electron leaks at NDH-1 and the Q-cycle generate ROS stochastically."
+          "text": "Each membrane reaction's free energy comes from its carriers' midpoint potentials (and, for the photosystems, the energy of the photons absorbed), plus the cost of moving charge against the proton-motive force. The gradient therefore slows the pumps that build it, and ATP synthase runs forward or backward as its ΔG says. The figure draws one representative copy of each complex turning over at the model's rate, slowed so it can be followed."
         }
       },
       {
@@ -169,7 +172,7 @@
         "name": "What is allosteric regulation in cellular metabolism?",
         "acceptedAnswer": {
           "@type": "Answer",
-          "text": "Lumen applies explicit cofactor-ratio gates before each reaction. High ATP inhibits phosphofructokinase and slows citrate synthase; high NADH inhibits isocitrate dehydrogenase and, with accumulated acetyl-CoA, blocks pyruvate dehydrogenase. NADPH, FADH2, and low ATP gate other pathways."
+          "text": "Enzymes are sped up or slowed by molecules other than their substrates. In Lumen, regulation is one factor in each rate, beside saturation and thermodynamics: ATP inhibits phosphofructokinase and AMP relieves it, NADH/NAD⁺ slows the Krebs cycle's dehydrogenases, and light switches the Calvin cycle's enzymes on. The inspector shows each factor for any enzyme."
         }
       },
       {
@@ -177,7 +180,7 @@
         "name": "What organism presets are available?",
         "acceptedAnswer": {
           "@type": "Answer",
-          "text": "Five stylized presets are available: cyanobacterium, animal cell, obligate anaerobe, plant chloroplast, and archaeon. Each resets cofactor ratios and applies a different combination of pathway locks, light, and oxygen."
+          "text": "Five: a cyanobacterium (a thylakoid), an animal cell (a mitochondrial crista, with a matrix), an obligate anaerobe (a plasma membrane under a cell wall), a plant chloroplast (a thylakoid with a granum) and a halophilic archaeon (its purple membrane). Each has its own reactions, compartments, pools and environment, and a custom composite has everything."
         }
       },
       {
@@ -185,7 +188,7 @@
         "name": "How do reactive oxygen species work in Lumen?",
         "acceptedAnswer": {
           "@type": "Answer",
-          "text": "Electron-transfer steps at NDH-1 and the Q-cycle have a small random leak chance. Active ROS lowers cell health; SOD and catalase remove a free tier, and GPx can consume NADPH to remove more. Health regenerates when no active ROS remains."
+          "text": "Complex I and the Q-cycle leak superoxide at rates that climb with the proton-motive force. Superoxide dismutase, catalase and glutathione peroxidase (which spends NADPH) remove it. What remains damages the membrane, which then leaks protons, and repair spends ATP."
         }
       },
       {
@@ -209,7 +212,7 @@
         "name": "What is oxidative phosphorylation?",
         "acceptedAnswer": {
           "@type": "Answer",
-          "text": "In Lumen's simplified respiratory path, NADH or FADH2 enters a rendered carrier chain, enabled proton-pumping steps increase one shared gradient value, and ATP synthase consumes four gradient units to convert one ADP-equivalent back into ATP."
+          "text": "Electron transport from NADH or succinate to oxygen pumps protons across the membrane, and ATP synthase lets four of them back for each ATP it makes. In Lumen this coupling is thermodynamic: with little ADP the gradient rises until the chain nearly stalls (respiratory control), and an uncoupler collapses it."
         }
       }
     ]
@@ -224,11 +227,11 @@
     "@type": "HowTo",
     "name": "How to explore cellular metabolism with Lumen",
     "step": [
-      {"@type": "HowToStep", "position": 1, "name": "Choose a cell preset", "text": "Select cyanobacterium, animal cell, obligate anaerobe, plant chloroplast, archaeon, or custom control to set pathway availability, light, oxygen, and initial cofactor ratios."},
-      {"@type": "HowToStep", "position": 2, "name": "Add fuel and set the environment", "text": "Add glucose or fatty acid, then toggle light, oxygen, pathway groups, and uncoupling as the selected preset allows."},
-      {"@type": "HowToStep", "position": 3, "name": "Advance reactions", "text": "Click enzyme labels for individual steps, right-click bidirectional enzymes for the reverse direction, or enable autoplay for the scheduled network."},
-      {"@type": "HowToStep", "position": 4, "name": "Follow electron transport", "text": "Watch electrons, protons, and photons move through respiratory and photosynthetic components as the proton gradient, ATP, and ROS change."},
-      {"@type": "HowToStep", "position": 5, "name": "Inspect feedback", "text": "Use the sidebar ratios and reaction availability to see how ATP, NADH, NADPH, FADH2, substrates, and pathway locks gate each step."}
+      {"@type": "HowToStep", "position": 1, "name": "Choose an organism", "text": "Select a cyanobacterium, animal cell, obligate anaerobe, plant chloroplast, archaeon or the custom composite; each puts its own cell and membrane under the microscope."},
+      {"@type": "HowToStep", "position": 2, "name": "Set the environment", "text": "Dial light, oxygen, ATP demand and growth, switch pathways or uncoupling, and add glucose or fatty acid to the medium."},
+      {"@type": "HowToStep", "position": 3, "name": "Pulse an enzyme", "text": "Click an enzyme on the map or a complex in the membrane to pulse its activity, right-click to inhibit it, and watch where the push spreads and where it dies."},
+      {"@type": "HowToStep", "position": 4, "name": "Hold an enzyme", "text": "Hold an enzyme to raise its activity by 10% against an unchanged copy of the cell; at the steady state Lumen reports its flux control coefficients."},
+      {"@type": "HowToStep", "position": 5, "name": "Inspect a rate", "text": "In the Stats tab, choose any enzyme to see its rate and why: its ΔG and the thermodynamic, saturation and regulation factors whose product sets it."}
     ]
   }
   </script>
@@ -302,8 +305,16 @@
           <div class="lu-group">
             <h2 class="lu-label">Conditions</h2>
             <label class="lu-row"><input type="checkbox" id="light-toggle" checked><span class="lu-name">Sunlight</span><button class="info-trigger" type="button" data-info="sunlight" aria-label="Sunlight info">?</button><kbd>L</kbd></label>
+            <label class="lu-dial"><input type="range" id="light-dial" min="0" max="1" step="0.05" value="1" aria-label="Light intensity"><output id="light-val" for="light-dial">100%</output></label>
             <label class="lu-row"><input type="checkbox" id="oxygen-toggle" checked><span class="lu-name">Ambient O₂</span><button class="info-trigger" type="button" data-info="oxygen" aria-label="Oxygen info">?</button><kbd>O</kbd></label>
+            <label class="lu-dial"><input type="range" id="o2-dial" min="0" max="1" step="0.05" value="1" aria-label="Oxygen, a share of air"><output id="o2-val" for="o2-dial">100% air</output></label>
             <label class="lu-row"><input type="checkbox" id="uncoupling-toggle"><span class="lu-name">Uncoupling</span><button class="info-trigger" type="button" data-info="uncoupling" aria-label="Uncoupling info">?</button><kbd>U</kbd></label>
+          </div>
+
+          <div class="lu-group">
+            <h2 class="lu-label">Demand <button class="info-trigger" type="button" data-info="demand" aria-label="Demand info">?</button></h2>
+            <label class="lu-dial lu-dial-named"><span class="lu-name">ATP demand</span><input type="range" id="atp-dial" min="0" max="3" step="0.1" value="0.6" aria-label="ATP demand"><output id="atp-val" for="atp-dial">0.6 mM/s</output></label>
+            <label class="lu-dial lu-dial-named"><span class="lu-name" id="growth-name">Growth</span><input type="range" id="growth-dial" min="0" max="0.3" step="0.01" value="0.07" aria-label="Growth"><output id="growth-val" for="growth-dial">0.07 /h</output></label>
           </div>
 
           <div class="lu-group">
@@ -313,19 +324,19 @@
               <button id="add-fatty-acid-btn" class="lu-btn" type="button" title="Add fatty acid (F)">+ Fatty acid</button>
               <button id="reset-btn" class="lu-btn" type="button" title="Reset (R)">Reset</button>
             </div>
-            <div class="lu-row lu-seg" role="group" aria-label="Taps run reactions">
-              <span class="lu-name">Taps run</span>
-              <button id="mode-btn" class="lu-btn" type="button" aria-pressed="false" title="Forward mode (X)" aria-label="Forward mode">forward</button>
+            <div class="lu-row lu-seg" role="group" aria-label="What taps do">
+              <span class="lu-name">Taps</span>
+              <button id="mode-btn" class="lu-btn" type="button" aria-pressed="false" title="Taps pulse (X)" aria-label="Taps pulse">pulse</button>
             </div>
-            <div class="lu-row lu-seg" role="group" aria-label="Particle speed">
-              <span class="lu-name">Particle speed</span>
+            <div class="lu-row lu-seg" role="group" aria-label="How much slower than life the chemistry runs">
+              <span class="lu-name">Chemistry slowed <button class="info-trigger" type="button" data-info="engine" aria-label="Model info">?</button></span>
               <button id="speed-down" class="lu-btn" type="button" title="Slower (,)" aria-label="Slower">−</button>
-              <span id="speed-val" class="lu-val">1×</span>
+              <span id="speed-val" class="lu-val">30×</span>
               <button id="speed-up" class="lu-btn" type="button" title="Faster (.)" aria-label="Faster">+</button>
             </div>
           </div>
 
-          <p class="panel-hint">Click an enzyme on the map or a complex in the membrane to run it; right-click runs it backward. Click a loop's name for a whole turn.</p>
+          <p class="panel-hint">Click an enzyme on the map or a complex in the membrane to pulse it, or right-click to inhibit it. Holding it sustains a 10% change, and Stats compares it with the unchanged cell. Click a loop's name to pulse the whole line.</p>
         </section>
 
         <section class="tab-panel" id="tab-stats" role="tabpanel">
@@ -336,59 +347,55 @@
           </div>
 
           <div class="lu-group">
-            <h2 class="lu-label">Last reaction</h2>
-            <div id="krebs-step-info" class="lu-step">
-              <div class="step-enzyme" id="krebs-enzyme">&mdash;</div>
-              <div class="step-reaction" id="krebs-reaction">&mdash;</div>
-              <div class="step-yield" id="krebs-yield">&mdash;</div>
+            <h2 class="lu-label">Inspect an enzyme <button class="info-trigger" type="button" data-info="inspector" aria-label="Inspector info">?</button></h2>
+            <select id="lu-enzyme" class="lu-select" aria-label="Enzyme"></select>
+            <p class="lu-desc lu-factors" id="lu-enzyme-factors" aria-live="polite">—</p>
+            <div class="lu-actions">
+              <button id="lu-enzyme-pulse" class="lu-btn" type="button">Pulse</button>
+              <button id="lu-enzyme-inhibit" class="lu-btn" type="button">Inhibit</button>
+              <button id="lu-enzyme-hold" class="lu-btn" type="button" aria-pressed="false">Hold</button>
             </div>
-            <div class="lu-counters">
-              <span><span class="lu-name">Krebs</span> <span id="krebs-turn">0</span></span>
-              <span><span class="lu-name">Calvin</span> <span id="calvin-turn">0</span></span>
-              <span><span class="lu-name">Glycolysis</span> <span id="glycolysis-run">0</span></span>
-              <span><span class="lu-name">PPP</span> <span id="ppp-run">0</span></span>
-              <span><span class="lu-name">β-ox</span> <span id="betaox-run">0</span></span>
-            </div>
+            <p class="lu-desc lu-factors" id="lu-enzyme-control" aria-live="polite" hidden></p>
           </div>
 
           <div class="lu-group">
             <h2 class="lu-label">Cofactor pools</h2>
-            <div class="lu-pool" style="--line: var(--co-atp)"><span class="lu-name">ATP of ATP + ADP</span><span class="lu-val" id="atp-ratio">0%</span><span class="lu-bar"><span id="atp-bar"></span></span><canvas class="lu-spark" id="spark-atp"></canvas></div>
+            <p class="lu-desc" id="pools-where"></p>
+            <div class="lu-pool" style="--line: var(--co-atp)"><span class="lu-name">ATP of the adenylates</span><span class="lu-val" id="atp-ratio">0%</span><span class="lu-bar"><span id="atp-bar"></span></span><canvas class="lu-spark" id="spark-atp"></canvas></div>
             <div class="lu-pool" style="--line: var(--co-nadh)"><span class="lu-name">NADH of NAD⁺ + NADH</span><span class="lu-val" id="nadh-ratio">0%</span><span class="lu-bar"><span id="nadh-bar"></span></span><canvas class="lu-spark" id="spark-nadh"></canvas></div>
             <div class="lu-pool" style="--line: var(--co-nadph)"><span class="lu-name">NADPH of NADP⁺ + NADPH</span><span class="lu-val" id="nadph-ratio">0%</span><span class="lu-bar"><span id="nadph-bar"></span></span><canvas class="lu-spark" id="spark-nadph"></canvas></div>
-            <div class="lu-pool" style="--line: var(--co-fadh2)"><span class="lu-name">FADH₂ of FAD + FADH₂</span><span class="lu-val" id="fadh2-ratio">0%</span><span class="lu-bar"><span id="fadh2-bar"></span></span><canvas class="lu-spark" id="spark-fadh2"></canvas></div>
           </div>
 
           <div class="lu-group">
-            <h2 class="lu-label">Proton motive force <button class="info-trigger" type="button" data-info="protons" aria-label="Proton gradient info">?</button></h2>
-            <div class="lu-stat"><span class="lu-name">Protons across the membrane</span><span class="lu-val" id="proton-gradient">0</span></div>
+            <h2 class="lu-label">Proton-motive force <button class="info-trigger" type="button" data-info="protons" aria-label="Proton-motive force info">?</button></h2>
             <div class="lu-stat"><span class="lu-name">Δp</span><span class="lu-val" id="proton-mv">0 mV</span></div>
             <div class="lu-stat"><span class="lu-name">Needed to make ATP</span><span class="lu-val" id="atp-mv">0 mV</span></div>
-            <div class="lu-stat"><span class="lu-name">Protons leaked</span><span class="lu-val" id="protons-leaked">0</span></div>
+            <div class="lu-stat"><span class="lu-name">Leaking back</span><span class="lu-val" id="protons-leaked">0</span></div>
             <canvas class="lu-spark lu-spark-red" id="spark-gradient"></canvas>
           </div>
 
           <div class="lu-group">
             <h2 class="lu-label">Oxidative stress <button class="info-trigger" type="button" data-info="oxStress" aria-label="Oxidative stress info">?</button></h2>
-            <div class="lu-stat"><span class="lu-name">Cell health</span><span class="lu-val" id="health-ratio">100%</span></div>
+            <div class="lu-stat"><span class="lu-name">Membrane intact</span><span class="lu-val" id="health-ratio">100%</span></div>
             <span class="lu-bar lu-health"><span id="health-bar"></span></span>
-            <div class="lu-stat"><span class="lu-name">ROS produced</span><span class="lu-val" id="ros-produced">0</span></div>
-            <div class="lu-stat"><span class="lu-name">ROS scavenged</span><span class="lu-val" id="ros-scavenged">0</span></div>
-            <div class="lu-stat"><span class="lu-name">Active ROS</span><span class="lu-val" id="active-ros">0</span></div>
+            <div class="lu-stat"><span class="lu-name">Superoxide made</span><span class="lu-val" id="ros-made">0</span></div>
+            <div class="lu-stat"><span class="lu-name">Superoxide</span><span class="lu-val" id="superoxide">0</span></div>
+            <div class="lu-stat"><span class="lu-name">Hydrogen peroxide</span><span class="lu-val" id="peroxide">0</span></div>
           </div>
 
           <div class="lu-group">
             <h2 class="lu-label">ATP source</h2>
             <div class="lu-stat"><span class="lu-name">Substrate-level</span><span class="lu-val" id="atp-substrate">0</span></div>
-            <div class="lu-stat"><span class="lu-name">Oxidative</span><span class="lu-val" id="atp-oxidative">0</span></div>
+            <div class="lu-stat"><span class="lu-name">ATP synthase</span><span class="lu-val" id="atp-oxidative">0</span></div>
             <div id="atp-source-bar" class="lu-split"><span id="atp-source-sub"></span><span id="atp-source-ox"></span></div>
           </div>
 
           <div class="lu-group">
-            <h2 class="lu-label">Net exchange</h2>
-            <div class="lu-stat"><span class="lu-name">CO₂</span><span class="lu-val" id="co2-net">0</span></div>
-            <div class="lu-stat"><span class="lu-name">O₂</span><span class="lu-val" id="o2-net">0</span></div>
-            <div class="lu-stat"><span class="lu-name">H₂O</span><span class="lu-val" id="h2o-net">0</span></div>
+            <h2 class="lu-label">Exchange with the medium</h2>
+            <div class="lu-stat"><span class="lu-name">O₂ taken in</span><span class="lu-val" id="o2-net">0</span></div>
+            <div class="lu-stat"><span class="lu-name">CO₂ taken in</span><span class="lu-val" id="co2-net">0</span></div>
+            <div class="lu-stat"><span class="lu-name">Glucose taken in</span><span class="lu-val" id="glc-net">0</span></div>
+            <div class="lu-stat"><span class="lu-name">Growing at</span><span class="lu-val" id="growth-net">0</span></div>
           </div>
         </section>
 
@@ -445,22 +452,24 @@
     <summary>About this simulation</summary>
     <article>
       <h2>What is Lumen?</h2>
-      <p>Lumen is an interactive cellular metabolism simulator that traces how cells produce and consume energy through interconnected biochemical pathways. Click an enzyme on the transit map, or a complex in the membrane, to advance reactions step by step, or let autoplay run the whole network. Each organism preset puts its own membrane under the microscope.</p>
+      <p>Lumen is an interactive model of how cells make and spend energy. Each organism is a kinetic model: its metabolites are concentrations, and its reactions run at rates set by thermodynamics, saturation and regulation. The figure is a window onto that model, slowed so it can be followed: the membrane in cross-section above, the carbon network as a transit map below. Click an enzyme to pulse it and watch the push spread or die.</p>
       <h3>Metabolic pathways</h3>
-      <p>One shared metabolite store connects glycolysis and gluconeogenesis, the pentose phosphate pathway, the Calvin and Krebs cycles, pyruvate processing, ethanol fermentation and salvage, beta-oxidation, simplified fatty-acid synthesis, electron transport, ATP synthesis, and ROS scavenging.</p>
-      <h3>Regulation</h3>
-      <p>The reaction dispatcher applies explicit feedback gates before substrate mutation. High ATP inhibits phosphofructokinase and slows citrate synthase; high NADH inhibits isocitrate dehydrogenase and, together with accumulated acetyl-CoA, blocks pyruvate dehydrogenase. NADPH, FADH&sub2;, and low ATP gate other paths.</p>
+      <p>The network covers glycolysis and gluconeogenesis, the pentose phosphate pathway, the Calvin and Krebs cycles, pyruvate dehydrogenase, lactate and ethanol fermentation, beta-oxidation and fatty-acid synthesis, glycogen and starch, electron transport, ATP synthesis and the scavenging of reactive oxygen. Every reaction is balanced in elements and charge.</p>
+      <h3>Thermodynamics and regulation</h3>
+      <p>Each rate is a capacity times three factors: thermodynamics (1 &minus; e<sup>&Delta;G/RT</sup>, so no reaction runs against its &Delta;G), saturation with substrates, and regulation by effectors such as ATP, citrate, NADH/NAD&#x207A; and light. The proton gradient enters every membrane reaction's &Delta;G, so a full gradient slows the chain that builds it: respiratory control.</p>
+      <h3>Control of flux</h3>
+      <p>Holding an enzyme raises its activity by 10% against an unchanged copy of the cell. At the steady state, each flux's fractional response is the enzyme's flux control coefficient over it. Control is shared among enzymes and shifts with conditions.</p>
       <h3>Reactive oxygen species</h3>
-      <p>Electron-transfer steps at NDH-1 and the Q-cycle have a small random leak chance. Active ROS lowers cell health; SOD and catalase remove a free tier, while glutathione peroxidase can consume NADPH to remove more. Health recovers when no active ROS remains.</p>
+      <p>Complex I and the Q-cycle leak superoxide, faster as the proton-motive force rises. Superoxide dismutase, catalase and glutathione peroxidase (which spends NADPH) remove it; what remains damages the membrane, which then leaks protons, and repair spends ATP.</p>
     <h3>Fatty acid metabolism</h3>
-    <p>Beta-oxidation breaks fatty acids into acetyl-CoA units, generating FADH&#x2082; and NADH per cycle. The reverse pathway, fatty acid synthesis, consumes NADPH and ATP. Both pathways share the acetyl-CoA pool with the Krebs cycle, creating the metabolic intersection that determines whether a cell burns or stores fat.</p>
+    <p>Beta-oxidation breaks fatty acids into acetyl-CoA two carbons at a round, reducing FAD and NAD&#x207A;. Fatty-acid synthesis runs on its own enzymes, spending ATP and NADPH. Both share the acetyl-CoA pool with the Krebs cycle, where a cell decides whether it burns fat or stores it.</p>
     <h3>Organism presets</h3>
-    <p>Five stylized presets configure the network: cyanobacterium, animal cell, obligate anaerobe, plant chloroplast, and archaeon. Each selects pathway locks, light and oxygen state, and initial ATP/NADH/NADPH/FADH&sub2; ratios.</p>
+    <p>Five organisms each have their own reactions, compartments, pools and membrane: a cyanobacterium, an animal cell with its mitochondrial matrix, an obligate anaerobe, a plant chloroplast and a halophilic archaeon.</p>
     <h3>Accessibility</h3>
-    <p>Lumen provides keyboard shortcuts, labeled controls, light/dark/simulation-following themes, and numerical sidebar readouts. Electron, proton, and photon particles create continuous motion during active reactions; step-by-step mode is available instead of autoplay.</p>
+    <p>Lumen provides keyboard shortcuts, labeled controls, light, dark and sunlight-following themes, and numerical readouts; the inspector reaches every enzyme from the keyboard. With reduced motion requested, Lumen opens on a still frame, and the model clock can be paused.</p>
     <p><em>See also: <a href="/worldline">Worldline</a> for particle physics, <a href="/shoals">Shoals</a> for options trading, <a href="/miasma">Miasma</a> for epidemics.</em></p>
 <h3>Learning outcomes</h3>
-<p>After using Lumen, students should be able to: trace simulated carbon flow through glycolysis, pyruvate processing, the Krebs cycle, and linked biosynthetic routes; explain how the model's proton gradient couples electron transfer to ATP synthesis; identify the cofactor ratios that gate key enzymes; compare respiratory, photosynthetic, and fermentative network states; and describe how electron leaks, scavenging, and NADPH availability affect ROS and cell health.</p>
+<p>After using Lumen, students should be able to: trace simulated carbon flow through glycolysis, pyruvate processing, the Krebs cycle, and linked biosynthetic routes; explain how the proton-motive force couples electron transfer to ATP synthesis and limits it (respiratory control); read an enzyme's rate as thermodynamics, saturation and regulation; interpret a flux control coefficient; compare respiratory, photosynthetic, and fermentative network states; and describe how electron leaks, scavenging, and NADPH availability affect ROS and cell health.</p>
 <h3>Prerequisites</h3>
 <p>Basic chemistry (atoms, molecules, chemical bonds, redox reactions). Familiarity with cell structure (mitochondria, chloroplasts) is helpful but not required — the simulator introduces each organelle through its organism presets.</p>
 <h3>References</h3>

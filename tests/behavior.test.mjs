@@ -6,7 +6,8 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { CELLS } from '../src/engine/cells.js';
 import { MOIETIES } from '../src/engine/species.js';
-import { createEngine } from '../src/engine/engine.js';
+import { createEngine, HOLD } from '../src/engine/engine.js';
+import { runCompare, coefficients } from '../src/compare.js';
 import { RT } from '../src/engine/thermo.js';
 import { makeRng } from '../src/engine/rng.js';
 import { EventQueue } from '../src/engine/events.js';
@@ -145,4 +146,66 @@ test('the anaerobe runs its ATP synthase backward to keep a gradient', () => {
     const e = run('obligateAnaerobe', 60);
     assert.ok(rate(e, 'ATPS') < 0 && e.dp() > 60, `ATP synthase ${rate(e, 'ATPS')}, Δp ${e.dp()}`);
     assert.ok(rate(e, 'PDC') > 0.1, 'and ferments to ethanol');
+});
+
+test('a pulse raises an enzyme for a while, an inhibition lowers it, and both fade', () => {
+    const e = run('animalCell', 30), j = e.rIndex.PFK;
+    const v0 = rate(e, 'PFK');
+    e.pulse(j, 1); e.advance(0.05);
+    assert.ok(rate(e, 'PFK') > 1.5 * v0, `pulsed PFK ${rate(e, 'PFK')} from ${v0}`);
+    assert.ok(e.pulseNow(j) > 3);
+    e.advance(20);
+    assert.ok(Math.abs(e.pulseNow(j) - 1) < 0.01, 'the pulse has faded');
+    e.pulse(j, -1); e.advance(0.05);
+    assert.ok(e.pulseNow(j) < 0.2 && rate(e, 'PFK') < v0, 'inhibited');
+    e.advance(20);
+    e.pulse(j, 1, true); e.advance(10);
+    assert.ok(Math.abs(e.pulseNow(j) - (1 + HOLD)) < 1e-12, 'a hold sustains a small perturbation');
+    e.release(j); e.advance(20);
+    assert.ok(Math.abs(e.pulseNow(j) - 1) < 0.01, 'and fades once let go');
+});
+
+test('a hold against its paired baseline gives control coefficients at a steady state', () => {
+    const e = run('animalCell', 40), j = e.rIndex.PFK;
+    const snap = e.snapshot();
+    const res = runCompare('animalCell', snap, [j], 1);
+    assert.ok(res.steady, `no steady state in ${res.t} s`);
+    const C = coefficients(res, 1, e.rIndex, ['PFK', 'EX_glc', 'CYTOX']);
+    assert.ok(C.EX_glc > 0.05 && C.EX_glc < 2, `PFK's control over glucose uptake ${C.EX_glc}`);
+    // the baseline copy is the cell left alone: it matches a plain run from the same state
+    const b = createEngine('animalCell'); b.restore(snap); for (let t = 0; t < res.t; t++) b.advance(1);
+    b.evaluate();
+    for (const r of ['PFK', 'CYTOX', 'ATPS']) assert.ok(Math.abs(b.state.v[b.rIndex[r]] - res.vb[b.rIndex[r]]) < 1e-12, r);
+    assert.equal(e.pulseNow(j), 1, 'and the cell itself is untouched');
+});
+
+test('a pulse leaves the trajectory independent of frames', () => {
+    const a = run('animalCell', 5), b = run('animalCell', 5);
+    for (const e of [a, b]) e.pulse(e.rIndex.HEX1, 1);
+    a.advance(3);
+    for (let k = 0; k < 300; k++) b.advance(0.01);
+    for (let i = 0; i < a.x.length; i++) assert.equal(a.x[i], b.x[i]);
+});
+
+test('reactive oxygen damages the membrane in proportion, and repair brings it back', () => {
+    const e = run('animalCell', 60);
+    const d0 = e.state.damage;
+    assert.ok(d0 > 0 && d0 < 0.2, `resting damage ${d0}`);
+    const leak0 = rate(e, 'LEAK');
+    e.state.damage = 0.5; e.evaluate();
+    assert.ok(rate(e, 'LEAK') > 2 * leak0, 'peroxidised membrane leaks protons');
+    e.advance(60);
+    assert.ok(e.state.damage < 0.1, `repaired to ${e.state.damage}`);
+});
+
+test('repair is paid for: without its enzyme or ATP, damage stays', () => {
+    const e = run('animalCell', 30);
+    e.state.activity[e.rIndex.REPAIR] = 0;
+    e.state.damage = 0.5; e.advance(5);
+    assert.ok(e.state.damage >= 0.5 - 1e-9, `damage fell to ${e.state.damage} without repair`);
+    const f = run('animalCell', 30);
+    f.state.activity.fill(0); f.state.activity[f.rIndex.REPAIR] = 1;
+    for (const c of ['c', 'm']) f.set('atp', c, 0);
+    f.state.damage = 0.5; f.advance(5);
+    assert.ok(f.state.damage > 0.49, `damage fell to ${f.state.damage} with no ATP`);
 });

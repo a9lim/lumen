@@ -34,6 +34,16 @@ const AIR_CO2 = 0.015;     // mM CO₂ in water under air
 const PI_MEDIUM = 5;       // mM phosphate in the medium, held
 const RHO = 300;           // g dry weight per litre of cytosol (E. coli, about 0.3 g/mL): turns a growth rate into precursor demand
 const GAMMA = 1 + Math.SQRT1_2;   // ROS2's γ: L-stable
+// Damage with consequence: reactive oxygen peroxidises the membrane at K_DMG per mM per s, repair
+// clears it at K_REP per s for REPAIR_ATP mM of ATP per unit; peroxidised lipid lets protons
+// through (the leak grows up to LEAK_DMG-fold) and aconitase's iron–sulfur cluster is lost
+const K_DMG = 40, K_REP = 0.05, REPAIR_ATP = 2, LEAK_DMG = 4, ACO_DMG = 0.8;
+// The verb (VISION.md): a pulse multiplies an enzyme's activity by 1 + PULSE_UP at its peak, an
+// inhibition by 1 − PULSE_DOWN; each fades with PULSE_TAU model seconds; pulses stack (up to
+// PULSE_MAX). A hold is the small sustained perturbation, HOLD up or down, kept until let go, for
+// metabolic control analysis against a paired baseline (cell.js). Being functions of model time,
+// they leave a trajectory independent of frames, and a paused clock holds them.
+export const PULSE_UP = 4, PULSE_DOWN = 0.9, PULSE_TAU = 1.5, PULSE_MAX = 20, HOLD = 0.1;
 
 export function createEngine(cellId, opts = {}) {
     const model = buildCell(cellId), cell = model.cell;
@@ -80,6 +90,7 @@ export function createEngine(cellId, opts = {}) {
         if (nl || law === 'leak') { deps.add(iHl); for (const [i] of lumenCharged) deps.add(i); }
         return {
             r, j, law, vmax: over.vmax ?? par.vmax, light: !!par.light, sub, pro, nl, regs,
+            dmg: r.id === 'LEAK' ? 'leak' : r.id === 'ACONT' ? 'aco' : null,
             dg0: dg0(cell, r), homeVol: model.comps[r.comp],
             deps: [...deps].filter(i => !hold[i]),
             stoich: r.stoich.filter(([i]) => !hold[i]),
@@ -98,7 +109,7 @@ export function createEngine(cellId, opts = {}) {
     }
 
     const state = {
-        x: new Float64Array(nS), t: 0, h: 1e-3,
+        x: new Float64Array(nS), t: 0, h: 1e-3, damage: 0,
         activity: new Float64Array(nR).fill(1),
         v: new Float64Array(nR), vf: new Float64Array(nR), vb: new Float64Array(nR),
     };
@@ -122,14 +133,26 @@ export function createEngine(cellId, opts = {}) {
         return f;
     }
 
+    /** The pulses on reaction j at model time t: a multiplier on its activity. */
+    const pulses = new Map();   // j → { up, down, t0, held }
+    function pulseFactor(j, t) {
+        const p = pulses.get(j);
+        if (!p) return 1;
+        const f = p.held ? 1 : Math.exp(-(t - p.t0) / PULSE_TAU);
+        return (1 + p.up * f) * (1 - p.down * f);
+    }
+
     /** Reaction j's forward and backward rates at state x, mM/s in its home compartment, into RF and RB. */
     let RF = 0, RB = 0;
     function rate1(j, x) {
         const c = RX[j], dp = dpOf(x);
-        let V = c.vmax * state.activity[j];
-        if (c.r.demand === 'atp') V = dial.atp * state.activity[j];
-        else if (c.r.demand === 'export') V = dial.export * state.activity[j];
-        else if (c.r.demand === 'growth') V = dial.growth / 3600 * RHO * state.activity[j];
+        let V = c.vmax * state.activity[j] * (pulses.size ? pulseFactor(j, state.t) : 1);
+        const act = state.activity[j] * (pulses.size ? pulseFactor(j, state.t) : 1);
+        if (c.r.demand === 'atp') V = dial.atp * act;
+        else if (c.r.demand === 'export') V = dial.export * act;
+        else if (c.r.demand === 'growth') V = dial.growth / 3600 * RHO * act;
+        else if (c.r.demand === 'repair') V = K_REP * REPAIR_ATP * state.damage * act;
+        if (c.dmg) V *= c.dmg === 'leak' ? 1 + LEAK_DMG * state.damage : 1 - ACO_DMG * state.damage;
         if (c.light) V *= env.light;
         if (V === 0) { RF = RB = 0; return; }
         if (c.law === 'leak') { RF = V * Math.max(dp, 0); RB = 0; return; }
@@ -248,12 +271,22 @@ export function createEngine(cellId, opts = {}) {
                 continue;
             }
             for (let k = 0; k < nF; k++) { const i = free[k]; x[i] = y[i] < 0 ? 0 : y[i]; }
+            // Damage, a slow variable outside the chemistry: made by reactive oxygen, cleared only as
+            // fast as repair actually spends its ATP
+            if (rosIdx.length) {
+                let ros = 0; for (const i of rosIdx) ros += x[i];
+                let fixed = 0;
+                if (jRepair != null) { rate1(jRepair, x); fixed = (RF - RB) / REPAIR_ATP; }
+                state.damage = Math.min(1, Math.max(0, state.damage + h * (K_DMG * ros * (1 - state.damage) - fixed)));
+            }
             state.t += h;
             state.h = Math.min(HMAX, h * Math.min(3, 0.9 / Math.sqrt(Math.max(err, 1e-6))));
             return h;
         }
     }
 
+    const rosIdx = ['o2s', 'h2o2'].flatMap(id => ['c', 'm'].map(c => idx(id, c))).filter(i => i != null);
+    const jRepair = R.findIndex(r => r.id === 'REPAIR') >= 0 ? R.findIndex(r => r.id === 'REPAIR') : null;
     const events = new EventQueue();
     const rng = makeRng(opts.seed ?? 1);
     let target = 0;
@@ -270,7 +303,10 @@ export function createEngine(cellId, opts = {}) {
         advance(dt) {
             target += dt;
             let n = 0;
-            while (state.t + state.h <= target && n < 5000) { step(); events.runUntil(state.t); n++; }
+            while (state.t + state.h <= target && n < 5000) {
+                step(); events.runUntil(state.t); n++;
+                for (const [j, p] of pulses) if (!p.held && state.t - p.t0 > 8 * PULSE_TAU) pulses.delete(j);
+            }
             return n;
         },
         /** Run until nothing changes by more than tol per second (or maxT): returns the time it took. */
@@ -302,8 +338,69 @@ export function createEngine(cellId, opts = {}) {
             for (const [i, nu] of c.pro) lnQ += nu * (x[i] > 0 ? Math.log(x[i] / 1000) : -Infinity);
             if (Number.isNaN(lnQ)) lnQ = 0;
             const dG = c.dg0 + RT * lnQ + c.nl * F * dp / 1000;
-            return { dG, thermo: 1 - Math.exp(dG / RT), reg: c.law === 'cm' ? regFactor(c, x, dp) : 1, vf: RF, vb: RB, v: RF - RB };
+            // η_sat: convenience kinetics' saturation, as the rate uses it
+            let num = 1, d1 = 1, d2 = 1;
+            for (const [i, nu, K] of c.sub) { const r = Math.max(x[i], 0) / K; num *= Math.pow(r, nu); d1 *= Math.pow(1 + r, nu); }
+            for (const [i, nu, K] of c.pro) d2 *= Math.pow(1 + Math.max(x[i], 0) / K, nu);
+            const sat = c.law === 'cm' ? num / (d1 + d2 - 1) : 1;
+            return { dG, thermo: 1 - Math.exp(dG / RT), sat, reg: c.law === 'cm' ? regFactor(c, x, dp) : 1, vf: RF, vb: RB, v: RF - RB };
         },
+        /**
+         * Pulse a reaction (sign 1) or inhibit it (−1) now, in model time; a second pulse
+         * stacks on what is left of the first. hold instead sustains ×(1 ± HOLD) until release().
+         */
+        pulse(j, sign = 1, hold = false) {
+            const t = state.t;
+            if (hold) { pulses.set(j, { up: sign > 0 ? HOLD : 0, down: sign < 0 ? HOLD : 0, t0: t, held: true }); return; }
+            const old = pulses.get(j);
+            const f = old ? (old.held ? 1 : Math.exp(-(t - old.t0) / PULSE_TAU)) : 0;
+            const up = Math.min(PULSE_MAX, (old ? old.up * f : 0) + (sign > 0 ? PULSE_UP : 0));
+            const down = 1 - (1 - (old ? old.down * f : 0)) * (sign < 0 ? 1 - PULSE_DOWN : 1);
+            pulses.set(j, { up, down, t0: t, held: false });
+        },
+        /** Whether any pulse is held. */
+        holding() { for (const p of pulses.values()) if (p.held) return true; return false; },
+        /** Everything that makes the trajectory, to start a paired run from (a baseline). */
+        snapshot() {
+            return {
+                x: Float64Array.from(state.x), t: state.t, h: state.h, damage: state.damage, activity: Float64Array.from(state.activity),
+                target, env: { ...env }, dial: { ...dial },
+                pulses: [...pulses].filter(([, p]) => !p.held).map(([j, p]) => [j, { ...p }]),   // the fading ones, not the held
+            };
+        },
+        restore(snap) {
+            state.x.set(snap.x); state.t = snap.t; state.h = snap.h; state.damage = snap.damage; state.activity.set(snap.activity);
+            target = snap.target; Object.assign(env, snap.env); Object.assign(dial, snap.dial);
+            pulses.clear(); for (const [j, p] of snap.pulses || []) pulses.set(j, { ...p });
+        },
+        /** Let a held pulse fade from now. */
+        release(j) { const p = pulses.get(j); if (p && p.held) { p.held = false; p.t0 = state.t; } },
+        /** The multiplier pulses put on reaction j now. */
+        pulseNow(j) { return pulseFactor(j, state.t); },
+        /**
+         * Each effector on reaction j now: what it is (a species id, a ratio [a, b], or
+         * 'light', 'dark', 'dp'), how it acts ('inh' or 'act') and the factor it puts on the rate.
+         */
+        effectors(j) {
+            const c = RX[j], x = state.x, dp = dpOf(x);
+            return c.regs.map(e => {
+                let f;
+                if (e.type === 'light') f = e.b + (1 - e.b) * lightOn();
+                else if (e.type === 'dark') f = e.b + (1 - e.b) * (1 - lightOn());
+                else if (e.type === 'dp') { const q = Math.pow(Math.max(dp, 0) / e.K, e.h); f = q / (1 + q); }
+                else {
+                    const val = e.bx != null ? x[e.a] / Math.max(x[e.bx], 1e-12) : x[e.a];
+                    const q = Math.pow(Math.max(val, 0) / e.K, e.h);
+                    f = e.type === 'inh' ? 1 / (1 + q) : (e.b + q) / (1 + q);
+                }
+                const what = e.type === 'light' || e.type === 'dark' || e.type === 'dp' ? e.type : Array.isArray(e.x) ? e.x.map(s => s.replace(/\[.\]$/, '')) : e.x;
+                return { what, how: e.type === 'inh' || e.type === 'dark' ? 'inh' : 'act', f };
+            });
+        },
+        /** A reaction's base capacity, mM/s in its home compartment (without pulses, switches or light). */
+        capacity(j) { return RX[j].vmax; },
+        /** Add to the medium (a bolus of glucose or fatty acid), mM. */
+        feed(id, mM) { const i = idx(id, 'e'); if (i != null) state.x[i] += mM; },
         /** Hold the medium's gases and phosphate at the environment's values. */
         applyEnv() {
             const o2 = idx('o2', 'e'), co2 = idx('co2', 'e'), pi = idx('pi', 'e');
@@ -316,7 +413,7 @@ export function createEngine(cellId, opts = {}) {
         },
         /** Fill the pools and metabolites to the cell's starting state. */
         reset() {
-            state.x.fill(0); state.t = 0; target = 0; state.h = 1e-3; events.clear();
+            state.x.fill(0); state.t = 0; target = 0; state.h = 1e-3; state.damage = 0; events.clear(); pulses.clear();
             for (let j = 0; j < nR; j++) state.activity[j] = R[j].off ? 0 : 1;
             initialState(engine);
             this.applyEnv();

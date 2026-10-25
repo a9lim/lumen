@@ -1,11 +1,54 @@
-// Dashboard — the margin's Stats tab: last reaction, counters, cofactor
-// pools with their 60-second sparklines, the gradient, oxidative stress,
-// ATP source and net exchange. Updates are rAF-coalesced.
-import { store, counters, histories } from './state.js';
-import { deltaP, atpThreshold } from './energetics.js';
+// Dashboard — the margin's Stats tab, read from the engine: the inspector
+// (an enzyme's rate and why: ΔG and its thermodynamic, saturation and
+// regulation factors, with pulse and inhibit), the cofactor pools with their
+// 60-second sparklines, Δp, oxidative stress, ATP's sources and the cell's
+// exchange with its medium; and the held enzyme's control coefficients
+// against its paired baseline. Updates are rAF-coalesced.
+import { histories } from './state.js';
+import Cell, { SYSTEM } from './cell.js';
+import { HOLD } from './engine/engine.js';
+import { MapView } from './map.js';
+import { Membrane } from './membrane.js';
+import { COMPLEX } from './mapbind.js';
+import { F, RT } from './engine/thermo.js';
+import { LINES } from './maplayout.js';
 
 let _dom;
-export function initDashboard(dom) { _dom = dom; }
+export function initDashboard(dom) {
+    _dom = dom;
+    dom.enzymePulse?.addEventListener('click', () => { const t = dom.enzymeSelect.value; if (t) { Cell.pulse(t, 1); updateDashboard(); } });
+    dom.enzymeInhibit?.addEventListener('click', () => { const t = dom.enzymeSelect.value; if (t) { Cell.pulse(t, -1); updateDashboard(); } });
+    // Hold toggles a sustained ×(1 + HOLD) on the selected enzyme, and its comparison
+    dom.enzymeHold?.addEventListener('click', () => {
+        const t = dom.enzymeSelect.value; if (!t) return;
+        if (Cell.held === t) Cell.release(t); else Cell.pulse(t, 1, true);
+        updateDashboard();
+    });
+    dom.enzymeSelect?.addEventListener('change', () => updateDashboard());
+    Cell.onCompare = (c) => {
+        updateDashboard();
+        if (c.state !== 'done' || !c.C) return;
+        // the strongest system flux it controls, in a toast
+        const best = SYSTEM.filter(([r]) => r !== c.own && c.C[r] != null).sort((a, b) => Math.abs(c.C[b[0]]) - Math.abs(c.C[a[0]]))[0];
+        if (best) showToast(`${heldName(c)}: control over ${best[1]} ${fmtC(c.C[best[0]])}`);
+    };
+}
+
+const fmtC = (c) => Math.abs(c) >= 10 ? c.toFixed(0) : c.toFixed(2).replace('-', '−');
+function heldName(c) {
+    const sel = _dom && _dom.enzymeSelect, o = sel && [...sel.options].find(o => o.value === c.targets[0]);
+    return o ? o.textContent : Cell.engine.reactions[Cell.engine.rIndex[c.own]].name;
+}
+/** The paired baseline's report: running, its coefficients at the steady state, or why there are none. */
+function controlText() {
+    const c = Cell.compare; if (!c) return null;
+    const how = `${heldName(c)} held ×${(1 + c.sign * HOLD).toFixed(1)}`;
+    if (c.state === 'running') return `${how} against a paired baseline: running both to a steady state, ${c.t} s of model time so far.`;
+    if (c.state === 'cancelled') return `${how}: conditions changed before a steady state, so no comparison. Hold it again.`;
+    if (!c.steady) return `${how}: no steady state within ${c.t} s of model time, so no control coefficient.`;
+    const parts = [[c.own, 'its own flux'], ...SYSTEM.filter(([r]) => r !== c.own)].filter(([r]) => c.C[r] != null).map(([r, n]) => `${n} ${fmtC(c.C[r])}`);
+    return `${how}, at the steady state ${c.t} s on. Its control over ${parts.join(' · ')}` + (parts.length ? '.' : 'no flux large enough to judge.');
+}
 
 let _dirty = false;
 export function markDashboardDirty() {
@@ -14,41 +57,55 @@ export function markDashboardDirty() {
     requestAnimationFrame(() => { _dirty = false; updateDashboard(); });
 }
 
-// The last reaction's enzyme takes its line's ink
-const _pwColor = {
-    glycolysis: '--pw-glyc', run_glycolysis_upper: '--pw-glyc', run_glycolysis_lower: '--pw-glyc',
-    krebs: '--pw-krebs', run_krebs: '--pw-krebs',
-    calvin: '--pw-calvin', run_calvin: '--pw-calvin',
-    ppp: '--pw-ppp', run_ppp: '--pw-ppp',
-    pdh: '--pw-pdh', pdc: '--pw-ferment', adh: '--pw-ferment', ldh: '--pw-ferment',
-    aldh: '--pw-ferment', acs: '--pw-ferment', fermentation: '--pw-ferment',
-    betaox: '--pw-betaox', run_betaox: '--pw-betaox',
-};
-
-const _YIELD_NAME = { atp: 'ATP', nadh: 'NADH', nadph: 'NADPH', fadh2: 'FADH₂', co2Fixed: 'CO₂ fixed' };
-const _yieldName = (k) => _YIELD_NAME[k] || k;
-
-/** Show the last reaction: enzyme, equation, and yields. */
-export function showActiveStep(enzyme, reaction, yields, pathway) {
-    if (!_dom) return;
-    _dom.krebsEnzyme.textContent = enzyme;
-    _dom.krebsEnzyme.style.color = pathway && _pwColor[pathway] ? 'var(' + _pwColor[pathway] + ')' : '';
-    _dom.krebsReaction.textContent = reaction;
-    if (!yields) { _dom.krebsYield.textContent = '—'; return; }
-    let text = '';
-    for (const k in yields) {
-        if (text) text += ' ';
-        const v = yields[k];
-        text += k.includes('Consume') ? `−${v} ${_yieldName(k.replace('Consume', ''))}` : `+${v} ${_yieldName(k)}`;
+/** The inspector's list: the cell's enzymes on the map, by line, then the membrane's complexes. */
+export function fillInspector() {
+    const sel = _dom && _dom.enzymeSelect;
+    if (!sel || !Cell.engine) return;
+    const keep = sel.value;
+    sel.textContent = '';
+    const groups = {};
+    for (const [id, s] of Object.entries(MapView.segs)) {
+        const parts = Cell.seg[id];
+        if (!parts || !parts.length || !s.label) continue;
+        const line = LINES[s.line].name;
+        (groups[line] ||= []).push(['seg:' + id, s.label + (s.rev && s.rev !== s.label ? ' / ' + s.rev : '')]);
     }
-    _dom.krebsYield.textContent = text;
+    groups.Membrane = Object.keys(COMPLEX).filter(k => Membrane.pos[k] && Cell.targets('mem:' + k).length).map(k => ['mem:' + k, Membrane.spec.names[k] || k]);
+    for (const [g, items] of Object.entries(groups)) {
+        if (!items.length) continue;
+        const og = document.createElement('optgroup'); og.label = g;
+        for (const [v, t] of items) { const o = document.createElement('option'); o.value = v; o.textContent = t; og.appendChild(o); }
+        sel.appendChild(og);
+    }
+    if ([...sel.options].some(o => o.value === keep)) sel.value = keep;
 }
 
+/** A target's main reaction now: the one carrying the most. */
+function mainReaction(target) {
+    const e = Cell.engine, rids = Cell.targets(target);
+    let best = null, bv = -1;
+    for (const r of rids) { const j = e.rIndex[r], v = Math.abs(e.state.v[j]); if (v > bv) { bv = v; best = j; } }
+    return best;
+}
+
+/** The inspector's text for a target, also the canvas tooltip's last line. */
+export function factorText(target) {
+    const e = Cell.engine; if (!e) return null;
+    const j = mainReaction(target); if (j == null) return null;
+    const f = e.factors(j), r = e.reactions[j];
+    const dG = Number.isFinite(f.dG) ? f.dG.toFixed(1) + ' kJ/mol' : f.dG > 0 ? '+∞' : '−∞';
+    const way = f.v < 0 ? ', running backward' : '';
+    const held = Cell.held && [].concat(Cell.held).includes(target);
+    const pulse = held ? `; held ×${e.pulseNow(j).toFixed(1)}, compared in Stats` : Math.abs(e.pulseNow(j) - 1) > 0.02 ? `; pulsed ×${e.pulseNow(j).toFixed(1)}` : '';
+    return `${r.name}: ${fmt(f.v)} mM/s${way}; ΔG ${dG}; thermodynamics ${f.thermo.toFixed(2)}, saturation ${f.sat.toFixed(2)}, regulation ${f.reg.toFixed(2)}` + pulse;
+}
+
+const fmt = (x) => { const a = Math.abs(x); return a === 0 ? '0' : a >= 10 ? x.toFixed(0) : a >= 1 ? x.toFixed(1) : a >= 0.01 ? x.toFixed(2) : x.toExponential(0); };
 const _set = (el, t) => { if (el && el.textContent !== t) el.textContent = t; };
-function updateBar(bar, ratio, val, total) {
-    const pct = Math.round(val / total * 100) + '%';
-    if (bar) bar.style.width = pct;
-    _set(ratio, pct);
+function bar(barEl, ratioEl, frac) {
+    const pct = Math.round(Math.max(0, Math.min(1, frac)) * 100) + '%';
+    if (barEl) barEl.style.width = pct;
+    _set(ratioEl, pct);
 }
 
 /** A sparkline in the margin's medium: a hairline in the pool's ink over a baseline. */
@@ -73,51 +130,73 @@ function spark(id, h, color) {
     c.stroke();
 }
 
-/** Full refresh — after every reaction and on timer ticks. */
+/** The pools' shares in the slab's compartment: ATP of the adenylates, NADH of NAD, NADPH of NADP. */
+export function poolShares() {
+    const e = Cell.engine, m = 'm' in e.model.comps ? 'm' : 'c', c = (s) => e.conc(s, m);
+    const ad = c('atp') + c('adp') + c('amp'), nad = c('nad') + c('nadh'), nadp = c('nadp') + c('nadph');
+    return { atp: ad ? c('atp') / ad : 0, nadh: nad ? c('nadh') / nad : 0, nadph: nadp ? c('nadph') / nadp : 0, comp: m };
+}
+
+/** The Δp ATP synthase needs to make ATP now, mV: the phosphorylation potential over its four protons. */
+function atpThreshold() {
+    const e = Cell.engine, m = 'm' in e.model.comps ? 'm' : 'c';
+    const atp = e.conc('atp', m), adp = e.conc('adp', m), pi = e.conc('pi', m);
+    if (!adp || !pi) return Infinity;
+    return (27.37 + RT * Math.log(atp / 1000 / (adp / 1000 * pi / 1000))) / (4 * F) * 1000;
+}
+
+/** Full refresh: after every frame's sample, coalesced. */
 export function updateDashboard() {
-    if (!_dom) return;
-    updateBar(_dom.atpBar, _dom.atpRatio, store.atp, store.totalAtpAdp);
-    updateBar(_dom.nadhBar, _dom.nadhRatio, store.nadh, store.totalNad);
-    updateBar(_dom.nadphBar, _dom.nadphRatio, store.nadph, store.totalNadp);
-    updateBar(_dom.fadh2Bar, _dom.fadh2Ratio, store.fadh2, store.totalFad);
+    const e = Cell.engine;
+    if (!_dom || !e) return;
+    const v = e.state.v, R = (rid) => rid in e.rIndex ? v[e.rIndex[rid]] * (e.model.comps[e.reactions[e.rIndex[rid]].comp] || 1) : 0;
+    const sh = poolShares();
+    bar(_dom.atpBar, _dom.atpRatio, sh.atp);
+    bar(_dom.nadhBar, _dom.nadhRatio, sh.nadh);
+    bar(_dom.nadphBar, _dom.nadphRatio, sh.nadph);
+    _set(_dom.poolsWhere, sh.comp === 'm' ? 'In the mitochondrial matrix, under the membrane' : 'In the cytoplasm, under the membrane');
 
-    _set(_dom.protonGradient, '' + store.protonGradient);
-    _set(_dom.protonMv, Math.round(deltaP()) + ' mV');
-    _set(_dom.atpMv, store.atp >= store.totalAtpAdp ? 'no ADP' : Math.round(atpThreshold()) + ' mV');
-    _set(_dom.protonsLeaked, '' + store.protonsLeaked);
-    _set(_dom.co2Net, '' + (store.co2Produced - store.co2Fixed));
-    _set(_dom.o2Net, (store.o2Produced - store.o2Consumed).toFixed(1));
-    _set(_dom.h2oNet, '' + (store.h2oProduced - store.h2oSplit));
+    _set(_dom.protonMv, Math.round(e.dp()) + ' mV');
+    const th = atpThreshold();
+    _set(_dom.atpMv, Number.isFinite(th) ? Math.round(th) + ' mV' : 'no ADP');
+    _set(_dom.protonsLeaked, fmt(R('LEAK') + R('UCP')) + ' mM/s');
 
-    _set(_dom.krebsTurn, '' + counters.krebsTurns);
-    _set(_dom.calvinTurn, '' + counters.calvinTurns);
-    _set(_dom.glycolysisRun, '' + counters.glycRuns);
-    _set(_dom.pppRun, '' + counters.pppRuns);
-    _set(_dom.betaoxRun, '' + counters.betaoxRuns);
-
-    _set(_dom.atpSubstrate, '' + store.atpSubstrate);
-    _set(_dom.atpOxidative, '' + store.atpOxidative);
-    const made = store.atpSubstrate + store.atpOxidative;
-    if (made > 0 && _dom.atpSourceSub) {
-        _dom.atpSourceSub.style.width = (store.atpSubstrate / made * 100) + '%';
-        _dom.atpSourceOx.style.width = (store.atpOxidative / made * 100) + '%';
-    }
-
-    const activeROS = store.rosProduced - store.rosScavenged;
-    _set(_dom.rosProduced, '' + store.rosProduced);
-    _set(_dom.rosScavenged, '' + store.rosScavenged);
-    _set(_dom.activeROS, '' + activeROS);
+    const m = 'm' in e.model.comps ? 'm' : 'c';
+    _set(_dom.superoxide, fmt(e.conc('o2s', m) * 1e6) + ' nM');
+    _set(_dom.peroxide, fmt(e.conc('h2o2', m) * 1e6) + ' nM');
+    _set(_dom.rosMade, fmt(R('ROSI') + R('ROSQ')) + ' mM/s');
+    const health = 100 * (1 - e.state.damage);
     if (_dom.healthBar) {
-        _dom.healthBar.style.width = store.cellHealth + '%';
-        _dom.healthBar.dataset.level = store.cellHealth > 50 ? 'ok' : store.cellHealth > 20 ? 'low' : 'critical';
+        _dom.healthBar.style.width = health + '%';
+        _dom.healthBar.dataset.level = health > 50 ? 'ok' : health > 20 ? 'low' : 'critical';
     }
-    _set(_dom.healthRatio, Math.round(store.cellHealth) + '%');
+    _set(_dom.healthRatio, Math.round(health) + '%');
+
+    // ATP's sources: at the substrate (PGK, PK, succinyl-CoA synthetase) or by ATP synthase
+    const sub = Math.max(0, R('PGK')) + Math.max(0, R('PYK')) + Math.max(0, R('SUCOAS')), ox = Math.max(0, R('ATPS'));
+    _set(_dom.atpSubstrate, fmt(sub) + ' mM/s');
+    _set(_dom.atpOxidative, fmt(ox) + (R('ATPS') < 0 ? ' (running backward)' : '') + ' mM/s');
+    if (sub + ox > 0 && _dom.atpSourceSub) {
+        _dom.atpSourceSub.style.width = (sub / (sub + ox) * 100) + '%';
+        _dom.atpSourceOx.style.width = (ox / (sub + ox) * 100) + '%';
+    }
+
+    // Exchange with the medium, mM/s of cytosol: taken in, or given off (−)
+    _set(_dom.o2Net, fmt(R('EX_o2')) + ' mM/s');
+    _set(_dom.co2Net, fmt(R('EX_co2')) + ' mM/s');
+    _set(_dom.glcNet, fmt(R('EX_glc')) + ' mM/s');
+    _set(_dom.growthNet, fmt(R('BIOMASS') / (300 / 3600)) + ' /h');
+
+    // The inspector, and the held enzyme's comparison
+    if (_dom.enzymeSelect && _dom.enzymeSelect.value) _set(_dom.enzymeFactors, factorText(_dom.enzymeSelect.value) || '—');
+    Cell.checkCompare();
+    if (_dom.enzymeHold) _dom.enzymeHold.setAttribute('aria-pressed', String(!!Cell.held && Cell.held === _dom.enzymeSelect.value));
+    if (_dom.enzymeControl) { const t = controlText(); _dom.enzymeControl.hidden = !t; _set(_dom.enzymeControl, t || ''); }
 
     if (_dom.statsVisible && !_dom.statsVisible()) return;
     const T = _themePalette();
     spark('spark-atp', histories.atp, T.atp);
     spark('spark-nadh', histories.nadh, T.nadh);
     spark('spark-nadph', histories.nadph, T.nadph);
-    spark('spark-fadh2', histories.fadh2, T.fadh2);
     spark('spark-gradient', histories.gradient, T.accent);
 }

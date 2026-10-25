@@ -34,7 +34,7 @@ $$\\text{Glucose} + 2\\,\\text{NAD}^+ + 2\\,\\text{ADP} + 2\\,\\text{P}_i \\long
 
 <h3>Regulation</h3>
 <p>PFK is the master switch. It is allosterically inhibited by ATP (the product of metabolism) and citrate (signals Krebs cycle saturation), and activated by AMP and fructose-2,6-bisphosphate (signals energy deficit). This creates a feedback loop: when ATP is abundant, glycolysis slows; when ATP drops, glycolysis accelerates.</p>
-<p>In this simulation, PFK is blocked when $[\\text{ATP}]/[\\text{total adenylates}] > 0.8$ and partially inhibited above 0.6. Pyruvate kinase reverse (gluconeogenesis) is blocked below 0.3.</p>
+<p>In the model, PFK's rate carries the factor $1/(1 + (r/8)^2)$ with $r = [\\text{ATP}]/[\\text{ADP}]$, and AMP relieves it (half-activating at 20 µM). FBPase, its opposite, is inhibited by AMP, and fructose 1,6-bisphosphate activates pyruvate kinase ahead of it (feed-forward). The inspector shows each factor live.</p>
 
 <h3>Connections to other pathways</h3>
 <ul>
@@ -66,7 +66,7 @@ $$\\text{Glucose} + 2\\,\\text{NAD}^+ + 2\\,\\text{ADP} + 2\\,\\text{P}_i \\long
 <h3>Non-oxidative phase</h3>
 <p>Carbon-shuffling enzymes (transketolase and transaldolase) interconvert 3-, 4-, 5-, 6-, and 7-carbon sugar phosphates. The net effect depends on the cell's needs:</p>
 <ul>
-<li><b>Need NADPH only</b>: $6\\,\\text{R5P} \\to 5\\,\\text{F6P}$ — pentoses are recycled back to hexoses, which re-enter the oxidative phase. This is the mode shown in the simulation.</li>
+<li><b>Need NADPH only</b>: $6\\,\\text{R5P} \\to 5\\,\\text{F6P}$ — pentoses are recycled back to hexoses, which re-enter the oxidative phase. The model doesn't choose a mode: it follows from what the cell spends.</li>
 <li><b>Need R5P for nucleotides</b>: The oxidative phase runs, and R5P is siphoned off for DNA/RNA synthesis.</li>
 <li><b>Need both</b>: A balanced flux through both phases.</li>
 </ul>
@@ -77,7 +77,7 @@ $$\\text{G6P} + 12\\,\\text{NADP}^+ + 6\\,\\text{H}_2\\text{O} \\longrightarrow 
 
 <h3>Regulation</h3>
 <p>G6PDH is controlled by the $\\text{NADPH}/\\text{NADP}^+$ ratio. High NADPH inhibits the enzyme (product inhibition), while low NADPH activates it. This ensures the pathway runs only when NADPH is needed.</p>
-<p>In the simulation: G6PDH is activated $1.5\\times$ when NADPH falls below 20%, blocked above 80%, and partially inhibited above 60%.</p>
+<p>In the model, G6PDH is held back by its product: its rate carries $1/(1 + (r/3)^2)$ with $r = [\\text{NADPH}]/[\\text{NADP}^+]$, so the pathway speeds up as NADPH is spent.</p>
 
 <h3>Antioxidant defense</h3>
 <p>NADPH is essential for regenerating reduced glutathione (GSH) via glutathione reductase. GSH is then used by glutathione peroxidase (GPx) to neutralize reactive oxygen species ($\\text{H}_2\\text{O}_2$). This creates a direct metabolic link:</p>
@@ -112,11 +112,11 @@ $$5\\,\\text{G3P} + 3\\,\\text{ATP} \\longrightarrow 3\\,\\text{RuBP} + 3\\,\\te
 
 <h3>Net equation (per 3 $\\text{CO}_2$)</h3>
 $$3\\,\\text{CO}_2 + 9\\,\\text{ATP} + 6\\,\\text{NADPH} \\longrightarrow \\text{G3P} + 9\\,\\text{ADP} + 6\\,\\text{NADP}^+ + 8\\,\\text{P}_i$$
-<p>For one glucose (6 $\\text{CO}_2$): 18 ATP + 12 NADPH consumed. The simulation runs 6 turns per batch.</p>
+<p>For one glucose (6 $\\text{CO}_2$): 18 ATP + 12 NADPH consumed. Clicking the cycle's name on the map pulses all its enzymes at once.</p>
 
 <h3>Regulation</h3>
 <p>RuBisCO activase requires ATP to maintain RuBisCO in its active form. When ATP drops (e.g. in the dark), RuBisCO deactivates. Several Calvin cycle enzymes (GAPDH, FBPase, PRK) are also redox-regulated via thioredoxin, linking their activity to the light reactions.</p>
-<p>In the simulation: RuBisCO is blocked when $[\\text{ATP}]/[\\text{total}] < 0.15$ and partially inhibited below 0.3.</p>
+<p>In the model, light switches RuBisCO, phosphoribulokinase, SBPase and the NADP-linked GAPDH on (through thioredoxin in the cell); in the dark they fall to a few percent of their activity. ATP and NADPH limit the cycle through its kinases' and GAPDH's own kinetics.</p>
 
 <h3>Shared enzymes with glycolysis</h3>
 <p>The Calvin cycle shares several enzymes with glycolysis running in reverse: PGK, GAPDH, aldolase, FBPase (bypassing PFK), and PGI. Transketolase and transaldolase are shared with the PPP. This deep interconnection reflects the evolutionary ancestry of carbon metabolism.</p>
@@ -159,7 +159,7 @@ $$\\text{Acetyl-CoA} + 3\\,\\text{NAD}^+ + \\text{FAD} + \\text{GDP} + \\text{P}
 <li><b>Isocitrate DH</b>: activated by ADP, $\\text{Ca}^{2+}$; inhibited by ATP, NADH</li>
 <li><b>$\\alpha$-KG DH</b>: inhibited by succinyl-CoA, NADH; activated by $\\text{Ca}^{2+}$</li>
 </ul>
-<p>In the simulation: CS is slowed above 85% ATP; IDH is blocked above 75% NADH and slowed above 50%.</p>
+<p>In the model, NADH/NAD⁺ inhibits citrate synthase, isocitrate dehydrogenase and α-ketoglutarate dehydrogenase; ATP/ADP slows citrate synthase; ADP activates isocitrate dehydrogenase; and succinyl-CoA inhibits α-ketoglutarate dehydrogenase. Pyruvate dehydrogenase is inhibited by NADH/NAD⁺ and acetyl-CoA/CoA.</p>
 
 <h3>Amphibolic nature</h3>
 <p>The Krebs cycle is <em>amphibolic</em> — it participates in both catabolism and anabolism. Intermediates are siphoned off for biosynthesis:</p>
@@ -280,7 +280,7 @@ $$\\Delta G'^\\circ = -nF\\Delta E = -2 \\times 96{,}485 \\times 1.14 \\approx -
 <p>Total: $10\\,\\text{H}^+$ pumped per NADH (4+4+2), 6 per $\\text{FADH}_2$ (bypasses Complex I). At $4\\,\\text{H}^+$ per ATP: ~2.5 ATP/NADH, ~1.5 ATP/$\\text{FADH}_2$.</p>
 
 <h3>Pasteur effect</h3>
-<p>When oxygen is removed, glycolysis accelerates dramatically (up to $20\\times$) to compensate for the $15\\times$ drop in ATP yield per glucose. This was first observed by Pasteur in yeast: anaerobic cultures consumed glucose far faster than aerobic ones. In the simulation, turning off $\\text{O}_2$ activates fermentation to regenerate $\\text{NAD}^+$.</p>
+<p>When oxygen is removed, glycolysis accelerates dramatically (up to $20\\times$) to compensate for the $15\\times$ drop in ATP yield per glucose. This was first observed by Pasteur in yeast: anaerobic cultures consumed glucose far faster than aerobic ones. In the model the Pasteur effect is not scripted: without oxygen, NADH backs up and ATP falls while AMP rises, which releases PFK, and the cell's fermentation regenerates $\\text{NAD}^+$.</p>
 
 <h3>ROS production</h3>
 <p>The flip side of using $\\text{O}_2$ as an electron acceptor: electrons occasionally "leak" from the ETC (primarily at Complex I and the Q-cycle) and reduce $\\text{O}_2$ to superoxide ($\\text{O}_2^{\\bullet-}$). This is the unavoidable cost of aerobic life and the origin of oxidative stress.</p>
@@ -290,32 +290,31 @@ $$\\Delta G'^\\circ = -nF\\Delta E = -2 \\times 96{,}485 \\times 1.14 \\approx -
 `,
     },
 
-    autoplay: {
-        title: 'Auto-play mode',
+    engine: {
+        title: 'The model',
         body: `
-<p>Auto-play continuously advances metabolic reactions in a prioritized sequence, simulating the steady-state flux of a living cell. It replaces manual clicking with automated reaction firing, subject to the same substrate checks and allosteric regulation.</p>
+<p>Each organism is a kinetic model of its cell. Its metabolites and cofactors are concentrations; each reaction is one enzyme's, balanced in elements and charge; and every reaction runs at a rate computed from the cell's state, advanced in model time by an implicit integrator. Nothing is scheduled: a pathway runs because it is downhill, fed and not held back.</p>
 
-<h3>Tick rates</h3>
-<table>
-<tr><th style="text-align:left;padding:4px 8px">Category</th><th style="text-align:left;padding:4px 8px">Interval</th><th style="text-align:left;padding:4px 8px">Reactions</th></tr>
-<tr><td style="padding:4px 8px">ETC (fast)</td><td style="padding:4px 8px">400 ms</td><td style="padding:4px 8px">ATP Synthase $\\times 3$, respiratory ETC, photosynthetic ETC, NNT</td></tr>
-<tr><td style="padding:4px 8px">Metabolic</td><td style="padding:4px 8px">800 ms</td><td style="padding:4px 8px">Krebs, PDH, glycolysis (upper + lower), Calvin, PPP, fermentation/ADH, beta-ox/FA synthesis, gluconeogenesis</td></tr>
-<tr><td style="padding:4px 8px">Passive drain</td><td style="padding:4px 8px">1600 ms</td><td style="padding:4px 8px">3 ATP consumed (cellular maintenance)</td></tr>
-<tr><td style="padding:4px 8px">Proton leak</td><td style="padding:4px 8px">500 ms</td><td style="padding:4px 8px">2% base leak, 10% with uncoupling; ROS damage; auto-scavenging</td></tr>
-</table>
+<h3>The rate of a reaction</h3>
+<p>Each rate is a capacity times three factors (the separable form of Noor et al. 2013):</p>
+$$v = V_{\\max} \\cdot \\eta_{\\text{reg}} \\cdot \\eta_{\\text{sat}} \\cdot \\eta_{\\text{thermo}}, \\qquad \\eta_{\\text{thermo}} = 1 - e^{\\Delta G/RT}$$
+<ul>
+<li>$\\eta_{\\text{thermo}}$ makes the reaction stop at equilibrium and never run against its $\\Delta G$. $\\Delta G = \\Delta G^{\\circ\\prime} + RT\\ln Q$, with $\\Delta G^{\\circ\\prime}$ from eQuilibrator (pH 7, ionic strength 0.25 M, pMg 3), or from midpoint potentials and photon energies for the membrane, plus $nF\\Delta p$ for each charge moved across it.</li>
+<li>$\\eta_{\\text{sat}}$ is how saturated the enzyme is with its substrates and products (convenience kinetics).</li>
+<li>$\\eta_{\\text{reg}}$ is its effectors: ATP/ADP, NADH/NAD⁺, AMP, citrate, light, and others.</li>
+</ul>
+<p>More enzyme makes a reaction faster but cannot move its equilibrium. The inspector in the Stats tab shows each factor for any enzyme.</p>
 
-<h3>Priority and direction</h3>
-<p>The ETC runs at double speed because membrane reactions in real cells (~milliseconds) are faster than matrix/cytoplasmic reactions (~seconds). ATP synthase fires $3\\times$ per ETC tick to reflect its high throughput.</p>
-<p>Metabolic reactions are direction-aware: while a membrane with photosystems is in the light, glycolysis's upper half and beta oxidation run in reverse (gluconeogenesis and FA synthesis) to reflect anabolic conditions. Otherwise they run forward (catabolic). Without oxygen, the organism's own fermentation regenerates NAD⁺: lactate or ethanol. This rule is interim; a thermodynamic engine will set directions instead.</p>
+<h3>Time</h3>
+<p>The system is stiff (fast membrane steps beside slow storage), so it is integrated by a linearly implicit Rosenbrock method, which keeps every conservation law exactly. A trajectory depends only on model time, not on how the screen's frames slice it. The figure runs the chemistry slowed, 30× by default (300× to 3×); slowing it changes how much chemistry a second shows, not the chemistry.</p>
 
-<h3>Regulation gating</h3>
-<p>Each auto-fired reaction checks its allosteric regulation factor $f \\in [0, 1.5]$. If $f = 0$ (fully blocked), the reaction is silently skipped. If $0 < f < 1$ (partial inhibition), the reaction fires probabilistically:</p>
-$$P(\\text{skip}) = 1 - f$$
-<p>This produces realistic flux modulation — partially inhibited pathways slow down rather than stopping completely.</p>
+<h3>The window</h3>
+<p>The membrane panel is a window onto a fixed slab of the cell, 16.5 nm by 20 nm under the drawn membrane. The cofactor molecules drawn are the slab's mean counts at the cell's concentrations. Each complex drawn is one representative copy, turning over at its turnover number times the share of its capacity in use: an electron waits on its carrier at each complex until that complex turns over. Above eight turnovers a second, one in several is drawn, and the caption says so.</p>
 
-<h3>Passive drains</h3>
-<p>The 3 ATP/tick passive drain models the ~30% of cellular ATP that is continuously consumed by housekeeping processes (ion pumps, protein turnover, DNA repair). Without substrate input, ATP will gradually deplete, mimicking starvation.</p>
-<p>The proton leak tick models the inherent leakiness of biological membranes. Even without uncoupling proteins, ~2% of the gradient dissipates per tick. This drives ROS scavenging checks and cell health updates.</p>
+<h3>Pulses and control</h3>
+<p>A click multiplies an enzyme's activity fivefold at its peak, fading over about 1.5 s of model time; an inhibition multiplies it by 0.1. Holding an enzyme raises its activity by 10% and keeps it there. Two copies of the cell then run from that moment, one held and one not, until both are steady. The flux control coefficient of the enzyme over a flux $J$ is (Kacser &amp; Burns 1973)</p>
+$$C^J_e = \\frac{\\partial \\ln J}{\\partial \\ln e} \\approx \\frac{\\ln(J_{\\text{held}}/J_{\\text{base}})}{\\ln 1.1}$$
+<p>A coefficient near 1 means the flux follows the enzyme; near 0, the flux ignores it. Over all the cell's enzymes, the coefficients on any one flux sum to 1 (the summation theorem), so control is shared, and it shifts with conditions.</p>
 `,
     },
 
@@ -353,17 +352,17 @@ $$\\Delta p = \\Delta\\psi - \\frac{2.3\\,RT}{F}\\,\\Delta\\text{pH}$$
 <li>$\\Delta\\psi$: membrane potential (~150–180 mV in mitochondria, inside negative)</li>
 <li>$\\Delta\\text{pH}$: pH difference (~0.5–1.0 units in mitochondria, ~3 units in chloroplasts)</li>
 </ul>
-<p>The simulation tracks a single gradient value rather than the two terms, and counts each unit of it as 2 mV of $\\Delta p$.</p>
+<p>The model keeps $\\Delta p$ as one number per membrane, set by the net charge moved across it (in thylakoids, by the protons), and does not yet split it into the two terms. The figure draws one proton in the lumen for every 2 mV.</p>
 
 <h3>Respiratory control</h3>
 <p>Pumping a proton against $\\Delta p$ costs energy, so each pump slows as the gradient grows and stops at its stall potential, where the work of pumping equals what its electrons release. For the respiratory chain, two electrons falling from NADH ($-320$ mV) to $\\text{O}_2$ ($+815$ mV) pay for ten protons:</p>
 $$\\Delta p_{\\text{stall}} = \\frac{2 \\times 1135\\ \\text{mV}}{10} \\approx 227\\ \\text{mV}$$
-<p>In the simulation a pump's rate falls as $1 - e^{(\\Delta p - \\Delta p_{\\text{stall}})/15\\,\\text{mV}}$. The light-driven pumps are assumed to stall at 200 mV, where an acid lumen slows cytochrome $b_6f$ (photosynthetic control). With no ADP, ATP synthase can't drain the gradient, so respiration slows to the rate of the leak (state 4); adding ADP releases it (state 3), and an uncoupler releases it without making ATP. The ratio of the two rates is the respiratory control ratio, a standard measure of how tightly mitochondria are coupled.</p>
+<p>In the model nothing imposes a stall: each pump's $\\Delta G$ includes $nF\\Delta p$ for the $n$ charges it moves, and its rate carries the thermodynamic factor $1 - e^{\\Delta G/RT}$, so it slows as $\\Delta p$ nears that potential and stops there. With no ADP, ATP synthase can't drain the gradient, so respiration slows to the rate of the leak (state 4); adding ADP releases it (state 3), and an uncoupler releases it without making ATP. The ratio of the two rates is the respiratory control ratio, a standard measure of how tightly mitochondria are coupled.</p>
 
 <h3>ATP synthase runs both ways</h3>
 <p>ATP synthase is reversible. It makes ATP only while the gradient's energy exceeds the phosphorylation potential:</p>
 $$4F\\,\\Delta p > \\Delta G_p = \\Delta G^{\\circ\\prime} + RT \\ln\\frac{[\\text{ATP}]}{[\\text{ADP}][\\text{P}_i]}$$
-<p>with $\\Delta G^{\\circ\\prime} = 30.5$ kJ/mol and, in the simulation, 10 mM phosphate at 25 °C. Below that balance point it runs backward, splitting ATP to pump protons out. Fermenting bacteria rely on this to keep their membranes energized. Mitochondria limit it with an inhibitor protein, IF1, which the simulation does not model; photosynthetic ATP synthases are switched off for hydrolysis in the dark, and the simulation brakes them there.</p>
+<p>with $\\Delta G^{\\circ\\prime}$ from eQuilibrator (pH 7, ionic strength 0.25 M, pMg 3) and the cell's own phosphate. Below that balance point it runs backward, splitting ATP to pump protons out. Fermenting bacteria rely on this to keep their membranes energized. Mitochondria limit it with an inhibitor protein, IF1, which the model applies as $\\Delta p$ collapses below about 60 mV; photosynthetic ATP synthases are switched off for hydrolysis in the dark, and the model brakes them there.</p>
 
 <h3>The chemiosmotic revolution</h3>
 <p>Before Mitchell's hypothesis (1961), the prevailing model assumed a "high-energy chemical intermediate" directly linking the ETC to ATP synthesis (the chemical coupling hypothesis). Mitchell's radical idea — that the intermediate was a proton gradient, not a molecule — was initially met with fierce resistance but was vindicated by decades of experimental evidence. It unified photosynthetic and respiratory ATP synthesis under a single mechanism.</p>
@@ -401,7 +400,7 @@ $$\\text{H}^+_{\\text{lumen}} \\xrightarrow{\\text{UCP}} \\text{H}^+_{\\text{mat
 <p>Chemical uncouplers like 2,4-dinitrophenol (DNP) are lipid-soluble weak acids that shuttle protons across the membrane. DNP was briefly used as a weight-loss drug in the 1930s (it works — the body burns more fuel to compensate for the wasted gradient) but was banned after causing hyperthermia, cataracts, and deaths. It remains a cautionary tale about the dangers of tampering with bioenergetics.</p>
 
 <h3>Simulation model</h3>
-<p>With uncoupling disabled, a basal 2% proton leak per tick occurs (reflecting real membrane leakiness). Enabling uncoupling increases this to 10% per tick. While uncoupling is on, the leaked protons cross through the UCP channel; otherwise they cross the bilayer.</p>
+<p>In the model the bilayer leaks protons in proportion to $\\Delta p$, more as its lipids are peroxidised. Uncoupling protein adds a conductance over a hundred times larger, so $\\Delta p$ falls and the chain speeds up to make up the loss. While it is on, the leaked protons are drawn crossing through UCP.</p>
 `,
     },
 
@@ -418,7 +417,7 @@ $$\\text{O}_2 + e^- \\longrightarrow \\text{O}_2^{\\bullet-}$$
 <li>$2\\,\\text{O}_2^{\\bullet-} + 2\\text{H}^+ \\to \\text{H}_2\\text{O}_2 + \\text{O}_2$ (spontaneous or via SOD)</li>
 <li>$\\text{H}_2\\text{O}_2 + \\text{Fe}^{2+} \\to \\text{OH}^\\bullet + \\text{OH}^- + \\text{Fe}^{3+}$ (Fenton reaction — produces the most damaging radical)</li>
 </ul>
-<p>The simulation models a 2% electron leak rate, tracked as ROS production.</p>
+<p>In the model, complex I and the Q-cycle leak superoxide at rates that climb steeply with $\\Delta p$ (half-maximal near 190 mV): a small share of the electrons they pass, larger as the chain backs up.</p>
 
 <h3>Scavenging cascade</h3>
 <p>Three enzymes form the primary defense, modeled in the simulation:</p>
@@ -450,7 +449,7 @@ $$\\text{PPP} \\xrightarrow{\\text{NADPH}} \\text{GR} \\xrightarrow{\\text{GSH}}
 <li><b>Protein oxidation</b>: carbonylation, disulfide cross-links, loss of enzymatic function</li>
 <li><b>Lipid peroxidation</b>: chain reaction in membranes, producing toxic aldehydes (malondialdehyde, 4-HNE)</li>
 </ul>
-<p>In the simulation, each active ROS reduces cell health by 0.3 per leak tick. Health regenerates at 0.5/tick when active ROS reaches zero. Critical health ($< 20$) triggers a warning toast.</p>
+<p>In the model, what the scavengers miss peroxidises the membrane. Damage grows with the reactive oxygen present; it raises the proton leak (up to fivefold) and inactivates aconitase. Repair spends ATP, and damage clears only as fast as repair runs. The figure draws the membrane's lipids peroxidised in proportion.</p>
 
 <h3>ROS as signaling molecules</h3>
 <p>Despite their destructive potential, ROS at low concentrations serve essential signaling roles: activating transcription factors (NF-$\\kappa$B, Nrf2), regulating cell proliferation, and mediating immune responses (the "oxidative burst" of neutrophils deliberately produces ROS to kill pathogens). The cell's challenge is maintaining ROS within this narrow "beneficial" window.</p>

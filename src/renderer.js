@@ -2,18 +2,20 @@
    renderer.js — the scene: the specimen's cross-section above, the carbon
    network as a transit map below, one world under one camera. Desktop fits
    the world to the canvas; phones turn the map upright and pan and zoom it.
-   The reactions call spawnProton / spawnPhoton / spawnElectronChain and read
-   etcComplexes, as they always have.
+   The window (window.js) calls spawnProton / spawnPhoton / spawnElectronChain,
+   poolEvent and mapEvent with what it samples; clicks go back out through
+   onPulse and onRelease, tooltips ask onFactors.
    =================================================================== */
 import { Membrane } from './membrane.js';
-import { MapView, FLIP } from './map.js';
+import { MapView } from './map.js';
 import { drawMap } from './mapdraw.js';
 import { PAIR } from './maplayout.js';
 import Particles from './particles.js';
 import Stroma from './stroma.js';
-import { SPECIMENS, CLICK, specimenCan } from './specimens.js';
+import { SPECIMENS } from './specimens.js';
 import { simState, store } from './state.js';
-import { flux, onFlux, RUNNING } from './flux.js';
+import { flux, RUNNING } from './flux.js';
+import { COMPLEX } from './mapbind.js';
 import { ENZYMES, METABOLITES } from './info.js';
 import * as K from './complexes.js';
 import { panelTitle, scaleBar, hairline } from './plate.js';
@@ -28,8 +30,7 @@ const _SEG_INFO = { g0: 'HK', g1: 'PGI', g2: 'PFK', g3: 'ALDO', g5: 'GAPDH', g6:
     b0: 'ACAD', b1: 'ECH', b2: 'HACD', b3: 'ACAT', bspur: 'ACAT' };
 const _REV_INFO = { g0: 'G6Pase', g2: 'FBPase' };
 const buzz = () => { if (typeof _haptics !== 'undefined') _haptics.trigger('light'); };
-// Membrane reactions whose pool changes have a place: [pool, the site's key]
-const _DOCK = { atp_syn: { atp: 'atpSyn' }, etc_resp: { nadh: 'ndh1', fadh2: 'sdh' }, nnt: { nadh: 'nnt', nadph: 'nnt' } };
+const HOLD_MS = 400;   // a press this long sustains a small perturbation until let go (and starts the paired baseline)
 // What a stroma molecule's tooltip says
 const _MOL_INFO = {
     atp: { on: 'ATP', off: 'ADP', total: 'totalAtpAdp', pool: 'adenylates', charged: 'carry three phosphates', what: 'Adenosine triphosphate / diphosphate', does: 'ATP synthase and the kinases make ATP; nearly every pathway spends it.' },
@@ -44,7 +45,7 @@ const Renderer = {
     worldW: 0, worldH: 0, narrow: false,
     etcComplexes: {}, membraneY: 0, membraneH: 0,
     specId: 'thylakoid',
-    onEnzymeClick: null, onInteract: null,
+    onPulse: null, onRelease: null, onFactors: null, onInteract: null,
     hover: null, warm: false, _warmUntil: 0,
     rotor: { phase: 0, target: 0, seen: 0, split: 0 },
     _o2: { out: 0, in: 0 },
@@ -62,7 +63,6 @@ const Renderer = {
             onReset: () => this.resetView(),
         });
         this._initInteraction();
-        onFlux((key, step, rev, res, segs) => this._poolEvents(key, res, segs));
         K.readPalette();
     },
 
@@ -99,7 +99,7 @@ const Renderer = {
     setSpecimen(id) {
         if (!SPECIMENS[id] || id === this.specId) return;
         this.specId = id;
-        Particles.flush(); Particles.clear();
+        Particles.clear();
         this.layout();
     },
 
@@ -124,10 +124,11 @@ const Renderer = {
         Particles.spawnProton(cx, dir);
     },
     spawnPhoton(key) { if (!this.warm) Particles.spawnPhoton(key); },
-    spawnElectronChain(keys, type, callbacks) {
-        // Warming up, or a chain this specimen can't draw: its effects land at once
-        if (this.warm || !Particles.spawnElectronChain(keys, type, callbacks)) {
-            for (let i = 0; i < keys.length; i++) if (callbacks && callbacks[i]) callbacks[i]();
+    spawnElectronChain(keys, type, callbacks, gates) {
+        // Warming up, or a chain this specimen can't draw: its own effects land at once, and a
+        // gated complex's land when that complex turns over (the window's short hop)
+        if (this.warm || !Particles.spawnElectronChain(keys, type, callbacks, gates)) {
+            for (let i = 0; i < keys.length; i++) if (callbacks && callbacks[i] && !(gates && gates[i])) callbacks[i]();
         }
     },
     /** A pool changed at a membrane complex (FNR's NADPH, from the chain's callback). */
@@ -141,20 +142,20 @@ const Renderer = {
         if (ox < R.seen || hy < R.split) { R.seen = ox; R.split = hy; }
         R.target += (ox - R.seen - (hy - R.split)) * TAU / 3; R.seen = ox; R.split = hy;
         R.phase = Math.max(R.target - 2 * TAU, Math.min(R.target + 2 * TAU, R.phase));
-        R.phase += (R.target - R.phase) * Math.min(1, dt * simState.speed * 2.5);
+        R.phase += (R.target - R.phase) * Math.min(1, dt * 2.5);
         const o = Math.floor(store.o2Produced), i = Math.floor(store.o2Consumed);
         if (o < this._o2.out || i < this._o2.in) { this._o2.out = o; this._o2.in = i; }
         if (o > this._o2.out && Membrane.pos.psii) Particles.emit('o2out', Membrane.pos.psii.x, Membrane.memTop - 5 * s);
         if (i > this._o2.in && Membrane.pos.cytOx) Particles.emit('o2in', Membrane.pos.cytOx.x, Membrane.memBot + 2 * s);
         this._o2.out = o; this._o2.in = i;
         Particles.update(dt);
-        Stroma.update(dt * simState.speed);
-        MapView.update(dt * simState.speed);
+        Stroma.update(dt);
+        MapView.update(dt);
     },
 
     draw(dt) {
         const c = this.ctx;
-        MapView.updateVis();
+        MapView.updateVis(dt);
         c.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
         c.fillStyle = K.P.canvas; c.fillRect(0, 0, this.W, this.H);
         c.save();
@@ -214,27 +215,22 @@ const Renderer = {
     },
 
     /**
-     * A reaction changed the pools: at a membrane complex the molecule docks
-     * there; on the map a thread runs to the enzyme's connection (or the
-     * loop's name, for a whole turn), and that connection pulses.
+     * The window sampled a map reaction changing a pool in the slab: a
+     * molecule changes form and a thread runs from it to the enzyme's
+     * connection on the map, which pulses.
      */
-    _poolEvents(key, res, segs) {
-        if (this.warm || !res || !res.dPools) return;
-        const dock = _DOCK[key];
-        let to = null;
-        if (!dock) {
-            const loop = MapView.loops.find(L => L.key === key);
-            if (loop) { to = loop.glyphAt || loop.pos; loop.pulse = 1; }
-            else if (segs && segs.length) {
-                const id = segs[0][0], owner = _PAIR_OF[id] || id, sg = MapView.segs[owner];
-                for (const [sid] of segs) MapView.pulse[sid] = 1;
-                if (sg && sg.lab) to = sg.lab.glyphAt || [sg.lab.x, sg.lab.y];
-            }
-        }
-        // A whole turn changes dozens of molecules; threads go from the first few of each pool
-        for (const pool in res.dPools) {
-            const d = res.dPools[pool];
-            for (let k = 0; k < Math.abs(d); k++) Stroma.event(pool, d, dock && Membrane.sites[dock[pool]], k < 3 ? to : null);
+    mapEvent(pool, d, rid) {
+        if (this.warm || !MapView.cell) return;
+        const seg = MapView.cell.seg;
+        for (const id in seg) {
+            if (!seg[id].some(([r]) => r === rid)) continue;
+            const v = MapView.vis[id];
+            if (!v || v.hidden) continue;
+            const owner = _PAIR_OF[id] || id, sg = MapView.segs[owner];
+            MapView.pulse[id] = 1;
+            const to = sg && sg.lab ? sg.lab.glyphAt || [sg.lab.x, sg.lab.y] : null;
+            Stroma.event(pool, d, null, to);
+            return;
         }
     },
 
@@ -257,40 +253,40 @@ const Renderer = {
             const info = ENZYMES[_ETC_INFO[hit.key]];
             if (!info) return null;
             const name = Membrane.spec.names[hit.key];
-            const can = CLICK[hit.key] ? specimenCan(Membrane.spec, CLICK[hit.key][0]) : true;
-            return { ...info, name: info.name + (name && !info.name.includes(name) ? ' (' + name + ')' : ''), note: can ? null : 'Not active in this specimen.' };
+            const f = this.onFactors && this.onFactors('mem:' + hit.key);
+            return { ...info, name: info.name + (name && !info.name.includes(name) ? ' (' + name + ')' : ''), note: f || null };
         }
         if (hit.kind === 'seg') {
-            const s = hit.seg, rev = (flux[s.id] || 0) < -RUNNING;
-            return ENZYMES[(rev && _REV_INFO[s.id]) || _SEG_INFO[s.id]] || null;
+            const s = hit.seg, rev = (flux[s.id] || 0) < -RUNNING, info = ENZYMES[(rev && _REV_INFO[s.id]) || _SEG_INFO[s.id]];
+            const f = this.onFactors && this.onFactors('seg:' + s.id);
+            return info ? { ...info, note: f || null } : null;
         }
         if (hit.kind === 'loop') return ENZYMES[hit.loop.info] || null;
         if (hit.kind === 'station') return METABOLITES[hit.st.id] || null;
         if (hit.kind === 'mol') {
             const k = hit.m.pool, on = hit.m.on, M = _MOL_INFO[k], tot = store[M.total], n = store[k];
-            return { name: on ? M.on : M.off, full: M.what, desc: `One of ${tot} ${M.pool} in this cell; ${n} ${M.charged} now. ${M.does}` };
+            return { name: on ? M.on : M.off, full: M.what, desc: `One of ${tot} ${M.pool} in the drawn slab (its mean count at the cell's concentration); ${n} ${M.charged}. ${M.does}` };
         }
         return null;
     },
 
-    /** Fire what's under the pointer; forward is the way the clicked line runs. */
-    _fire(hit, forward) {
-        if (!hit || !this.onEnzymeClick) return false;
-        if (this.onInteract) this.onInteract();
-        if (hit.kind === 'mem') {
-            const cl = CLICK[hit.key];
-            if (!cl || !specimenCan(Membrane.spec, cl[0])) return false;
-            this.onEnzymeClick(cl[0], cl[1], forward ? 'forward' : 'reverse');
-            return true;
-        }
-        if (hit.kind === 'seg') {
-            const s = hit.seg, f = FLIP.has(s.id) ? !forward : forward;
-            this.onEnzymeClick(s.key, s.step, f ? 'forward' : 'reverse');
-            return true;
-        }
-        if (hit.kind === 'loop') { this.onEnzymeClick(hit.loop.key, null, forward ? undefined : 'reverse'); return true; }
-        return false;
+    /** What a hit pulses: a complex's reactions, a segment's (with its corridor twin's), or a loop's line. */
+    _target(hit) {
+        if (!hit) return null;
+        if (hit.kind === 'mem') return COMPLEX[hit.key] ? 'mem:' + hit.key : null;
+        if (hit.kind === 'seg') { const id = hit.seg.id, twin = PAIR[id] || _PAIR_OF[id]; return twin ? ['seg:' + id, 'seg:' + twin] : 'seg:' + id; }
+        if (hit.kind === 'loop') return hit.loop.segs ? hit.loop.segs.map(id => 'seg:' + id) : 'line:' + hit.loop.toggle;
+        return null;
     },
+
+    /** Pulse (sign 1) or inhibit (−1) what's under the pointer, each enzyme once; hold sustains it. */
+    _fire(hit, sign, hold = false) {
+        const t = this._target(hit);
+        if (!t || !this.onPulse) return false;
+        if (this.onInteract) this.onInteract();
+        return this.onPulse(t, sign, hold);
+    },
+    _let(hit) { const t = this._target(hit); if (t && this.onRelease) this.onRelease(t); },
 
     _tip(x, y, info) {
         if (!this._tooltip) { this._tooltip = createSimTooltip(); this._tooltip.el.classList.add('canvas-tip'); }
@@ -306,8 +302,14 @@ const Renderer = {
 
     _initInteraction() {
         const c = this.canvas;
-        let down = null, moved = false;
-        c.addEventListener('mousedown', (e) => { down = { x: e.clientX, y: e.clientY, b: e.button }; moved = false; });
+        let down = null, moved = false, holdTimer = 0, held = null;
+        c.addEventListener('mousedown', (e) => {
+            down = { x: e.clientX, y: e.clientY, b: e.button }; moved = false;
+            // Held still on an enzyme, the pulse holds at its peak until let go
+            clearTimeout(holdTimer);
+            const hit = this._pick(e.clientX, e.clientY);
+            holdTimer = setTimeout(() => { if (down && !moved && this._fire(hit, down.b === 0 ? 1 : -1, true)) { held = hit; buzz(); } }, HOLD_MS);
+        });
         window.addEventListener('mousemove', (e) => {
             if (down && down.b === 0) {
                 if (Math.abs(e.clientX - down.x) + Math.abs(e.clientY - down.y) > 4) moved = true;
@@ -317,24 +319,42 @@ const Renderer = {
             const hit = this._pick(e.clientX, e.clientY);
             this.hover = hit;
             const info = this._info(hit);
-            c.style.cursor = hit && (hit.kind === 'seg' || hit.kind === 'loop' || (hit.kind === 'mem' && CLICK[hit.key])) ? 'pointer' : hit ? 'help' : (this.camera.zoom > 1.001 || this.worldH > this.H + 1 ? 'grab' : '');
+            c.style.cursor = hit && (hit.kind === 'seg' || hit.kind === 'loop' || (hit.kind === 'mem' && COMPLEX[hit.key])) ? 'pointer' : hit ? 'help' : (this.camera.zoom > 1.001 || this.worldH > this.H + 1 ? 'grab' : '');
             if (info) this._tip(e.clientX, e.clientY, info); else this._tooltip?.hide();
         });
         window.addEventListener('mouseup', (e) => {
-            if (down && !moved && e.target === c) {
-                if (this._fire(this._pick(e.clientX, e.clientY), e.button === 0)) buzz();
+            clearTimeout(holdTimer);
+            if (held) { this._let(held); held = null; }
+            else if (down && !moved && e.target === c) {
+                if (this._fire(this._pick(e.clientX, e.clientY), e.button === 0 ? 1 : -1)) buzz();
             }
             down = null;
         });
         c.addEventListener('contextmenu', (e) => e.preventDefault());
         c.addEventListener('mouseleave', () => { this.hover = null; this._tooltip?.hide(); });
+        // Losing the window lets go of a hold, wherever the pointer was released
+        const letGo = () => { clearTimeout(holdTimer); clearTimeout(touchTimer); if (held) { this._let(held); held = null; } down = null; tap = false; };
+        window.addEventListener('blur', letGo);
+        document.addEventListener('visibilitychange', () => { if (document.hidden) letGo(); });
 
-        // Touch: one finger pans and taps, two pinch
-        let t0 = null, tap = false, pinch = 0;
+        // Touch: one finger pans and taps, holding still sustains (with the long-press tooltip), two pinch
+        let t0 = null, tap = false, pinch = 0, touchTimer = 0;
         c.addEventListener('touchstart', (e) => {
+            clearTimeout(touchTimer);
             if (e.touches.length === 2) {
                 const [a, b] = e.touches; pinch = Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY); tap = false;
-            } else if (e.touches.length === 1) { t0 = { x: e.touches[0].clientX, y: e.touches[0].clientY, lx: e.touches[0].clientX, ly: e.touches[0].clientY }; tap = true; }
+                if (held) { this._let(held); held = null; }
+            } else if (e.touches.length === 1) {
+                const t = e.touches[0];
+                t0 = { x: t.clientX, y: t.clientY, lx: t.clientX, ly: t.clientY }; tap = true;
+                const hit = this._pick(t.clientX, t.clientY);
+                touchTimer = setTimeout(() => {
+                    if (!tap) return;
+                    tap = false;   // a long press is not a tap
+                    const inhibit = typeof window._lumenReverseMode === 'function' && window._lumenReverseMode();
+                    if (this._fire(hit, inhibit ? -1 : 1, true)) { held = hit; buzz(); }
+                }, HOLD_MS);
+            }
         }, { passive: true });
         c.addEventListener('touchmove', (e) => {
             e.preventDefault();
@@ -344,15 +364,19 @@ const Renderer = {
                 this.camera.zoomBy(d / pinch, (a.clientX + b.clientX) / 2 - r.left, (a.clientY + b.clientY) / 2 - r.top); pinch = d;
             } else if (e.touches.length === 1 && t0) {
                 const t = e.touches[0];
-                if (Math.abs(t.clientX - t0.x) + Math.abs(t.clientY - t0.y) > 8) tap = false;
+                if (Math.abs(t.clientX - t0.x) + Math.abs(t.clientY - t0.y) > 8) { tap = false; clearTimeout(touchTimer); }
                 this.camera.panBy(t.clientX - t0.lx, t.clientY - t0.ly); t0.lx = t.clientX; t0.ly = t.clientY;
             }
         }, { passive: false });
+        const touchOver = () => { clearTimeout(touchTimer); if (held) { this._let(held); held = null; } tap = false; t0 = null; pinch = 0; };
+        c.addEventListener('touchcancel', touchOver);
         c.addEventListener('touchend', (e) => {
+            clearTimeout(touchTimer);
+            if (held && !e.touches.length) { this._let(held); held = null; tap = false; }
             if (tap && e.changedTouches.length === 1 && e.touches.length === 0) {
                 const t = e.changedTouches[0];
-                const rev = typeof window._lumenReverseMode === 'function' && window._lumenReverseMode();
-                if (this._fire(this._pick(t.clientX, t.clientY), !rev)) buzz();
+                const inhibit = typeof window._lumenReverseMode === 'function' && window._lumenReverseMode();
+                if (this._fire(this._pick(t.clientX, t.clientY), inhibit ? -1 : 1)) buzz();
             }
             if (e.touches.length < 2) pinch = 0;
             if (!e.touches.length) { tap = false; t0 = null; }

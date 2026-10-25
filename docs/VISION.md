@@ -39,7 +39,7 @@ The specimens are also homologous: the crista's complex III is the b₆f's cousi
 
 ## What it gets wrong now
 
-Confirmed by probe or by reading the code. Ranked by how much it misteaches. Items 1 and 2 were fixed in milestone 0 (2026-10-24; AGENTS.md describes the result). Milestone 0.5 (2026-10-25) fixed 3 and 5 and put an interim rule on 4; the engine (milestone 1) takes the rest of 4, and 6–8.
+Confirmed by probe or by reading the code. Ranked by how much it misteaches. Items 1 and 2 were fixed in milestone 0 (2026-10-24; AGENTS.md describes the result). Milestone 0.5 (2026-10-25) fixed 3 and 5 and put an interim rule on 4; the engine (milestone 1) takes the rest of 4, and 6–8; its phase A did so on 2026-10-25.
 
 1. **Conservation breaks.**
    - The four-step β-oxidation spiral never shortens the chain. Thiolase returns the fatty acid and adds an acetyl-CoA (`reactions/betaoxidation.js:47-50`), so each turn makes two carbons from nothing. Codex reproduced ten turns from one fatty acid yielding ten acetyl-CoA with the fatty acid intact. The batch path is balanced, so manual and autoplay modes run different chemistries.
@@ -168,6 +168,12 @@ Each stage leaves a better simulator. Round 2 reordered round 1's list (Codex's,
      4. balances and thermodynamic constraints, independently specified;
      5. kinetics qualified on one small complete subsystem, then expanded;
      6. the window, the verb, biosynthetic demand and the inspector.
+
+     *As built (2026-10-25):* all six steps landed, and the app runs on the engine. The schedule, the dispatcher and the regulation gates are deleted; step 3's migration check served while both existed and went with them. The engine is BiGG-identified species with iJO1366 formulas, every reaction balanced in elements and charge, eQuilibrator ΔG'° (equilibrator-api 0.8.1, computed by Codex) and midpoint potentials for the membrane, separable rates (Noor et al. 2013) and a ROS2 Rosenbrock integrator. Respiratory control, the Pasteur effect, uncoupling, the light–dark switch (thioredoxin on plastid and cyanobacterial enzymes) and the anaerobe's backward ATP synthase all emerge; the headless suite (23 tests) checks them, along with conservation, frame independence, the cycles' thermodynamic consistency and the paired baseline.
+
+     Codex reviewed each step. Its review of step 6 found eight faults, all fixed before landing. Electron chains drew downstream turnovers they hadn't earned, so now an electron waits at each complex until that complex turns over. Clicks stacked pulses on enzymes the map draws twice. Repair cleared damage without paying for it. Touch couldn't hold. The window's turnover cap silently changed the slowdown, so thinning is now stated in the caption. Radicals were cleared on a fixed timer, not by SOD. Stations outside the matrix read zero. And the held verb had no baseline: holding now sustains ×1.1 while a held and an unheld copy of the cell run to a steady state in a worker, which reports flux control coefficients (PFK's over glucose uptake is about 0.6 in the animal cell; cytochrome oxidase's over O₂ use is near 0, since it has capacity to spare).
+
+     Open from phase A, besides phase B: most parameters are illustrative; the lit cyanobacterium's NADPH sits about 15% reduced, held at b₆f by Δp; holds take 200–750 model seconds to settle; the pulse defaults (×5 peak, 1.5 s fade, stacking) are a first guess for a9 to tune.
    - *Phase B, membrane energetics.* Δψ and ΔpH; per-specimen c-rings (c8 in animal mitochondria, c14 in chloroplasts, c13–15 in cyanobacteria); ETF entry for β-oxidation; the halophile's A-type synthase; ferredoxin-fed NDH-1 in cyanobacteria; the P/O ratio derived on the Stats ladder.
    - *Behavioral tests, headless, landing throughout* (Codex), so the rewrite is never unguarded while the bench waits:
      - conservation including enzyme-bound intermediates, external exchanges and pending events; no species negative at depletion;

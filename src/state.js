@@ -1,83 +1,31 @@
-// Simulation state — all mutable data lives here.
-// Pools are closed-system: ATP+ADP, NAD+NADH, NADP+NADPH, FAD+FADH2 are conserved.
-import { Anim } from './anim.js';
-import { SPECIMENS } from './specimens.js';
+// The app's state: its flags, and the picture the window draws. The cell's
+// chemistry lives in the engine (src/engine/, held by cell.js); `store` is
+// only what panel a shows of it, written by window.js and read by the
+// drawing, so nothing on screen can feed back into the model.
 
-
-// ─── Runtime Flags and Animation State ───
+// ─── Flags ───
 export const simState = {
-    time: 0, speed: 1, lightOn: true, oxygenAvailable: true, fermenting: false,
-    glycolysisEnabled: true, pppEnabled: true, calvinEnabled: true, krebsEnabled: true,
-    betaoxEnabled: true,
-    oxphosEnabled: true, linearLightEnabled: true, cyclicLightEnabled: true,
-    autoPlay: false,
-    uncouplingEnabled: false,
+    time: 0,                    // wall seconds the scene has run (drawing only)
+    autoPlay: true,             // the model clock runs
+    lightOn: true, oxygenAvailable: true, uncouplingEnabled: false,   // mirrors of the environment and the UCP switch
     activeOrganism: 'cyanobacterium',
     specimen: 'thylakoid',
-    lockedPathways: {},
-    // Which fermentations the organism has: lactate (LDH) and ethanol (PDC + ADH)
-    ferments: { lactate: true, ethanol: false },
-    // Pathways the organism runs only one way: key → why the other way is blocked
-    oneWay: {},
-    store: null,
-    // Smooth rotation for cycle targets (Krebs CW, others CCW)
-    calvinRot: Anim.rotAccum(),
-    krebsRot: Anim.rotAccum(),
-    pppRot: Anim.rotAccum(),
-    betaoxRot: Anim.rotAccum(),
-    // Fade trackers for pathway enable/disable transitions
-    glycolysisFade: Anim.fade(1),
-    calvinFade: Anim.fade(1),
-    krebsFade: Anim.fade(1),
-    pppFade: Anim.fade(1),
-    betaoxFade: Anim.fade(1),
-    respEtcFade: Anim.fade(1),
-    photoEtcFade: Anim.fade(1),
-    fermentFade: Anim.fade(0),
+    lockedPathways: {},         // line → why this cell has none of it
+    visualLightMode: true,
 };
 
-// ─── Metabolite Pools ───
-// The four conserved pairs' sizes: each unit is a molecule drawn in the
-// stroma (src/stroma.js), so these set how crowded it is.
-export const POOL = { atp: 120, nad: 120, nadp: 120, fad: 60 };
-// Initial ratios: 90% ATP, 10% NADH/NADPH/FADH2 (resting cell)
+// ─── The picture ───
+// Pool counts in the drawn slab (the charged or reduced member, and the total), the stations'
+// counts, the lumen's protons (one per 2 mV of Δp), the sampled events' tallies (ATP made and
+// split at the drawn ATP synthase, O₂ made and used, protons leaked, radicals made and taken)
+// and the membrane's health
 export const store = {
-    atp: 0.9 * POOL.atp, nadh: 0.1 * POOL.nad, nadph: 0.1 * POOL.nadp, fadh2: 0.1 * POOL.fad,
-    totalAtpAdp: POOL.atp, totalNad: POOL.nad, totalNadp: POOL.nadp, totalFad: POOL.fad,
-    protonGradient: 0, protonsPumped: 0, o2Produced: 0, o2Consumed: 0, h2oSplit: 0, h2oProduced: 0, electronsTransferred: 0, co2Fixed: 0, co2Produced: 0,
-    atpSubstrate: 0, atpOxidative: 0, atpHydrolyzed: 0, protonsLeaked: 0,
-    // NADP⁺ held for linear electrons still in flight, so each has an acceptor at FNR;
-    // protons those electrons have yet to pump, which the pumps' drive counts
-    nadpBound: 0, protonsPending: 0,
+    atp: 0, totalAtpAdp: 0, nadh: 0, totalNad: 0, nadph: 0, totalNadp: 0, fadh2: 0, totalFad: 0,
+    protonGradient: 0, atpOxidative: 0, atpHydrolyzed: 0, o2Produced: 0, o2Consumed: 0, protonsLeaked: 0,
     rosProduced: 0, rosScavenged: 0, cellHealth: 100,
-
-    glucose: 3, g6p: 6, f6p: 0, f16bp: 0, g3p: 0, bpg: 0, pga3: 0, pga2: 0, pep: 0, pyruvate: 0, lactate: 0, ethanol: 0, acetaldehyde: 0, aceticAcid: 0,
-    pgl6: 0, pga6: 0, xu5p: 0, s7p: 0, r5p: 0,
-    rubp: 6,
-    acetylCoA: 0, citrate: 0, isocitrate: 0, akg: 0, succoa: 0, succinate: 0, fumarate: 0, malate: 0, oaa: 2,
-    fattyAcid: 4, enoylCoA: 0, hydroxyCoA: 0, ketoCoA: 0,
 };
-simState.store = store;
 
-/**
- * Whether light runs anabolism: only a membrane with photosystems makes the
- * NADPH and ATP that drive gluconeogenesis and fatty-acid synthesis from light.
- * An interim rule; the engine will take directions from ΔG instead.
- */
-export const photosynthesizing = () => simState.lightOn && (SPECIMENS[simState.specimen] || SPECIMENS.composite).can.photo;
-
-/** NADP⁺ free to be reduced: the pool's oxidized half, less what FNR holds. */
-export const nadpFree = () => store.totalNadp - store.nadph - store.nadpBound;
-
-// Chain lengths (carbons) behind β-oxidation's stations, so the spiral
-// conserves carbon. short lists the fatty acyl-CoAs it has shortened, which
-// store.fattyAcid also counts (the rest are palmitoyl-CoA, C16); enoyl,
-// hydroxy and keto hold one length per molecule on each intermediate.
-export const acyl = { short: [], enoyl: [], hydroxy: [], keto: [] };
-
-export const counters = { krebsTurns: 0, calvinTurns: 0, glycRuns: 0, pppRuns: 0, betaoxRuns: 0 };
-
-// ─── Sparkline Histories ───
+// ─── Sparkline histories ───
 // 300 samples at 5 Hz = 60-second sliding window per metric (ring buffers)
 const _history = (cap) => ({ data: new Float32Array(cap), head: 0, count: 0, cap });
 export function pushSample(h, v) { h.data[h.head] = v; h.head = (h.head + 1) % h.cap; if (h.count < h.cap) h.count++; }
@@ -85,37 +33,6 @@ export const histories = {
     atp: _history(300),
     nadh: _history(300),
     nadph: _history(300),
-    fadh2: _history(300),
     gradient: _history(300),
 };
-
-/** Reset all pools to initial values (called on organism preset change or manual reset). */
-export function resetState() {
-    Object.keys(store).forEach(k => store[k] = 0);
-    store.atp = 0.9 * POOL.atp; store.nadh = 0.1 * POOL.nad; store.nadph = 0.1 * POOL.nadp; store.fadh2 = 0.1 * POOL.fad; store.cellHealth = 100;
-    store.glucose = 3; store.g6p = 6; store.oaa = 2; store.rubp = 6; store.fattyAcid = 4;
-    store.totalAtpAdp = POOL.atp; store.totalNad = POOL.nad; store.totalNadp = POOL.nadp; store.totalFad = POOL.fad;
-    for (const k in acyl) acyl[k].length = 0;
-    counters.krebsTurns = 0; counters.calvinTurns = 0; counters.glycRuns = 0; counters.pppRuns = 0; counters.betaoxRuns = 0;
-    simState.time = 0; simState.fermenting = false;
-    Object.values(histories).forEach(h => { h.head = 0; h.count = 0; h.data.fill(0); });
-}
-
-/** Tick all fade/rotation animations. Called once per frame from mainLoop. */
-export function updateAnimations(dt) {
-    const rotK = Math.min(1, 6 * dt);
-    simState.calvinRot.update(dt, simState.calvinEnabled && simState.autoPlay, 1.5, rotK);
-    // Krebs rotates opposite direction (CW, -1.5 rad/s)
-    simState.krebsRot.update(dt, simState.krebsEnabled && simState.oxygenAvailable && simState.autoPlay, -1.5, rotK);
-    simState.pppRot.update(dt, simState.pppEnabled && simState.autoPlay, 1.5, rotK);
-    // Beta-ox turns backward while photosynthesis drives fatty-acid synthesis
-    simState.betaoxRot.update(dt, simState.betaoxEnabled && simState.autoPlay, photosynthesizing() ? -1.5 : 1.5, rotK);
-    simState.glycolysisFade.update(dt, simState.glycolysisEnabled ? 1 : 0);
-    simState.calvinFade.update(dt, simState.calvinEnabled ? 1 : 0);
-    simState.krebsFade.update(dt, (simState.krebsEnabled && simState.oxygenAvailable) ? 1 : 0);
-    simState.pppFade.update(dt, simState.pppEnabled ? 1 : 0);
-    simState.betaoxFade.update(dt, simState.betaoxEnabled ? 1 : 0);
-    simState.respEtcFade.update(dt, simState.oxygenAvailable ? 1 : 0);
-    simState.photoEtcFade.update(dt, simState.lightOn ? 1 : 0);
-    simState.fermentFade.update(dt, (!simState.oxygenAvailable && simState.glycolysisEnabled) ? 1 : 0);
-}
+export function clearHistories() { for (const h of Object.values(histories)) { h.head = 0; h.count = 0; h.data.fill(0); } }

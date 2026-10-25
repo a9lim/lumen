@@ -79,34 +79,30 @@ export const TRACKS = {
 export const PAIR = { g2: 'c2', g3: 'c3', g5: 'c5', g6: 'c6', p10: 'c10' };
 
 /**
- * Connections, as Beck marks a line meeting another service: the pools each
- * labelled enzyme makes (+) or spends (−) running the way its line is drawn,
- * then backward, from src/reactions/. A count is per firing; none where it
- * varies (up to two, or three for PRK).
+ * Connections, as Beck marks a line meeting another service: the pools a
+ * labelled enzyme makes (+) or spends (−) come from its reaction's
+ * stoichiometry (map.js applyCell). These are a loop's, under its name: the
+ * textbook budget of one turn, running the way its line is drawn, then
+ * backward (per acetyl-CoA, CO₂, G6P, round of the spiral, glucose, pair of
+ * trioses). Complex II and the acyl-CoA dehydrogenase hand their electrons
+ * straight to the quinone pool, so no FADH₂ appears.
  */
 export const COF = {
-    g0: [['atp-1'], []], g2: [['atp-1'], []], g5: [['nadh+2'], ['nadh-2']], g6: [['atp+2'], ['atp-2']], g9: [['atp+2'], ['atp-4']],
-    c7: [['atp-'], []], c5: [['nadph-2'], []], c6: [['atp-2'], []],
-    p0: [['nadph+'], []], p2: [['nadph+'], []], pdh: [['nadh+2'], []],
-    adh: [['nadh-2'], ['nadh+2']], ldh: [['nadh-2'], ['nadh+2']], aldh: [['nadh+2'], []], acs: [['atp-2'], []],
-    k2: [['nadh+'], []], k3: [['nadh+'], []], k4: [['atp+'], ['atp-']], k5: [['fadh2+'], ['fadh2-']], k7: [['nadh+'], ['nadh-']],
-    b0: [['fadh2+1'], ['nadph-1']], b2: [['nadh+1'], ['nadph-1']], b3: [[], ['atp-1']],
-    // Whole turns, under each loop's name
-    run_calvin: [['atp-18', 'nadph-12'], []], run_ppp: [['nadph+12'], []], run_krebs: [['nadh+6', 'fadh2+2', 'atp+2'], []],
-    run_betaox: [['fadh2+7', 'nadh+7'], ['nadph-14', 'atp-7']],
-    run_glycolysis_upper: [['atp-2'], []], run_glycolysis_lower: [['atp+4', 'nadh+2'], ['atp-6', 'redh-2']],
+    run_krebs: [['nadh+3', 'atp+1'], []], run_calvin: [['atp-3', 'nadph-2'], []], run_ppp: [['nadph+2'], []],
+    run_betaox: [['nadh+1'], ['nadph-2', 'atp-1']],
+    run_glycolysis_upper: [['atp-2'], []], run_glycolysis_lower: [['atp+4', 'nadh+2'], ['atp-6', 'nadh-2']],
 };
-/** 'nadh+2' → ['nadh', +1, '2']. 'redh' is GAPDH's reductant backward: NADPH while the Calvin cycle runs, else NADH (mapdraw resolves it). */
+/** 'nadh+2' → ['nadh', +1, '2'] */
 export const parseCof = (t) => { const m = /^([a-z0-9]+?)([+-])(\d*)$/.exec(t); return [m[1], m[2] === '+' ? 1 : -1, m[3]]; };
 
-/** Batch services: whole-cycle reactions, clicked on the loop's name (revName while the line runs backward). */
+/** Loops: a line's name, where a click pulses every enzyme on it (revName while the line runs backward). */
 export const LOOPS = [
-    { key: 'run_calvin', line: 'calvin', at: [10, 1.85], narrowAt: [11, 1.9], name: 'Calvin cycle', short: 'Calvin', times: '×6', info: 'run_calvin' },
-    { key: 'run_ppp', line: 'ppp', at: [4.75, 1.45], narrowAt: [5.2, 1.75], name: 'Pentose P', short: 'PPP', times: '×6', info: 'run_ppp' },
-    { key: 'run_krebs', line: 'krebs', at: [KC[0], KC[1] + 0.1], name: 'Krebs cycle', short: 'Krebs', times: '×2', info: 'run_krebs' },
-    { key: 'run_betaox', line: 'box', at: [22, 8], name: 'β-oxidation', short: 'β-ox', revName: 'FA synthesis', revShort: 'FAS', times: '×7', info: 'run_betaox' },
-    { key: 'run_glycolysis_upper', line: 'glyc', at: [5, 4.2], narrowAt: [12.15, 6.3], span: [1, 9], name: 'Glucose ⇌ G3P', short: 'Glc ⇌ G3P', info: 'run_glyc_upper' },
-    { key: 'run_glycolysis_lower', line: 'glyc', at: [14, 4.2], narrowAt: [12.15, 8.9], span: [9, 19], name: 'G3P ⇌ pyruvate', short: 'G3P ⇌ Pyr', info: 'run_glyc_lower' },
+    { key: 'run_calvin', line: 'calvin', toggle: 'calvin', at: [10, 1.85], narrowAt: [11, 1.9], name: 'Calvin cycle', short: 'Calvin', info: 'run_calvin' },
+    { key: 'run_ppp', line: 'ppp', toggle: 'ppp', at: [4.75, 1.45], narrowAt: [5.2, 1.75], name: 'Pentose P', short: 'PPP', info: 'run_ppp' },
+    { key: 'run_krebs', line: 'krebs', toggle: 'krebs', at: [KC[0], KC[1] + 0.1], name: 'Krebs cycle', short: 'Krebs', info: 'run_krebs' },
+    { key: 'run_betaox', line: 'box', toggle: 'betaox', at: [22, 8], name: 'β-oxidation', short: 'β-ox', revName: 'FA synthesis', revShort: 'FAS', info: 'run_betaox' },
+    { key: 'run_glycolysis_upper', line: 'glyc', toggle: 'glycolysis', segs: ['g0', 'g1', 'g2', 'g3'], at: [5, 4.2], narrowAt: [12.15, 6.3], span: [1, 9], name: 'Glucose ⇌ G3P', short: 'Glc ⇌ G3P', info: 'run_glyc_upper' },
+    { key: 'run_glycolysis_lower', line: 'glyc', toggle: 'glycolysis', segs: ['g5', 'g6', 'g7', 'g8', 'g9'], at: [14, 4.2], narrowAt: [12.15, 8.9], span: [9, 19], name: 'G3P ⇌ pyruvate', short: 'G3P ⇌ Pyr', info: 'run_glyc_lower' },
 ];
 
 /** CO₂ leaving or entering at a segment: [segment, from, to]. */

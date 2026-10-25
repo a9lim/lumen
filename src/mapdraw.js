@@ -6,16 +6,18 @@
 // carries a buffer bar across the track.
 import { MapView, FLIP } from './map.js';
 import { LINES, CO2, KEY_BOX, KC, PAIR, COF, parseCof } from './maplayout.js';
-import { flux, RUNNING } from './flux.js';
+import { flux, RUNNING, segmentGate, segmentMain, cellHas } from './flux.js';
+import { REACTIONS } from './engine/network.js';
+import { cofactorGlyphs } from './mapbind.js';
 import { store, simState } from './state.js';
 import { SPECIMENS } from './specimens.js';
 import { cartouche } from './plate.js';
-import { getRegulationGate } from './regulation.js';
+import { synthesisOnly } from './mapbind.js';
 import * as K from './complexes.js';
 
 const TAU = Math.PI * 2;
-const FREF = 3.3;    // carbon atoms per second drawn at full weight
-const FINK = 1;     // carbon atoms per second drawn at full ink
+const FREF = 3;      // mM of carbon per second drawn at full weight
+const FINK = 0.8;   // mM of carbon per second drawn at full ink
 
 /** An idle line is 2 px at two-thirds ink, so the network reads when quiet; flux thickens it to full ink. */
 const weight = (f, us) => { const w0 = Math.max(1.6, 2 * us); return w0 + (6.2 * us - w0) * Math.pow(Math.min(1, Math.abs(f) / FREF), 0.7); };
@@ -90,8 +92,7 @@ export function drawMap(c, hover, dt) {
     M.gates = 0;
     for (const s of live) {
         if (!s.label || M.vis[s.id].a < 0.5) continue;
-        const fwd = FLIP.has(s.id) ? 'reverse' : 'forward', dir = (flux[s.id] || 0) < -RUNNING ? (fwd === 'forward' ? 'reverse' : 'forward') : fwd;
-        const g = getRegulationGate(s.key, s.step, store, dir);
+        const g = segmentGate(s.id);
         if (g) { drawGate(c, s, g, us); M.gates++; }
     }
     drawStations(c, us);
@@ -139,7 +140,13 @@ function drawGate(c, s, g, us) {
     if (g.how === '⊣') { c.lineWidth = 1.6; c.beginPath(); c.moveTo(ax + px * 4, ay + py * 4); c.lineTo(ax - px * 4, ay - py * 4); c.stroke(); }
     else if (g.how === '→') { c.beginPath(); c.moveTo(ax + ux * 4 + px * 3, ay + uy * 4 + py * 3); c.lineTo(ax, ay); c.lineTo(ax + ux * 4 - px * 3, ay + uy * 4 - py * 3); c.stroke(); }
     else { c.beginPath(); c.arc(ax + ux * 3, ay + uy * 3, 3, 0, TAU); c.moveTo(ax + ux * 3 + px * 1.8, ay + uy * 3 + py * 1.8); c.lineTo(ax + ux * 3 - px * 1.8, ay + uy * 3 - py * 1.8); c.stroke(); }
-    K.molGlyph(c, bx + ux * gs * 1.3, by + uy * gs * 1.3, gs, g.eff);
+    // the effector: a pool's glyph, or its name in small italic (light, Δp, a metabolite)
+    if (g.eff) K.molGlyph(c, bx + ux * gs * 1.3, by + uy * gs * 1.3, gs, g.eff);
+    else {
+        c.font = `italic ${fs * 0.86}px ${_FONT.text}`; c.fillStyle = P.text2; c.textBaseline = 'middle';
+        c.textAlign = Math.abs(ux) > Math.abs(uy) ? (ux > 0 ? 'left' : 'right') : 'center';
+        c.fillText(g.word, bx + ux * 2, by + uy * (fs * 0.6));
+    }
     c.restore();
     if (g.factor === 0) {
         // the buffer bar, across the track
@@ -223,8 +230,7 @@ function connections(c, list, x, y, fs, lit, pulse, draw) {
     let w = 0;
     c.save(); c.font = `${fs * 0.86}px ${_FONT.text}`; c.textBaseline = 'middle'; c.textAlign = 'left';
     for (const t of list) {
-        const [p0, sg, n] = parseCof(t), sign = (sg > 0 ? '+' : '−') + n, sw = c.measureText(sign).width;
-        const pool = p0 === 'redh' ? (simState.calvinEnabled ? 'nadph' : 'nadh') : p0;
+        const [pool, sg, n] = parseCof(t), sign = (sg > 0 ? '+' : '−') + n, sw = c.measureText(sign).width;
         if (draw) {
             c.fillStyle = K.P.canvas; c.fillRect(x + w - 1, y - fs * 0.6, sw + 3.2 * gs + 2, fs * 1.2);
             c.fillStyle = K.P.text2; c.fillText(sign, x + w, y + 0.5);
@@ -248,11 +254,14 @@ function drawLabels(c, hover, us) {
         if (!isLive(s.id) && !isLive(pair)) { s.lab.box = null; continue; }
         const fa = flux[s.id] || 0, fb = pair ? flux[pair] || 0 : 0;
         const f = fa - fb, other = Math.abs(fb) > Math.abs(fa) + 0.03 || !isLive(s.id);
-        // An organism that runs this line only backward labels it that way even while it idles
+        // A cell that runs this line only backward labels it that way even while it idles
         const rev = f < -RUNNING || (!isLive(s.id) && isLive(pair)) || oneWay(s.line);
-        const text = rev && s.rev ? s.rev : s.label;
         // Which connections: the twin's when the Calvin track is the one running, else this line's, by direction
-        const cid = other && pair ? pair : s.id, cc = COF[cid];
+        const cid = other && pair ? pair : s.id;
+        // A segment with several enzymes is named for, and connected to, the one carrying its flux
+        const main = Math.abs(fa) + Math.abs(fb) > RUNNING && (M.cell?.seg[cid] || []).length > 1 ? segmentMain(cid) : null;
+        const text = main ? REACTIONS[main[0]].enzyme : rev && s.rev ? s.rev : s.label;
+        const cc = main ? cofactorGlyphs(REACTIONS[main[0]].stoich, Math.sign(main[1])) : M.cof[cid];
         // On phones the upright map has no room for connections: the stroma and the cartouche carry the pools
         const cof = cc && !M.G.rot ? (cid === pair ? cc[0] : rev ? cc[1] : cc[0]) : [];
         c.font = `italic ${fs}px ${_FONT.text}`;
@@ -308,10 +317,13 @@ function drawLoops(c, us, hover) {
     }
 }
 
+/** A line's carbon flux for the key: mM of carbon per second, two figures. */
+const fmtFlux = (f) => f >= 10 ? f.toFixed(0) : f >= 1 ? f.toFixed(1) : f >= 0.01 ? f.toFixed(2) : '0';
+
 const SHORT = { 'Pentose phosphate': 'Pentose P', 'Pyruvate dehydrogenase': 'PDH', 'Gluconeogenesis': 'Gluconeogen.', 'Fatty-acid synthesis': 'FA synthesis', 'Ethanol salvage': 'Salvage', 'Lactate oxidation': 'Lactate ox.' };
 
-/** Whether the organism runs this line only backward (its preset's oneWay). */
-const oneWay = (line) => !!(LINES[line].toggle && simState.oneWay[LINES[line].toggle]);
+/** Whether the cell runs this line only backward: fatty-acid synthesis without β-oxidation. */
+const oneWay = (line) => line === 'box' && synthesisOnly(cellHas);
 
 /** Line name, renamed when its trains run backward. */
 export function lineState(id) {
@@ -341,7 +353,7 @@ function drawKey(c, us) {
     const colW = narrow ? x1 - x0 : (x1 - x0) * 0.42;
     c.textBaseline = 'alphabetic'; c.textAlign = 'left';
     c.font = `italic ${fs}px ${_FONT.text}`; c.fillStyle = P.muted;
-    c.fillText('Lines, by carbon flux', x0, y0 + fs);
+    c.fillText('Lines, by carbon flux (mM C/s)', x0, y0 + fs);
     const rows = Object.keys(LINES).map(lineState).filter(Boolean);
     const rowH = Math.min(22 * us + 4, (narrow ? (y1 - y0) * 0.45 : y1 - y0 - fs - 34) / 7);
     rows.forEach((r, i) => {
@@ -351,19 +363,20 @@ function drawKey(c, us) {
         c.lineCap = 'butt'; c.beginPath(); c.moveTo(x0 + 2, y); c.lineTo(x0 + 22 * us, y); c.stroke(); c.setLineDash([]); c.lineCap = 'round';
         c.font = `${fs}px ${_FONT.text}`; c.textBaseline = 'middle';
         let name = r.name;
-        if (c.measureText(name).width > colW - 30 * us - c.measureText('000 C/min').width - 8) name = SHORT[name] || name;
+        if (c.measureText(name).width > colW - 30 * us - c.measureText('0.0 mM/s').width - 8) name = SHORT[name] || name;
         c.fillStyle = r.flux > RUNNING ? P.text : P.muted; c.fillText(name, x0 + 30 * us, y);
         c.textAlign = 'right'; c.fillStyle = P.text2;
-        c.fillText(r.on ? Math.round(r.flux * 60) + ' C/min' : 'off', x0 + colW, y);
+        c.fillText(r.on ? fmtFlux(r.flux) : 'off', x0 + colW, y);
         c.textAlign = 'left';
     });
     // The cartouche: what the marks are, rows only for what the scene shows, with the pools' counts
     const spec = SPECIMENS[simState.specimen] || SPECIMENS.composite, can = spec.can, gs = fs * 0.42;
     const pair = (k1, k2) => (cc, x, y) => { K.molGlyph(cc, x - 6.5, y, gs, k1); K.molGlyph(cc, x + 7.5, y, gs, k2); };
-    const krows = [[(cc, x, y) => { cc.beginPath(); cc.arc(x, y, 3, 0, TAU); cc.fillStyle = P.accent; cc.fill(); }, 'Proton, a unit of gradient', String(store.protonGradient), 'Proton']];
+    const krows = [[(cc, x, y) => { cc.beginPath(); cc.arc(x, y, 3, 0, TAU); cc.fillStyle = P.accent; cc.fill(); }, 'Proton, 2 mV of Δp', String(store.protonGradient), 'Proton']];
     if (can.photo || can.resp || can.cyclic) krows.push([(cc, x, y) => { cc.beginPath(); cc.arc(x, y, 3, 0, TAU); cc.fillStyle = P.canvas; cc.fill(); cc.lineWidth = 1.2; cc.strokeStyle = P.text; cc.stroke(); }, 'Electron in transit']);
     if (simState.lightOn && (can.photo || can.brAuto)) krows.push([(cc, x, y) => photonSwatch(cc, x, y), 'Photon']);
     for (const [k, name, tot] of [['atp', 'ATP · ADP', 'totalAtpAdp'], ['nadh', 'NADH · NAD⁺', 'totalNad'], ['nadph', 'NADPH · NADP⁺', 'totalNadp'], ['fadh2', 'FADH₂ · FAD', 'totalFad']]) {
+        if (!store[tot]) continue;   // FAD stays bound to its enzymes
         const [on, off] = K.POOL_FORMS[k];
         krows.push([pair(on, off), name, store[k] + ' · ' + (store[tot] - store[k]), name.split(' ')[0]]);
     }

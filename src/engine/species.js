@@ -34,6 +34,8 @@ sp('nad', 'NAD⁺', 'cof'); sp('nadh', 'NADH', 'cof'); sp('nadp', 'NADP⁺', 'co
 sp('coa', 'CoA', 'cof'); sp('pi', 'Pᵢ', 'cof'); sp('ppi', 'PPᵢ', 'met');
 sp('h2o', 'H₂O', 'fixed'); sp('h', 'H⁺', 'fixed');
 sp('co2', 'CO₂', 'gas'); sp('o2', 'O₂', 'gas');
+// Reactive oxygen: superoxide and hydrogen peroxide
+sp('o2s', 'Superoxide', 'met'); sp('h2o2', 'H₂O₂', 'met');
 
 // ─── Membrane carriers ───
 sp('q8', 'Q', 'car'); sp('q8h2', 'QH₂', 'car');

@@ -1,12 +1,12 @@
 // Particles — what moves in the cross-section, each bound to the model.
-// Electrons ride the chains the engine spawns (and fire its segment
-// callbacks as they enter each segment), on plastoquinone, plastocyanin and
-// ferredoxin where the chain passes a mobile carrier. Lumen protons are a
-// pool kept equal to store.protonGradient: pumped protons cross up into it,
-// ATP synthase and NNT draw theirs out of it, and any excess leaks back
-// across the bilayer (or through UCP while uncoupling is on). Photons are
-// Feynman wiggles. The cofactor pools are src/stroma.js's. Time advances by
-// dt × simState.speed.
+// Electrons ride the chains the window samples at the drawn centres (their
+// callbacks are drawing only: protons crossing, photons), on plastoquinone,
+// plastocyanin and ferredoxin where the chain passes a mobile carrier. Lumen
+// protons are a pool kept at one per 2 mV of Δp (store.protonGradient):
+// pumped protons cross up into it, ATP synthase and NNT draw theirs out of
+// it, and any excess leaks back across the bilayer (or through UCP while
+// uncoupling is on). Photons are Feynman wiggles. The cofactor pools are
+// src/stroma.js's. Time is wall time; the model's slowdown is the window's.
 import { simState, store } from './state.js';
 import { Membrane } from './membrane.js';
 import * as K from './complexes.js';
@@ -15,6 +15,7 @@ import { waypoints, variant } from './detail.js';
 const TAU = Math.PI * 2;
 const MAXP = 600;           // protons drawn at most; the caption gives the count
 const CHAIN_TIME = 1.39;    // s for a whole chain at speed 1 (as before the rebuild)
+const MAX_WAIT = 3;         // s an electron waits at a gate before it joins its carrier's pool (and fades)
 // Each photon's wiggle has the period of the light its absorber takes, nm: P680, P700, bacteriorhodopsin's 568
 const LAMBDA = { psii: 680, psi: 700, br: 568 };
 
@@ -29,8 +30,10 @@ const Particles = {
      * Spawn an electron through the given complexes (keys into Membrane.pos).
      * Its road runs through each complex's cofactors (detail.js); segment i of
      * the chain takes it from the first site of keys[i] to the first of keys[i+1].
+     * gates[i], if given, holds it before segment i until it returns true: the
+     * electron waits on its carrier there until that complex turns over.
      */
-    spawnElectronChain(keys, type, callbacks) {
+    spawnElectronChain(keys, type, callbacks, gates) {
         const pts = [], starts = [], v = variant(Membrane.spec, Membrane.specId);
         for (const k of keys) {
             const p = Membrane.pos[k];
@@ -42,7 +45,7 @@ const Particles = {
         // The last segment ends at the far end of the road, through the terminal complex's sites;
         // a chain that closes on its first complex (cyclic flow) ends where it began, at P700
         if (keys[0] !== keys[keys.length - 1]) starts[starts.length - 1] = pts.length - 1;
-        this.electrons.push({ pts, starts, keys, progress: 0, type, cb: callbacks || {}, fired: 0 });
+        this.electrons.push({ pts, starts, keys, progress: 0, type, cb: callbacks || {}, gates: gates || null, fired: 0, wait: 0, fade: 1, gone: false });
         return true;
     },
 
@@ -98,9 +101,6 @@ const Particles = {
         for (let i = 0; i < targets.length * 2; i++) { this.spawnPhoton(targets[i % targets.length]); const p = this.photons[this.photons.length - 1]; const f = 0.25 + 0.5 * Math.random(); p.x += p.dx * p.left * f; p.y += p.dy * p.left * f; p.left *= 1 - f; }
     },
 
-    /** Land every electron's remaining chemistry at once, before a clear that keeps the store (a new specimen). */
-    flush() { for (const e of this.electrons) while (e.fired < e.keys.length) { const f = e.cb[e.fired]; e.fired++; if (f) f(); } },
-
     clear() { this._atpOx = store.atpOxidative; this._leaked = store.protonsLeaked; this._qa = 0; this._ql = 0; this.electrons.length = 0; this.protons.length = 0; this.photons.length = 0; this.mols.length = 0; },
 
     /** Lumen protons to start with, at rest, matching the gradient. */
@@ -112,14 +112,26 @@ const Particles = {
     },
 
     update(dt) {
-        const sp = dt * simState.speed, s = Membrane.s, L = Membrane.lumen;
-        // Electrons: callbacks fire as the electron enters each segment
+        const sp = dt, s = Membrane.s, L = Membrane.lumen;
+        // Electrons: callbacks fire as the electron enters each segment; a gate holds it before one
         for (let i = this.electrons.length - 1; i >= 0; i--) {
             const e = this.electrons[i];
-            e.progress += sp / CHAIN_TIME;
+            if (e.gone) { e.fade -= dt / 0.4; if (e.fade <= 0) this.electrons.splice(i, 1); continue; }
             // the chain's segments are its complexes, whatever their waypoints
-            const n = e.keys.length - 1, seg = Math.min(n - 1, Math.floor(e.progress * n));
-            while (e.fired <= seg) { const f = e.cb[e.fired]; e.fired++; if (f) f(); }
+            const n = e.keys.length - 1;
+            let p = e.progress + sp / CHAIN_TIME;
+            while (e.fired < n && p * n >= e.fired) {
+                const g = e.gates && e.gates[e.fired];
+                if (g && !g()) {
+                    p = Math.min(p, (e.fired - 1e-3) / n);
+                    e.wait += dt;
+                    if (e.wait > MAX_WAIT) e.gone = true;
+                    break;
+                }
+                e.wait = 0;
+                const f = e.cb[e.fired]; e.fired++; if (f) f();
+            }
+            e.progress = Math.max(e.progress, p);
             if (e.progress >= 1) this.electrons.splice(i, 1);
         }
         // Protons
@@ -183,9 +195,11 @@ const Particles = {
         this.riding = [];
         for (const e of this.electrons) {
             const { x, y, ride } = this.where(e);
+            c.globalAlpha = e.fade;
             if (ride) { busy[ride]++; drawCarrier(c, ride, x, y, s, true); this.riding.push([ride, x, y]); }
             else { c.beginPath(); c.arc(x, y, Math.max(1.6, 0.36 * s), 0, TAU); c.lineWidth = 1.2; c.strokeStyle = P.text; c.fillStyle = P.canvas; c.fill(); c.stroke(); }
         }
+        c.globalAlpha = 1;
         const idle = { pq: 3, pc: 2, fd: 1 };
         for (const k in idle) {
             if (!pos[k]) continue;
