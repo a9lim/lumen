@@ -19,8 +19,18 @@ const PHOTO = {
     a0: [8.4, -1.05, 'A₀'], a1: [9.2, -0.8, 'A₁'], fx: [10, -0.7, 'Fx'], fb: [10.8, -0.55, 'Fʙ'], fd: [11.7, -0.43, 'Fd'], fnr: [12.6, -0.38, 'FNR'], nadp: [13.5, -0.32, 'NADP⁺'],
 };
 const SETS = {
-    // the cyanobacterium (and the composite): the Z-scheme, with respiration through the shared PQ, b₆f and PC
+    // the cyanobacterium: the Z-scheme, with respiration through the shared PQ, b₆f and PC; its NDH-1
+    // takes ferredoxin (from PSI, or from NADPH through FNR in the dark), not NADH
     thylakoid: {
+        nodes: { ...PHOTO, ndh: [4.6, -0.15, 'NDH-1'], succ: [4.7, 0.03, 'SDH'], cox: [8.6, 0.385, 'cyt ox'], o2: [9.6, 0.816, 'O₂'] },
+        groups: { psii: ['p680', 'p680x', 'pheo', 'qa'], pq: ['pq'], cytb6f: ['fes', 'f'], pc: ['pc'], psi: ['p700', 'p700x', 'a0', 'a1', 'fx', 'fb'], fd: ['fd'], fnr: ['fnr', 'nadp'], ndh1: ['ndh'], sdh: ['succ'], cytOx: ['cox', 'o2'] },
+        resp: ['ndh', 'succ', 'cox', 'o2'],
+        lines: [['h2o', 'p680', 'dash'], ['p680', 'p680x', 'light'], ['p680x', 'pheo'], ['pheo', 'qa'], ['qa', 'pq'], ['pq', 'fes'], ['fes', 'f'], ['f', 'pc'], ['pc', 'p700'], ['p700', 'p700x', 'light'],
+            ['p700x', 'a0'], ['a0', 'a1'], ['a1', 'fx'], ['fx', 'fb'], ['fb', 'fd'], ['fd', 'fnr'], ['fnr', 'nadp'], ['fd', 'pq', 'dash'],
+            ['fd', 'ndh', 'dash'], ['ndh', 'pq', 'resp'], ['succ', 'pq', 'resp'], ['pc', 'cox', 'resp'], ['cox', 'o2', 'resp']],
+    },
+    // the composite: the same, with an NADH-fed complex I
+    composite: {
         nodes: { ...PHOTO, nadh: [5.0, -0.32, 'NADH'], ndh: [4.6, -0.15, 'NDH-1'], succ: [4.7, 0.03, 'SDH'], cox: [8.6, 0.385, 'cyt ox'], o2: [9.6, 0.816, 'O₂'] },
         groups: { psii: ['p680', 'p680x', 'pheo', 'qa'], pq: ['pq'], cytb6f: ['fes', 'f'], pc: ['pc'], psi: ['p700', 'p700x', 'a0', 'a1', 'fx', 'fb'], fd: ['fd'], fnr: ['fnr', 'nadp'], ndh1: ['nadh', 'ndh'], sdh: ['succ'], cytOx: ['cox', 'o2'] },
         resp: ['nadh', 'ndh', 'succ', 'cox', 'o2'],
@@ -36,12 +46,13 @@ const SETS = {
         lines: [['h2o', 'p680', 'dash'], ['p680', 'p680x', 'light'], ['p680x', 'pheo'], ['pheo', 'qa'], ['qa', 'pq'], ['pq', 'fes'], ['fes', 'f'], ['f', 'pc'], ['pc', 'p700'], ['p700', 'p700x', 'light'],
             ['p700x', 'a0'], ['a0', 'a1'], ['a1', 'fx'], ['fx', 'fb'], ['fb', 'fd'], ['fd', 'fnr'], ['fnr', 'nadp'], ['fd', 'pq', 'dash']],
     },
-    // the crista: complexes I to IV, ubiquinone and cytochrome c
+    // the crista: complexes I to IV, ubiquinone and cytochrome c; β-oxidation's electrons enter through ETF,
+    // beside complex II (its label to the left, II's to the right)
     cristae: {
-        nodes: { nadh: [0.8, -0.32, 'NADH'], ci: [2.4, -0.2, 'I'], succ: [2.4, 0.031, 'II'], uq: [4.2, 0.045, 'UQ'], ciii: [6.0, 0.28, 'III'], c: [7.8, 0.254, 'cyt c'], civ: [9.6, 0.385, 'IV'], o2: [11.6, 0.816, 'O₂'] },
+        nodes: { nadh: [0.8, -0.32, 'NADH'], ci: [2.4, -0.2, 'I'], succ: [2.4, 0.031, 'II'], etf: [2.4, -0.025, 'ETF'], uq: [4.2, 0.045, 'UQ'], ciii: [6.0, 0.28, 'III'], c: [7.8, 0.254, 'cyt c'], civ: [9.6, 0.385, 'IV'], o2: [11.6, 0.816, 'O₂'] },
         groups: { ndh1: ['nadh', 'ci'], sdh: ['succ'], pq: ['uq'], cytb6f: ['ciii'], pc: ['c'], cytOx: ['civ', 'o2'] },
-        resp: ['nadh', 'ci', 'succ', 'uq', 'ciii', 'c', 'civ', 'o2'],
-        lines: [['nadh', 'ci', 'resp'], ['ci', 'uq', 'resp'], ['succ', 'uq', 'resp'], ['uq', 'ciii', 'resp'], ['ciii', 'c', 'resp'], ['c', 'civ', 'resp'], ['civ', 'o2', 'resp']],
+        resp: ['nadh', 'ci', 'succ', 'etf', 'uq', 'ciii', 'c', 'civ', 'o2'],
+        lines: [['nadh', 'ci', 'resp'], ['ci', 'uq', 'resp'], ['succ', 'uq', 'resp'], ['etf', 'uq', 'resp'], ['uq', 'ciii', 'resp'], ['ciii', 'c', 'resp'], ['c', 'civ', 'resp'], ['civ', 'o2', 'resp']],
     },
     // the halophile: its respiratory chain (menaquinone, cyt bc, halocyanin, cyt ba₃); bacteriorhodopsin moves no electron
     purple: {
@@ -53,7 +64,6 @@ const SETS = {
     },
     plasma: { nodes: {}, groups: {}, resp: [], lines: [], note: 'No electron chain in this membrane: every ATP is made in the cytoplasm.' },
 };
-SETS.composite = SETS.thylakoid;
 const E0 = -1.45, E1 = 1.3;
 
 let _cache = null, _key = '';
@@ -96,7 +106,7 @@ export function drawLadder(cv) {
             g.beginPath(); g.moveTo(X(A[0]), Y(A[1])); g.lineTo(X(B[0]), Y(B[1])); g.stroke(); g.setLineDash([]);
         }
         g.font = `italic 10.5px ${_FONT.text}`;
-        const right = new Set(['p680', 'p680x', 'p700', 'p700x', 'h2o', 'nadp', 'o2', 'ndh', 'succ', 'cox']), up = new Set(['pc', 'fes', 'a1', 'fb', 'fnr', 'nadh', 'ciii', 'c', 'civ', 'bc', 'hc', 'ba3', 'mk', 'uq']), left = new Set(['pq', 'qa']);
+        const right = new Set(['p680', 'p680x', 'p700', 'p700x', 'h2o', 'nadp', 'o2', 'ndh', 'succ', 'cox']), up = new Set(['pc', 'fes', 'a1', 'fb', 'fnr', 'nadh', 'ciii', 'c', 'civ', 'bc', 'hc', 'ba3', 'mk', 'uq']), left = new Set(['pq', 'qa', 'etf']);
         for (const [k, [col, E, name]] of Object.entries(N)) {
             const px = X(col), py = Y(E), r = set.resp.includes(k);
             g.strokeStyle = r ? resp : P.text; g.lineWidth = 2; g.beginPath(); g.moveTo(px - 5, py); g.lineTo(px + 5, py); g.stroke();

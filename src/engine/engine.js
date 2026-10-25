@@ -456,6 +456,8 @@ function initialState(eng) {
     set('q8', mem, 0.6 * carriers.q); set('q8h2', mem, 0.4 * carriers.q);
     set('pcox', 'l', 0.5 * carriers.pc); set('pcred', 'l', 0.5 * carriers.pc);
     set('fdox', 'c', 0.7 * carriers.fd); set('fdred', 'c', 0.3 * carriers.fd);
+    // ETF, tens of µM in the matrix (illustrative), where β-oxidation runs
+    set('etfox', mem, 0.04); set('etfred', mem, 0.01);
     const start = { g6p: 1, f6p: 0.3, fdp: 0.5, g3p: 0.05, '13dpg': 0.01, '3pg': 1, '2pg': 0.1, pep: 0.2, pyr: 0.2,
         rb15bp: 0.5, ru5p__D: 0.02, r5p: 0.05, xu5p__D: 0.02, s7p: 0.1, e4p: 0.02, s17bp: 0.02,
         oaa: 0.01, cit: 1, icit: 0.05, akg: 0.3, succoa: 0.05, succ: 0.5, fum: 0.1, mal__L: 0.5, glycogen: 20, lac__L: 0.5 };

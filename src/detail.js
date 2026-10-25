@@ -33,8 +33,9 @@ function sitesOf(key, v) {
     return null;
 }
 
-/** Subunit names: [name, dx, dy]. */
-function subunitsOf(key, v) {
+const SUB = '₀₁₂₃₄₅₆₇₈₉';
+/** Subunit names: [name, dx, dy]. ring: ATP synthase's c subunits, the cell's. */
+function subunitsOf(key, v, ring = 12) {
     switch (key) {
         case 'psii': return [['CP43', 8.2, 0.2], ['D1', 6.1, 1.5], ['D2', 2.3, 0.6], ['CP47', -8.0, 0.2], ['PsbO', 5.6, -4.1]].concat(v.pbs ? [['APC', 0, 10.4], ['PC rods', 0, 16.6]] : []);
         case 'cytb6f': return v.bc1 ? [['cyt b', 2.3, 0.3], ['core 1', 3.1, 4.4], ['core 2', 1.6, 7.4]] : [['cyt f', 3.1, -4.7], ['b₆', 2.5, 0.5]];
@@ -42,7 +43,7 @@ function subunitsOf(key, v) {
         case 'ndh1': return v.mito ? [['membrane arm', -4.2, -0.7], ['matrix arm', 7.6, 9.0]] : [['membrane arm', -4.2, -0.7]];
         case 'sdh': return [['SdhA', 2.2, 7.6], ['SdhB', 2.0, 4.0]];
         case 'cytOx': return [['I', 0.2, 1.4], ['II', -2.6, -4.8], ['III', 2.6, 0.6]];
-        case 'atpSyn': return [['c-ring', 0, 0], ['a', 4.2, 0], ['γ', 0.4, 6.4], ['α₃β₃', 0, 13.3], ['δ', 3.3, 17.6], ['b₂', 6.4, 8.5]];
+        case 'atpSyn': return [['c' + String(ring).replace(/\d/g, d => SUB[d]) + ' ring', 0, 0], ['a', 4.2, 0], ['γ', 0.4, 6.4], [v.atype ? 'A₃B₃' : 'α₃β₃', 0, 13.3], [v.atype ? 'E, G stalks' : 'δ', 3.3, 17.6], ['b₂', 6.4, 8.5]].filter(q => !(v.atype && q[0] === 'b₂'));
         case 'nnt': return [['dI', -3.6, 4.6], ['dIII', 3.6, 4.6]];
     }
     return null;
@@ -50,7 +51,7 @@ function subunitsOf(key, v) {
 
 /** The specimen's variants of each complex. */
 export function variant(spec, specId) {
-    return { bc1: spec.frame === 'cristae' || spec.frame === 'slayer', mito: specId === 'cristae', psiTrimer: spec.psiTrimer, pbs: spec.antenna === 'phycobilisome' };
+    return { bc1: spec.frame === 'cristae' || spec.frame === 'slayer', mito: specId === 'cristae', psiTrimer: spec.psiTrimer, pbs: spec.antenna === 'phycobilisome', atype: spec.frame === 'slayer' };
 }
 
 /** The electron's waypoints through a complex, world px: its cofactors in order (or its centre). */
@@ -115,12 +116,12 @@ export function drawDetail(c, M, zoom) {
             c.save(); c.translate(x, y); cofactor(c, s, kind); c.restore();
             if (name) names.push([name, x + 0.62 * s, y, 'site']);
         }
-        for (const [name, dx, dy] of subunitsOf(k, v) || []) names.push([name, p.x + dx * s, M.mid + dy * s, 'sub']);
+        for (const [name, dx, dy] of subunitsOf(k, v, M.ring) || []) names.push([name, p.x + dx * s, M.mid + dy * s, 'sub']);
     }
-    if (M.tip) for (const d of M.tip.dimer) for (const [name, dx, dy] of subunitsOf('atpSyn', v)) {
+    if (M.tip) for (const d of M.tip.dimer) for (const [name, dx, dy] of subunitsOf('atpSyn', v, M.ring)) {
         const cs = Math.cos(d.rot), sn = Math.sin(d.rot);
         names.push([name, d.x + (dx * cs - dy * sn) * s, d.y + (dx * sn + dy * cs) * s, 'sub']);
-    } else if (M.pos.atpSyn) for (const [name, dx, dy] of subunitsOf('atpSyn', v)) names.push([name, M.pos.atpSyn.x + dx * s, M.mid + dy * s, 'sub']);
+    } else if (M.pos.atpSyn) for (const [name, dx, dy] of subunitsOf('atpSyn', v, M.ring)) names.push([name, M.pos.atpSyn.x + dx * s, M.mid + dy * s, 'sub']);
     c.lineJoin = 'round'; c.textBaseline = 'middle';
     for (const [name, x, y, kind] of names) {
         c.font = kind === 'sub' ? `italic ${fs}px ${_FONT.text}` : `${fs * 0.88}px ${_FONT.text}`;

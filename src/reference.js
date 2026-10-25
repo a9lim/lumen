@@ -184,7 +184,7 @@ $$\\text{Acetyl-CoA} + 3\\,\\text{NAD}^+ + \\text{FAD} + \\text{GDP} + \\text{P}
 <h3>The four-step spiral</h3>
 <p>Each round of beta oxidation shortens the acyl chain by 2 carbons:</p>
 <ol>
-<li><b>Acyl-CoA dehydrogenase (ACAD)</b>: $\\text{Acyl-CoA} + \\text{FAD} \\to \\text{Enoyl-CoA} + \\text{FADH}_2$ — introduces a trans double bond between $\\text{C}_\\alpha$ and $\\text{C}_\\beta$.</li>
+<li><b>Acyl-CoA dehydrogenase (ACAD)</b>: $\\text{Acyl-CoA} + \\text{FAD} \\to \\text{Enoyl-CoA} + \\text{FADH}_2$ — introduces a trans double bond between $\\text{C}_\\alpha$ and $\\text{C}_\\beta$. The FAD stays bound: it hands the two electrons to the electron-transferring flavoprotein (ETF, about $-25$ mV), and ETF:quinone oxidoreductase in the inner membrane passes them to ubiquinone, so they enter the chain after complex I.</li>
 <li><b>Enoyl-CoA hydratase (ECH)</b>: $\\text{Enoyl-CoA} + \\text{H}_2\\text{O} \\to \\text{3-OH-Acyl-CoA}$ — hydrates the double bond.</li>
 <li><b>3-Hydroxyacyl-CoA dehydrogenase (HACD)</b>: $\\text{OH-Acyl-CoA} + \\text{NAD}^+ \\to \\text{3-Keto-CoA} + \\text{NADH}$ — oxidizes the hydroxyl to a ketone.</li>
 <li><b>Thiolase (ACAT)</b>: $\\text{Keto-CoA} + \\text{CoA} \\to \\text{Acyl-CoA}_{(n-2)} + \\text{Acetyl-CoA}$ — cleaves off a 2-carbon acetyl-CoA.</li>
@@ -206,7 +206,7 @@ $$\\text{Palmitoyl-CoA} + 7\\,\\text{FAD} + 7\\,\\text{NAD}^+ + 7\\,\\text{CoA} 
 $$8\\,\\text{Acetyl-CoA} + 14\\,\\text{NADPH} + 7\\,\\text{ATP} \\longrightarrow \\text{Palmitoyl-CoA} + 14\\,\\text{NADP}^+ + 7\\,\\text{ADP}$$
 
 <h3>Regulation</h3>
-<p>ACAD is inhibited by high $\\text{FADH}_2/\\text{FAD}$ ratio (product feedback). Fatty acid synthesis is regulated by the NADPH supply — blocked when NADPH is depleted below 20%, slowed below 40%. Malonyl-CoA (the first committed intermediate of synthesis) also inhibits the carnitine shuttle, preventing simultaneous synthesis and degradation.</p>
+<p>In the model, β-oxidation runs only as fast as ETF is reoxidized, so a reduced quinone pool backs it up, as a reduced NAD pool backs up its NAD-linked step; and acetyl-CoA/CoA slows fatty acids' activation and import. Citrate activates acetyl-CoA carboxylase, and palmitoyl-CoA inhibits it. Malonyl-CoA (the first committed intermediate of synthesis) inhibits the carnitine shuttle, preventing simultaneous synthesis and degradation.</p>
 
 <h3>Medical relevance</h3>
 <p>Defects in beta oxidation enzymes (especially medium-chain ACAD deficiency, MCADD) cause inability to mobilize fat stores during fasting, leading to hypoglycemia and metabolic crisis. Newborn screening for MCADD has dramatically reduced infant mortality from this condition.</p>
@@ -337,8 +337,8 @@ $$C^J_e = \\frac{\\partial \\ln J}{\\partial \\ln e} \\approx \\frac{\\ln(J_{\\t
 
 <h3>ATP synthase</h3>
 <p>ATP synthase is a rotary molecular motor. Protons flowing down the gradient through the $\\text{F}_0$ channel drive rotation of the c-ring, which in turn rotates the $\\gamma$-shaft inside the $\\text{F}_1$ headpiece, causing conformational changes that catalyze ATP synthesis:</p>
-$$4\\,\\text{H}^+ + \\text{ADP} + \\text{P}_i \\longrightarrow \\text{ATP}$$
-<p>The $\\text{H}^+$/ATP ratio of ~4 is determined by the number of c-subunits in the ring (varies by species: 8–15). Mammalian mitochondria have 8 c-subunits with 3 catalytic sites, giving $8/3 \\approx 2.7\\;\\text{H}^+/\\text{ATP}$; the simulation uses 4 for simplicity.</p>
+$$\\tfrac{n}{3}\\,\\text{H}^+ + \\text{ADP} + \\text{P}_i \\longrightarrow \\text{ATP}$$
+<p>The $\\text{H}^+$/ATP ratio is set by the number $n$ of c-subunits in the ring (8 to 15, by species) over the head's three catalytic sites. Mammalian mitochondria have 8, giving $8/3 \\approx 2.7\\;\\text{H}^+/\\text{ATP}$; chloroplasts and <i>Synechocystis</i> 14, giving $14/3 \\approx 4.7$. The model gives each organism its own ring.</p>
 <p>ATP synthase is one of the most efficient enzymes known, converting ~80% of the PMF energy into chemical bond energy. It rotates at ~130 revolutions per second, producing ~400 ATP molecules per second.</p>
 
 <h3>Nicotinamide nucleotide transhydrogenase (NNT)</h3>
@@ -365,7 +365,7 @@ $$\\Delta p_{\\text{stall}} = \\frac{2 \\times 1135\\ \\text{mV}}{10} \\approx 2
 <h3>ATP synthase runs both ways</h3>
 <p>ATP synthase is reversible. It makes ATP only while the gradient's energy exceeds the phosphorylation potential:</p>
 $$4F\\,\\Delta p > \\Delta G_p = \\Delta G^{\\circ\\prime} + RT \\ln\\frac{[\\text{ATP}]}{[\\text{ADP}][\\text{P}_i]}$$
-<p>with $\\Delta G^{\\circ\\prime}$ from eQuilibrator (pH 7, ionic strength 0.25 M, pMg 3) and the cell's own phosphate. Below that balance point it runs backward, splitting ATP to pump protons out. Fermenting bacteria rely on this to keep their membranes energized. Mitochondria limit it with an inhibitor protein, IF1, which the model applies as $\\Delta p$ collapses below about 60 mV; photosynthetic ATP synthases are switched off for hydrolysis in the dark, and the model brakes them there.</p>
+<p>with $\\Delta G^{\\circ\\prime}$ from eQuilibrator (pH 7, ionic strength 0.25 M, pMg 3) and the cell's own phosphate. Below that balance point it runs backward, splitting ATP to pump protons out. Fermenting bacteria rely on this to keep their membranes energized. Mitochondria limit it with an inhibitor protein, IF1, which the model applies as $\\Delta p$ collapses below about 60 mV; a chloroplast's ATP synthase is switched off by thioredoxin in the dark, and the model brakes it there; a cyanobacterium's keeps making ATP on respiration at night, and AtpΘ stops it running backward when $\\Delta p$ falls, as IF1 does.</p>
 
 <h3>The chemiosmotic revolution</h3>
 <p>Before Mitchell's hypothesis (1961), the prevailing model assumed a "high-energy chemical intermediate" directly linking the ETC to ATP synthesis (the chemical coupling hypothesis). Mitchell's radical idea — that the intermediate was a proton gradient, not a molecule — was initially met with fierce resistance but was vindicated by decades of experimental evidence. It unified photosynthetic and respiratory ATP synthesis under a single mechanism.</p>

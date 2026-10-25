@@ -237,3 +237,41 @@ test("each cell's c-ring sets ATP synthase's protons per ATP, and with the chain
     const e = createEngine('animalCell'), c = (r) => e.coupling(e.rIndex[r]);
     assert.deepEqual([c('MPC').z, c('MPC').nH, c('PIC').z, c('PIC').nH, c('ANT').z, c('ANT').nH], [0, -1, 0, -1, -1, 0]);
 });
+
+test("β-oxidation's electrons reach the quinone pool through ETF", () => {
+    const e = run('animalCell', 60);
+    const acad = [16, 14, 12, 10, 8, 6, 4].reduce((a, n) => a + rate(e, 'ACAD' + n), 0);
+    assert.ok(acad > 0.01 && Math.abs(rate(e, 'ETFQO') - acad) < 0.05 * acad, `ACAD ${acad}, ETF-QO ${rate(e, 'ETFQO')}`);
+    e.state.activity[e.rIndex.ETFQO] = 0; e.advance(30);
+    assert.ok(rate(e, 'ACAD16') < 0.01 * acad, 'without ETF-QO, ETF stays reduced and β-oxidation stops');
+});
+
+test("the cyanobacterium's NDH-1 runs on ferredoxin: cyclic flow in the light, respiration from NADPH in the dark", () => {
+    const e = run('cyanobacterium', 60);
+    assert.ok(rate(e, 'NDH1F') > 0.02, `NDH-1 in the light ${rate(e, 'NDH1F')}`);
+    e.env.light = 0; e.advance(60);
+    assert.ok(rate(e, 'FNR') < -0.01 && rate(e, 'NDH1F') > 0.01 && rate(e, 'CYTOX') > 0.05, `dark: FNR ${rate(e, 'FNR')}, NDH-1 ${rate(e, 'NDH1F')}, oxidase ${rate(e, 'CYTOX')}`);
+    const o2 = rate(e, 'CYTOX');
+    e.state.activity[e.rIndex.NDH1F] = 0; e.advance(30);
+    assert.ok(rate(e, 'CYTOX') < 0.8 * o2, 'and without NDH-1 the dark cell respires less');
+});
+
+test('every reaction moves the charges and protons across the membrane that its biology says', () => {
+    // Written out independently of network.js: [charges, protons] moved to the lumen side per turnover
+    const EXPECT = {
+        NDH1: [4, 4], NDH1F: [4, 4], CYTBF: [2, 4], CYTOX: [4, 2], PSII: [2, 2], PSI: [1, 0], BR: [1, 1],
+        NNT: [-1, -1], LEAK: [-1, -1], UCP: [-1, -1], ION: [-1, 0], KHE: [0, -1],
+        MPC: [0, -1], PIC: [0, -1], ANT: [-1, 0], MAS: [-1, -1], ROSQ: [1, 2],
+        SDH: [0, 0], ETFQO: [0, 0], FNR: [0, 0], CEF: [0, 0], MEHLER: [0, 0], NDH2: [0, 0],
+    };
+    for (const id of Object.keys(CELLS)) {
+        const e = createEngine(id);
+        for (const [r, [z, nH]] of Object.entries(EXPECT)) {
+            if (!(r in e.rIndex)) continue;
+            const c = e.coupling(e.rIndex[r]);
+            assert.deepEqual([c.z, c.nH], [z, nH], `${id}: ${r}`);
+        }
+        const a = e.coupling(e.rIndex.ATPS), n = (CELLS[id].ring || 12) / 3;
+        assert.ok(Math.abs(a.z + n) < 1e-12 && Math.abs(a.nH + n) < 1e-12, `${id}: ATP synthase moves ${n}`);
+    }
+});

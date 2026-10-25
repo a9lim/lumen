@@ -102,7 +102,7 @@ export function cofactorGlyphs(stoich, sign = 1) {
 
 /** Drawn complex → the reactions it runs (and a click pulses). */
 export const COMPLEX = {
-    psii: ['PSII'], ndh1: ['NDH1'], sdh: ['SDH'], cytb6f: ['CYTBF'], cytOx: ['CYTOX'], psi: ['PSI', 'CEF'],
+    psii: ['PSII'], ndh1: ['NDH1', 'NDH1F'], sdh: ['SDH'], cytb6f: ['CYTBF'], cytOx: ['CYTOX'], psi: ['PSI', 'CEF'],
     fnr: ['FNR'], atpSyn: ['ATPS'], br: ['BR'], nnt: ['NNT'], ucp: ['UCP'],
 };
 

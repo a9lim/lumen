@@ -99,15 +99,17 @@ R('SDH', 'SDH', 'Succinate dehydrogenase (complex II)', 'succ + q8 -> fum + q8h2
 R('FUM', 'FUM', 'Fumarase', 'fum + h2o -> mal__L', { at: 'mito' });
 R('MDH', 'MDH', 'Malate dehydrogenase', 'mal__L + nad -> oaa + nadh + h', { at: 'mito' });
 
-// ─── β-oxidation, one reaction per chain length (C16 → C4); the
-// acyl-CoA dehydrogenase's FAD and ETF hand electrons to the quinone pool ───
+// ─── β-oxidation, one reaction per chain length (C16 → C4); the acyl-CoA
+// dehydrogenase's FAD hands its electrons to ETF, and ETF:quinone
+// oxidoreductase in the membrane passes them to the quinone pool ───
 CHAIN.forEach((n, i) => {
     const a = ACYL.acyl[i], e = ACYL.enoyl[i], h = ACYL.hydroxy[i], k = ACYL.keto[i];
-    R('ACAD' + n, 'ACAD', 'Acyl-CoA dehydrogenase', `${a} + q8 -> ${e} + q8h2`, { at: 'mito', group: 'ACAD', chain: n });
+    R('ACAD' + n, 'ACAD', 'Acyl-CoA dehydrogenase', `${a} + etfox -> ${e} + etfred`, { at: 'mito', group: 'ACAD', chain: n });
     R('ECH' + n, 'ECH', 'Enoyl-CoA hydratase', `${e} + h2o -> ${h}`, { at: 'mito', group: 'ECH', chain: n });
     R('HACD' + n, 'HACD', '3-Hydroxyacyl-CoA dehydrogenase', `${h} + nad -> ${k} + nadh + h`, { at: 'mito', group: 'HACD', chain: n });
     R('KAT' + n, 'Thiolase', '3-Ketoacyl-CoA thiolase', n === 4 ? `${k} + coa -> 2 accoa` : `${k} + coa -> ${ACYL.acyl[i + 1]} + accoa`, { at: 'mito', group: 'KAT', chain: n });
 });
+R('ETFQO', 'ETF-QO', 'ETF:quinone oxidoreductase', 'etfred + q8 -> etfox + q8h2', { at: 'mito' });
 
 // ─── Fatty-acid synthesis: a separate pathway on its own enzymes, which the
 // model lumps per elongation round (condensation, reduction, dehydration,
@@ -139,6 +141,12 @@ R('BIOMASS', 'to the cell', 'Biosynthetic demand (E. coli core composition)',
 
 // ─── The drawn membrane ───
 R('NDH1', 'NDH-1', 'NADH dehydrogenase (complex I)', 'nadh + q8 + 5 h -> nad + q8h2 + 4 h[l]', { at: 'mito', membrane: 'ndh1' });
+// Cyanobacterial NDH-1 takes ferredoxin, not NADH (Schuller et al. 2019, 10.1126/science.aau3613); four
+// protons per two electrons, like complex I, is inferred rather than measured. It serves respiration (with
+// FNR run backward from NADPH) and cyclic flow. NDH-2 (NdbA–C) passes NADH to the quinone pool without
+// pumping; in Synechocystis it is minor and regulatory (Howitt et al. 1999, 10.1128/JB.181.13.3994-4003.1999)
+R('NDH1F', 'NDH-1', 'NDH-1 (ferredoxin:plastoquinone oxidoreductase)', '2 fdred + q8 + 6 h -> 2 fdox + q8h2 + 4 h[l]', { membrane: 'ndh1' });
+R('NDH2', 'NDH-2', 'Type II NADH dehydrogenase', 'nadh + q8 + h -> nad + q8h2');
 // Cytochrome b₆f or bc₁: the Q-cycle moves four protons for every two electrons
 R('CYTBF', 'cyt b₆f', 'Cytochrome b₆f / bc₁ complex', 'q8h2 + 2 pcox[l] + 2 h -> q8 + 2 pcred[l] + 4 h[l]', { at: 'mito', membrane: 'cytb6f' });
 // Written per two electrons, like the chain's other steps, so no carrier saturates to a high power
@@ -166,7 +174,8 @@ R('KHE', 'KHE', 'K⁺/H⁺ exchange', 'h[l] + k -> h + k[l]', { at: 'mito' });
 // ─── Reactive oxygen: the chain's leaks and the scavengers, in the matrix where there is one ───
 // Complex I, and the Q-cycle's semiquinone at the Qo site (one electron to O₂, the other on to cytochrome c)
 R('ROSI', 'leak', 'Superoxide from complex I', 'nadh + 2 o2 -> nad + 2 o2s + h', { at: 'mito', ros: 'ndh1' });
-R('ROSQ', 'leak', 'Superoxide from the Q-cycle', 'q8h2 + o2 + pcox[l] -> q8 + o2s + pcred[l] + 2 h', { at: 'mito', ros: 'cytb6f' });
+// (the Qo site releases its quinol's protons on the lumen side)
+R('ROSQ', 'leak', 'Superoxide from the Q-cycle', 'q8h2 + o2 + pcox[l] -> q8 + o2s + pcred[l] + 2 h[l]', { at: 'mito', ros: 'cytb6f' });
 R('SOD', 'SOD', 'Superoxide dismutase', '2 o2s + 2 h -> h2o2 + o2', { at: 'mito' });
 R('CAT', 'CAT', 'Catalase', '2 h2o2 -> 2 h2o + o2', { at: 'mito' });
 // Glutathione peroxidase, with glutathione reductase spending the NADPH

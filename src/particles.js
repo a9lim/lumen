@@ -160,15 +160,16 @@ const Particles = {
         this.protons = this.protons.filter(p => p.a > 0);
         // Keep the pool equal to the gradient. Protons still crossing up count as
         // pooled; protons the store has spent leave the pool at once, for ATP
-        // synthase (four per ATP made), the leak (through UCP while uncoupling),
-        // and the rest for NNT, as the store's own tallies say.
+        // synthase (its ring's c subunits over three per ATP made), the leak
+        // (through UCP while uncoupling), and the rest for NNT, as the store's
+        // own tallies say.
         const target = Math.min(MAXP, Math.max(0, store.protonGradient - up));
-        this._qa = Math.min(400, this._qa + Math.max(0, store.atpOxidative - this._atpOx) * 4);
+        this._qa = Math.min(400, this._qa + Math.max(0, store.atpOxidative - this._atpOx) * Membrane.ring / 3);
         this._ql = Math.min(400, this._ql + Math.max(0, store.protonsLeaked - this._leaked));
         this._atpOx = store.atpOxidative; this._leaked = store.protonsLeaked;
         if (inPool > target) {
             let n = inPool - target;
-            const a = Math.min(n, this._qa); this._qa -= a; n -= a; send(this, a, 'atpSyn');
+            const a = Math.min(n, Math.floor(this._qa)); this._qa -= a; n -= a; send(this, a, 'atpSyn');
             const l = Math.min(n, this._ql); this._ql -= l; n -= l; send(this, l, simState.uncouplingEnabled && Membrane.pos.ucp ? 'ucp' : null);
             send(this, n, Membrane.pos.nnt ? 'nnt' : null);
             this._short = 0;

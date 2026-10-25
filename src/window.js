@@ -43,7 +43,11 @@ const CHAINS = {
     PSII: { keys: ['psii', 'pq', 'cytb6f', 'pc', 'psi', 'fd', 'fnr'], type: 'photo', gates: { 2: 'CYTBF', 4: 'PSI', 5: 'FNR' } },
     // cyclic flow's own step is ferredoxin to the quinone pool; PSI's photochemistry is PSI's turnover
     CEF: { keys: ['fd', 'pq', 'cytb6f', 'pc', 'psi'], type: 'cyclic', gates: { 2: 'CYTBF', 3: 'PSI' } },
+    // the cyanobacterium's NDH-1 takes ferredoxin; past plastocyanin its electron goes on to the oxidase
+    // or back to PSI (cyclic flow) as those two take plastocyanin's electrons (_fire)
+    NDH1F: { keys: ['fd', 'ndh1', 'pq', 'cytb6f', 'pc', 'cytOx'], type: 'resp', gates: { 3: 'CYTBF', 4: 'CYTOX' } },
 };
+const NDH1F_CYCLIC = { keys: ['fd', 'ndh1', 'pq', 'cytb6f', 'pc', 'psi'], type: 'cyclic', gates: { 3: 'CYTBF', 4: 'PSI' } };
 // Electrons per turnover where not two: a drawn turnover is a pair, so PSI's are drawn at half its rate
 const ELECTRONS = { PSI: 1 };
 // A later complex's turnover that met no drawn electron: a hop from its donor carrier, its effect on segment at
@@ -175,7 +179,12 @@ const Win = {
                 else { store.atpHydrolyzed += w; this.hAcc += this.hPerAtp; const k = Math.floor(this.hAcc); this.hAcc -= k; this._queue(k, 'atpSyn'); }
                 Renderer.poolEvent('atp', fwd ? 1 : -1, 'atpSyn');
             } else if (CHAINS[rid] && fwd) {
-                const C = CHAINS[rid], cb = { 0: () => this._effect(rid) }, gates = {};
+                let C = CHAINS[rid];
+                if (rid === 'NDH1F') {
+                    const e = this.engine, v = (r) => r in e.rIndex ? Math.max(0, e.state.v[e.rIndex[r]]) : 0, psi = v('PSI') / 2;
+                    if (psi > 0 && this.rng() < psi / (psi + v('CYTOX'))) C = NDH1F_CYCLIC;
+                }
+                const cb = { 0: () => this._effect(rid) }, gates = {};
                 for (const [seg, g] of Object.entries(C.gates)) { cb[seg] = () => this._effect(g); gates[seg] = () => this._take(g); }
                 Renderer.spawnElectronChain(C.keys, C.type, cb, gates);
             } else if (HOPS[rid] && fwd) this.credits.push({ rid, left: CREDIT_WAIT });
@@ -187,6 +196,7 @@ const Win = {
     /** What one turnover of a chain's complex does where it is drawn (per electron pair). */
     _effect(rid) {
         if (rid === 'NDH1') { this._queue(4, 'ndh1'); Renderer.poolEvent('nadh', -1, 'ndh1'); }
+        else if (rid === 'NDH1F') this._queue(4, 'ndh1');
         else if (rid === 'PSII') { Renderer.spawnPhoton('psii'); Renderer.spawnPhoton('psii'); this._queue(2, 'psii'); store.o2Produced += 0.5; }
         else if (rid === 'PSI') { Renderer.spawnPhoton('psi'); Renderer.spawnPhoton('psi'); }
         else if (rid === 'CYTBF') this._queue(4, 'cytb6f');

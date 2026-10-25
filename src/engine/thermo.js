@@ -70,6 +70,9 @@ export const E_O2 = 0.816;
 // Oxygen's one-electron steps, V (Wood 1988): O₂/O₂•⁻ and O₂•⁻/H₂O₂; H₂O₂/H₂O then follows from O₂/H₂O,
 // so the four steps sum to it and every cycle through the scavengers is consistent
 const E_SO = -0.16, E_SH = 0.89, E_HW = (4 * E_O2 - E_SO - E_SH) / 2;
+// ETF's two-electron midpoint, V: porcine ETF at pH 7.1 (Gustafson, Feinberg & McFarland 1986,
+// 10.1016/S0021-9258(19)57462-2), OX/SQ −14 and SQ/HQ −36 mV
+const E_ETF = -0.025;
 /** A mole of photons at λ nm, kJ/mol. */
 export const photon = (nm) => HC / nm;
 
@@ -87,7 +90,10 @@ export function dg0(cell, r, chemical = false) {
         case 'PSII': return -2 * F * (q - E_O2) + light;
         case 'PSI': return -F * (fd - pc) + light;
         case 'FNR': return -2 * F * (E_NADP - fd);
-        case 'CEF': return -2 * F * (q - fd);
+        case 'CEF': case 'NDH1F': return -2 * F * (q - fd);
+        case 'NDH2': return -2 * F * (q - E_NAD);
+        // ETF between acyl-CoA's couple and the quinone pool: the metabolite half stays eQuilibrator's
+        case 'ETFQO': return -2 * F * (q - E_ETF);
         // Bacteriorhodopsin's photocycle keeps only part of the photon: it stalls near 280 mV, not at 2 V
         case 'BR': return chemical ? 0 : -F * 0.280;
         case 'MEHLER': return -2 * F * (E_O2 - fd);
@@ -99,7 +105,7 @@ export function dg0(cell, r, chemical = false) {
         case 'GPX': return -2 * F * (E_HW - E_NADP);
         case 'REPAIR': return DG0.ATPM;
     }
-    if (r.group === 'ACAD') return ACYL_NAD - 2 * F * (q - E_NAD);
+    if (r.group === 'ACAD') return ACYL_NAD - 2 * F * (E_ETF - E_NAD);
     if (r.sink) return -Infinity;    // demand rows run one way only: their products aren't the network's
     if (!(r.id in DG0)) throw new Error('no ΔG′° for ' + r.id);
     return DG0[r.id];

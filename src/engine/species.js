@@ -49,6 +49,10 @@ sp('pcox', 'PC (oxidized)', 'car', { formula: 'Pc', charge: 1 });
 sp('pcred', 'PC (reduced)', 'car', { formula: 'Pc', charge: 0 });
 sp('fdox', 'Fd (oxidized)', 'car', { formula: 'Fd', charge: 0 });
 sp('fdred', 'Fd (reduced)', 'car', { formula: 'Fd', charge: -1 });
+// Electron-transferring flavoprotein: carries acyl-CoA dehydrogenase's two electrons (with their
+// protons, as its FADH₂) to ETF:quinone oxidoreductase in the membrane
+sp('etfox', 'ETF', 'car', { formula: 'Etf', charge: 0 });
+sp('etfred', 'ETF (reduced)', 'car', { formula: 'EtfH2', charge: 0 });
 
 // ─── Carbon ───
 const M = (id, name, extra) => sp(id, name, 'met', extra);
@@ -89,6 +93,7 @@ export const MOIETIES = {
     quinone: { q8: 1, q8h2: 1 },
     plastocyanin: { pcox: 1, pcred: 1 },
     ferredoxin: { fdox: 1, fdred: 1 },
+    etf: { etfox: 1, etfred: 1 },
 };
 
 for (const s of Object.values(SPEC)) {

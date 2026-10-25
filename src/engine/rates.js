@@ -20,7 +20,7 @@
  * window samples a representative centre's events at this times the share
  * of capacity in use (window.js).
  */
-export const KCAT = { ATPS: 300, NDH1: 300, SDH: 100, CYTBF: 400, CYTOX: 400, PSII: 200, PSI: 400, FNR: 200, CEF: 100, BR: 100, NNT: 30, MEHLER: 50 };
+export const KCAT = { ATPS: 300, NDH1: 300, NDH1F: 300, SDH: 100, CYTBF: 400, CYTOX: 400, PSII: 200, PSI: 400, FNR: 200, CEF: 100, BR: 100, NNT: 30, MEHLER: 50 };
 
 /** Km by species when a reaction doesn't name its own, mM. */
 export const KM = {
@@ -111,7 +111,7 @@ p('MDH', 50);
 // The spiral's enzymes far outrun its entry, so its intermediates (each holding a CoA) stay at µM:
 // entry (CPT1 in the matrix's case, the acyl-CoA synthetase's otherwise) sets the pace
 for (const n of [16, 14, 12, 10, 8, 6, 4]) {
-    p('ACAD' + n, 10); p('ECH' + n, 50); p('HACD' + n, 50); p('KAT' + n, 50, { km: { coa: 0.01 } });
+    p('ACAD' + n, 10, { km: { etfox: 0.002 } }); p('ECH' + n, 50); p('HACD' + n, 50); p('KAT' + n, 50, { km: { coa: 0.01 } });
 }
 // Malonyl-CoA keeps fatty acids out of the matrix (CPT1). It rises when acetyl-CoA is in surplus
 // (as citrate, through ACC), which the matrix's acetyl-CoA/CoA ratio stands for here
@@ -137,8 +137,14 @@ p('CYTOX', 30);
 // PSII lets its O₂ go: no product holds it back
 p('PSII', 3, { light: true, km: { o2: 100 } });
 p('PSI', 10, { light: true });
-p('FNR', 20);
+// FNR runs backward in the dark, NADPH to ferredoxin for NDH-1's respiration: oxidized ferredoxin's weak
+// binding gives that direction its capacity (Haldane: kcat_b / K_P = (kcat_f / K_S) / K')
+p('FNR', 20, { km: { fdox: 0.3 } });
 p('CEF', 1.5);
+p('ETFQO', 10, { km: { etfred: 0.002 } });
+// Ferredoxin-fed NDH-1 (cyanobacteria) and the non-pumping NDH-2, a minor route
+p('NDH1F', 3, { km: { fdred: 0.02 } });
+p('NDH2', 0.05);
 p('BR', 2, { light: true });
 // The water–water cycle: ferredoxin (or flavodiiron proteins, in cyanobacteria) hands electrons to O₂,
 // the photosynthetic chain's outlet when the Calvin cycle can't take them

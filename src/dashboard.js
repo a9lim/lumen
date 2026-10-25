@@ -159,12 +159,14 @@ export function yieldText() {
     const f = (x) => x.toFixed(1), per = `${f(cost)} per ATP (${ring} c subunits turn for three ATP${carrier ? ', and exporting each ATP costs one more' : ''})`;
     const out = [];
     if (has('PSII')) {
-        const lin = nH('PSII') + nH('CYTBF');
-        out.push(`ATP per NADPH by linear flow: ${f(lin / cost)}, from ${lin} protons per two electrons and ${per}. The Calvin cycle needs 1.5, so cyclic flow makes up the rest.`);
+        const lin = nH('PSII') + nH('CYTBF'), y = lin / cost;
+        out.push(`ATP per NADPH by linear flow: ${f(y)}, from ${lin} protons per two electrons and ${per}. ` + (y < 1.5 - 1e-9 ? 'The Calvin cycle needs 1.5, so cyclic flow makes up the rest.' : 'That meets the Calvin cycle\u2019s 1.5 without cyclic flow.'));
     }
-    if (has('NDH1') && has('CYTOX')) {
-        const nadh = nH('NDH1') + nH('CYTBF') + nH('CYTOX'), succ = nH('CYTBF') + nH('CYTOX');
-        out.push(`P/O ${f(nadh / cost)} from NADH and ${f(succ / cost)} from succinate: ${nadh} and ${succ} protons pumped per two electrons${has('PSII') ? ', ' + f(cost) + ' per ATP' : ', ' + per}.`);
+    // complex I takes NADH; the cyanobacterium's NDH-1 takes ferredoxin, from NADPH through FNR in the dark
+    const entry = has('NDH1') ? ['NDH1', 'NADH'] : has('NDH1F') ? ['NDH1F', 'NADPH (through ferredoxin)'] : null;
+    if (entry && has('CYTOX')) {
+        const nadh = nH(entry[0]) + nH('CYTBF') + nH('CYTOX'), succ = nH('CYTBF') + nH('CYTOX');
+        out.push(`P/O ${f(nadh / cost)} from ${entry[1]} and ${f(succ / cost)} from succinate: ${nadh} and ${succ} protons pumped per two electrons${has('PSII') ? ', ' + f(cost) + ' per ATP' : ', ' + per}.`);
     }
     if (has('BR') && !has('PSII')) out.push(`Bacteriorhodopsin pumps one proton per photon, so an ATP takes ${f(synth)} photons (${ring} c subunits turn for three ATP).`);
     if (!out.length) out.push(`No chain here. Run backward, ATP synthase spends an ATP to pump ${f(synth)} protons out (${ring} c subunits turn for three ATP).`);

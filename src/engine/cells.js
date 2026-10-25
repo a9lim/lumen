@@ -45,7 +45,7 @@ const PPP_OX = ['G6PDH', 'PGL', 'GND'];
 const PPP_NONOX = ['RPI', 'RPE', 'TKT1', 'TALA', 'TKT2'];
 const CALVIN = ['RBPC', 'PRUK', 'SBA', 'SBP', 'FBP', 'GAPDP'];
 const KREBS = ['CS', 'ACONT', 'ICDH', 'AKGDH', 'SUCOAS', 'SDH', 'FUM', 'MDH'];
-const BETAOX = [16, 14, 12, 10, 8, 6, 4].flatMap(n => ['ACAD' + n, 'ECH' + n, 'HACD' + n, 'KAT' + n]);
+const BETAOX = [16, 14, 12, 10, 8, 6, 4].flatMap(n => ['ACAD' + n, 'ECH' + n, 'HACD' + n, 'KAT' + n]).concat('ETFQO');
 const FAS = ['ACC', 'FAS4', 'FAS6', 'FAS8', 'FAS10', 'FAS12', 'FAS14', 'FAS16'];
 const RESP = ['NDH1', 'CYTBF', 'CYTOX'];
 const ROS = ['ROSI', 'ROSQ', 'SOD', 'CAT', 'GPX', 'REPAIR'];
@@ -66,7 +66,8 @@ const E_PQ = 0.080, E_UQ = 0.045, E_PC = 0.370, E_CYTC = 0.260, E_FD = -0.428;
 export const CELLS = {
     cyanobacterium: {
         name: 'Synechocystis sp. PCC 6803',
-        reactions: uniq(HOUSE, GROW, GLYC, PPP_OX, PPP_NONOX, CALVIN, STORE, KREBS, FAS, RESP, ROS, PHOTO,
+        // NDH-1 takes ferredoxin here, NDH-2 NADH (network.js)
+        reactions: uniq(HOUSE, GROW, GLYC, PPP_OX, PPP_NONOX, CALVIN, STORE, KREBS, FAS, ['NDH1F', 'NDH2', 'CYTBF', 'CYTOX'], ROS, PHOTO,
             ['PPS', 'PPC', 'PDH', 'LDH', 'EX_lac', 'EX_glc', 'EX_o2', 'NNT']),
         compartments: { c: 1, l: 0.1 },
         potentials: { q: E_PQ, pc: E_PC, fd: E_FD },
@@ -74,11 +75,12 @@ export const CELLS = {
         carriers: { q: 2, pc: 1, fd: 0.3 },
         // The Calvin cycle is autocatalytic: it starts with its intermediates on hand
         start: CALVIN_START,
-        // Thioredoxin activates the ATP synthase in the light, so it can't run backward in the dark;
-        // the glycolytic GAPDH (GAP1) is a minor activity beside the Calvin cycle's (GAP2)
+        // The ATP synthase makes ATP on respiration in the dark too; AtpΘ stops it running backward
+        // when Δp falls (Song et al. 2022, 10.1016/j.cub.2021.10.051), as IF1 does in mitochondria.
+        // The glycolytic GAPDH (GAP1) is a minor activity beside the Calvin cycle's (GAP2)
         // Glycolysis is held back in the light, where the Calvin cycle needs its triose and PGA
         // and G6PDH is switched off by light, so the pentose phosphate pathway doesn't burn what the Calvin cycle fixes
-        kinetics: { ...ION_THYLAKOID, ATPS: { reg: [light(0.05)] }, GAPD: { vmax: 2 }, PFK: { reg: [dark(0.05)] }, PYK: { reg: [dark(0.05)] },
+        kinetics: { ...ION_THYLAKOID, ATPS: { reg: [IF1] }, GAPD: { vmax: 2 }, PFK: { reg: [dark(0.05)] }, PYK: { reg: [dark(0.05)] },
             G6PDH: { reg: [dark(0.01)] }, TALA: { vmax: 1 },
             // Respiration shares the thylakoid's carriers but takes only a little of light's electrons
             CYTOX: { vmax: 3 },
