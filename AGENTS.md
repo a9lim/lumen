@@ -125,6 +125,13 @@ ui.js wires the colophon (play, theme, help), the margin, the `shortcuts` array 
 
 ## Open work
 
+`docs/VISION.md` (not staged) is the ideation round of 2026-10-24: where Lumen could go, and the faults below in detail. It is not ratified.
+
+- Conservation: the four-step β-oxidation spiral never shortens the chain (thiolase returns the fatty acid and adds an acetyl-CoA), so each turn makes carbon; linear electron flow splits water and pumps protons when NADP⁺ is exhausted, losing the electrons.
+- No respiratory control: pumping never slows as the gradient rises, and ATP synthase never runs backward. At rest the animal cell stalls with no ADP and a stuck gradient.
+- Biology: animal cells ferment to ethanol (no LDH); the chloroplast's locked reasons are false (plastids run the oxidative PPP, and plant β-oxidation is peroxisomal); gluconeogenesis omits PEPCK's GTP; fatty-acid synthesis charges 14 ATP, not 7.
+- Sunlight reverses upper glycolysis and β-oxidation in every preset, the animal cell included; oxygen gates Krebs and PDH by rule rather than through NAD⁺.
+- Batch keys add fixed flux weights, so the caption's "carries the most carbon" reflects the schedule, not stoichiometric extent.
 - Unreachable code: `canReact`, the `sod` / `catalase` / `gpx` / `run_ros_scavenge` dispatch keys (scavenging runs inline in `protonLeakTick`), and `calvin` step 5. The `ucp` hit box has no dispatch handler, so clicking UCP does nothing.
 - `pumpProtons` and ATP synthase still schedule their visual protons with `setTimeout`; the pool ignores the `'down'` ones and reconciles from the store instead.
 - The c-ring has twelve subunits and four protons per ATP in every specimen; real rings differ (eight in mammalian mitochondria, fourteen in chloroplasts). A per-specimen ring would change the model.
