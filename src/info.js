@@ -9,11 +9,11 @@ export const ENZYMES = {
     PFK:    { name: 'Phosphofructokinase', pathway: 'Glycolysis', eq: 'F6P + ATP \u2192 F1,6BP + ADP', desc: 'The main control point of glycolysis \u2014 once this step fires, the cell is committed to breaking down the sugar.', regulation: 'Blocked when ATP is above 80%; slowed above 60%.' },
     FBPase: { name: 'Fructose-1,6-bisphosphatase', pathway: 'Gluconeogenesis / Calvin', eq: 'F1,6BP \u2192 F6P + P\u1d62', desc: 'Reverses the PFK step during gluconeogenesis or the Calvin cycle by removing a phosphate.' },
     ALDO:   { name: 'Aldolase', pathway: 'Glycolysis / Calvin', eq: 'F1,6BP \u2194 2 G3P', desc: 'Splits a 6-carbon sugar into two 3-carbon G3P molecules. Works in both glycolysis and the Calvin cycle.' },
-    GAPDH:  { name: 'G3P dehydrogenase', pathway: 'Glycolysis / Calvin', eq: 'G3P + NAD\u207A \u2194 1,3-BPG + NADH', desc: 'Oxidizes G3P while capturing energy as NADH. The reverse direction in the Calvin cycle uses NADPH instead.' },
+    GAPDH:  { name: 'G3P dehydrogenase', pathway: 'Glycolysis / Calvin', eq: 'G3P + NAD\u207A \u2194 1,3-BPG + NADH', desc: 'Oxidizes G3P while capturing energy as NADH. Backward it is gluconeogenesis, spending NADH, or the Calvin cycle, whose GAPDH spends NADPH instead.' },
     PGK:    { name: 'Phosphoglycerate kinase', pathway: 'Glycolysis / Calvin', eq: '1,3-BPG + ADP \u2194 3-PGA + ATP', desc: 'Transfers a phosphate directly to ADP, producing ATP without the electron transport chain.' },
     PGM:    { name: 'Phosphoglycerate mutase', pathway: 'Glycolysis', eq: '3-PGA \u2192 2-PGA', desc: 'Moves the phosphate group from carbon 3 to carbon 2, preparing the molecule for the next step.' },
     ENO:    { name: 'Enolase', pathway: 'Glycolysis', eq: '2-PGA \u2192 PEP + H\u2082O', desc: 'Removes water from 2-PGA, creating the high-energy molecule PEP.' },
-    PK:     { name: 'Pyruvate kinase', pathway: 'Glycolysis', eq: 'PEP + ADP \u2192 Pyruvate + ATP', desc: 'The final step of glycolysis, producing ATP. In gluconeogenesis, the reverse bypass (PC + PEPCK) converts pyruvate back to PEP using ATP.', regulation: 'Backward (PC + PEPCK) it needs ATP: slowed below 50%, stopped below 30%.' },
+    PK:     { name: 'Pyruvate kinase', pathway: 'Glycolysis', eq: 'PEP + ADP \u2192 Pyruvate + ATP', desc: 'The final step of glycolysis, producing ATP. In gluconeogenesis, the bypass around it (pyruvate carboxylase, then PEP carboxykinase) converts pyruvate back to PEP for an ATP and a GTP.', regulation: 'Backward (PC + PEPCK) it needs ATP: slowed below 50%, stopped below 30%.' },
 
     // PPP / Calvin shared step
     'TKT+TAL': { name: 'Transketolase + transaldolase', pathway: 'PPP / Calvin', eq: '6 R5P \u2194 5 F6P', desc: 'Carbon-shuffling enzymes that rearrange pentoses into hexoses (or vice versa), linking the PPP non-oxidative branch to glycolysis and the Calvin cycle.' },
@@ -43,7 +43,8 @@ export const ENZYMES = {
     PRK:    { name: 'Phosphoribulokinase', pathway: 'Calvin', eq: 'R5P + ATP \u2192 RuBP + ADP', desc: 'Uses ATP to regenerate RuBP, the CO\u2082 acceptor, keeping the Calvin cycle turning.' },
 
     // Fermentation
-    PDC:    { name: 'Pyruvate decarboxylase', pathway: 'Fermentation', eq: 'Pyruvate \u2192 Acetaldehyde + CO\u2082', desc: 'Removes CO\u2082 from pyruvate under anaerobic conditions, producing acetaldehyde for alcoholic fermentation.' },
+    PDC:    { name: 'Pyruvate decarboxylase', pathway: 'Fermentation', eq: 'Pyruvate \u2192 Acetaldehyde + CO\u2082', desc: 'Removes CO\u2082 from pyruvate under anaerobic conditions, producing acetaldehyde for alcoholic fermentation. Yeasts and some bacteria have it; animals and cyanobacteria do not.' },
+    LDH:    { name: 'Lactate dehydrogenase', pathway: 'Fermentation', eq: 'Pyruvate + NADH \u21CC Lactate + NAD\u207A', desc: 'Reduces pyruvate to lactate, regenerating the NAD\u207A that glycolysis needs when there is no oxygen. With oxygen it runs backward, turning lactate back into fuel, as heart and liver do.' },
     ADH:    { name: 'Alcohol dehydrogenase', pathway: 'Fermentation', eq: 'Acetaldehyde + NADH \u2194 Ethanol + NAD\u207A', desc: 'Bidirectional: reduces acetaldehyde to ethanol during fermentation (regenerating NAD\u207A), or oxidizes ethanol back to acetaldehyde during catabolism.' },
     ALDH:   { name: 'Aldehyde dehydrogenase', pathway: 'Ethanol catabolism', eq: 'Acetaldehyde + NAD\u207A \u2192 Acetic Acid + NADH', desc: 'Oxidizes acetaldehyde to acetic acid during ethanol breakdown, producing NADH.' },
     ACS:    { name: 'Acetyl-CoA synthetase', pathway: 'Ethanol catabolism', eq: 'Acetic Acid + ATP + CoA \u2192 Acetyl-CoA + AMP', desc: 'Activates acetic acid to acetyl-CoA so it can enter the Krebs cycle, consuming ATP in the process.' },
@@ -78,9 +79,9 @@ export const ENZYMES = {
     run_krebs:    { name: 'Krebs cycle \u00D72', pathway: 'Krebs cycle', eq: '2 Acetyl-CoA + 6 NAD\u207A + 2 FAD + 2 GDP \u2192 4 CO\u2082 + 6 NADH + 2 FADH\u2082 + 2 GTP', desc: 'Runs two full turns of the citric acid cycle, completely oxidizing two acetyl-CoA (from one glucose) and harvesting energy carriers.' },
     run_calvin:   { name: 'Calvin cycle \u00D76', pathway: 'Calvin cycle', eq: '6 CO\u2082 + 18 ATP + 12 NADPH \u2192 2 G3P', desc: 'Six turns of carbon fixation use 6 CO\u2082 plus light-generated ATP and NADPH to build two molecules of G3P.' },
     run_ppp:      { name: 'Pentose phosphate \u00D76', pathway: 'PPP', eq: 'G6P \u2192 12 NADPH + 6 CO\u2082', desc: 'Six rounds of the oxidative PPP produce 12 NADPH for biosynthesis and antioxidant defense, releasing 6 CO\u2082.' },
-    run_betaox:   { name: 'Beta oxidation \u00D77 / FA synthesis', pathway: 'Beta oxidation', eq: 'Palmitoyl-CoA \u2194 8 Acetyl-CoA', desc: 'Forward: seven rounds break a C16 fatty acid into 8 acetyl-CoA, yielding 7 FADH\u2082 + 7 NADH. Reverse (FA synthesis): consumes 14 NADPH + 14 ATP to build one fatty acid from 8 acetyl-CoA.' },
+    run_betaox:   { name: 'Beta oxidation \u00D77 / FA synthesis', pathway: 'Beta oxidation', eq: 'Palmitoyl-CoA \u2194 8 Acetyl-CoA', desc: 'Forward: seven rounds break a C16 fatty acid into 8 acetyl-CoA, yielding 7 FADH\u2082 + 7 NADH. Reverse (FA synthesis): consumes 7 ATP (one per malonyl-CoA) and 14 NADPH to build one fatty acid from 8 acetyl-CoA.' },
     run_glyc_upper: { name: 'Glycolysis upper / gluconeogenesis', pathway: 'Glycolysis', eq: 'Glucose + 2 ATP \u2194 2 G3P', desc: 'Upper glycolysis: phosphorylates and splits glucose into two G3P, investing 2 ATP. Reverse: gluconeogenesis reassembles glucose from 2 G3P.' },
-    run_glyc_lower: { name: 'Glycolysis lower / gluconeogenesis', pathway: 'Glycolysis', eq: '2 G3P + 2 NAD\u207A + 4 ADP \u2194 2 Pyruvate + 4 ATP + 2 NADH', desc: 'Lower glycolysis: oxidizes G3P to pyruvate, netting 4 ATP and 2 NADH. Reverse (via PC + PEPCK): converts pyruvate back to PEP using 2 ATP.' },
+    run_glyc_lower: { name: 'Glycolysis lower / gluconeogenesis', pathway: 'Glycolysis', eq: '2 G3P + 2 NAD\u207A + 4 ADP \u2192 2 Pyruvate + 4 ATP + 2 NADH', desc: 'Lower glycolysis: oxidizes G3P to pyruvate, making 4 ATP and 2 NADH. Reverse (gluconeogenesis): rebuilds 2 G3P from 2 pyruvate for 4 ATP, 2 GTP and 2 NADH (NADPH where the Calvin cycle runs).' },
 };
 
 export const METABOLITES = {
@@ -93,7 +94,8 @@ export const METABOLITES = {
     pga3:         { name: '3-PGA', full: '3-Phosphoglycerate', desc: 'The first stable product of CO\u2082 fixation by RuBisCO, and an intermediate in the payoff phase of glycolysis.' },
     pga2:         { name: '2-PGA', full: '2-Phosphoglycerate', desc: 'A short-lived glycolytic intermediate between 3-PGA and PEP.' },
     pep:          { name: 'PEP', full: 'Phosphoenolpyruvate', desc: 'The highest-energy phosphorylated compound in glycolysis. Its phosphate transfer to ADP is highly favorable.' },
-    pyruvate:     { name: 'Pyruvate', full: 'Pyruvic acid (C\u2083H\u2084O\u2083)', desc: 'The end product of glycolysis. With oxygen, it enters the Krebs cycle via PDH; without, it is fermented to ethanol.' },
+    pyruvate:     { name: 'Pyruvate', full: 'Pyruvic acid (C\u2083H\u2084O\u2083)', desc: 'The end product of glycolysis. With oxygen, it enters the Krebs cycle via PDH; without, it is fermented to lactate or ethanol.' },
+    lactate:      { name: 'Lactate', full: 'Lactic acid (C\u2083H\u2086O\u2083)', desc: 'The product of lactate fermentation in animal cells and many bacteria; cyanobacteria make D-lactate in the dark. Not a dead end: with oxygen, LDH turns it back into pyruvate.' },
     acetylCoA:    { name: 'Acetyl-CoA', full: 'Acetyl coenzyme A', desc: 'A universal 2-carbon carrier that feeds into the Krebs cycle. Produced from pyruvate (via PDH), fatty acids (via beta-oxidation), or ethanol catabolism.' },
     citrate:      { name: 'Citrate', full: 'Citric acid (C\u2086H\u2088O\u2087)', desc: 'The first intermediate of the Krebs cycle, formed by joining acetyl-CoA (2C) with oxaloacetate (4C).' },
     isocitrate:   { name: 'Isocitrate', full: 'Isocitric acid', desc: 'An isomer of citrate and the substrate for IDH, where the first CO\u2082 of the Krebs cycle is released.' },

@@ -2,7 +2,7 @@
 // enforces allosteric regulation before any substrate mutation.
 import { _TWO_PI } from '../anim.js';
 import { simState, store } from '../state.js';
-import { showActiveStep, updateDashboard, markDashboardDirty } from '../dashboard.js';
+import { showActiveStep, markDashboardDirty } from '../dashboard.js';
 import { getRegulationFactor, getRegulationReason } from '../regulation.js';
 import { drive, driveReason } from '../energetics.js';
 import { advanceGlycolysis, runGlycolysisUpper, runGlycolysisLower, runGlycolysisLowerReverse, runGlycolysisUpperReverse } from './glycolysis.js';
@@ -10,9 +10,8 @@ import { advanceKrebs, runKrebsCycle } from './krebs.js';
 import { advanceCalvin, runCalvinCycle } from './calvin.js';
 import { advancePPP, runPPPCycle } from './ppp.js';
 import { advanceETC, advanceATPSynthase, advanceBacteriorhodopsin, advanceNNT } from './etc.js';
-import { advancePDH, advancePDC, advanceADH, advanceALDH, advanceFermentation, advanceACS } from './fermentation.js';
+import { advancePDH, advancePDC, advanceADH, advanceLDH, advanceALDH, advanceFermentation, advanceACS } from './fermentation.js';
 import { advanceBetaOx, runBetaOxCycle, runBetaOxReverse } from './betaoxidation.js';
-import { advanceSOD, advanceCatalase, advanceGPx, runROSScavenging } from './ros.js';
 
 // ─── Handler Map ───
 // Maps dispatch keys to (stepIndex, direction) => result handlers.
@@ -25,6 +24,7 @@ const _dispatch = {
     pdh:                    ()     => advancePDH(),
     pdc:                    ()     => advancePDC(),
     adh:                    (_i, d) => advanceADH(d),
+    ldh:                    (_i, d) => advanceLDH(d),
     aldh:                   ()     => advanceALDH(),
     acs:                    ()     => advanceACS(),
     fermentation:           ()     => advanceFermentation(),
@@ -41,11 +41,10 @@ const _dispatch = {
     nnt:                    ()     => advanceNNT(),
     betaox:                 (i, d) => advanceBetaOx(i, d),
     run_betaox:             (_i, d) => d === 'reverse' ? runBetaOxReverse() : runBetaOxCycle(),
-    sod:                    ()     => advanceSOD(),
-    catalase:               ()     => advanceCatalase(),
-    gpx:                    ()     => advanceGPx(),
-    run_ros_scavenge:       ()     => runROSScavenging(),
 };
+
+// Keys an organism may run only backward (simState.oneWay, from its preset)
+const _FAMILY = { betaox: 'betaox', run_betaox: 'betaox' };
 
 // ─── Reaction Observers ───
 // Called after every reaction that fires, with the same arguments plus its
@@ -85,8 +84,16 @@ const _rotNudge = {
  * to the appropriate handler. Returns true if the reaction fired.
  */
 export function advanceStep(pathway, stepIndex, direction) {
+    // No direction means forward: a handler never falls back to running backward
+    if (direction !== 'reverse') direction = 'forward';
     const handler = _dispatch[pathway];
     if (!handler) { markDashboardDirty(); return false; }
+    const oneWay = simState.oneWay[_FAMILY[pathway]];
+    if (oneWay && direction !== 'reverse') {
+        if (!simState.autoPlay && typeof showToast === 'function') showToast(oneWay);
+        markDashboardDirty();
+        return false;
+    }
 
     // Allosteric gate and thermodynamic drive (energetics.js) — either blocks at 0
     const regFactor = getRegulationFactor(pathway, stepIndex, store, direction);
@@ -120,7 +127,9 @@ export function advanceStep(pathway, stepIndex, direction) {
         // Determine pathway color — reverse direction may belong to a different pathway
         let colorPw = pathway;
         if (direction === 'reverse' && stepIndex != null) {
-            colorPw = _reverseColorPathway[pathway + ':' + stepIndex] || pathway;
+            const alt = _reverseColorPathway[pathway + ':' + stepIndex];
+            // Backward without the Calvin cycle, the shared steps are gluconeogenesis's own
+            colorPw = alt && (alt !== 'calvin' || simState.calvinEnabled) ? alt : pathway;
         }
         if (result.enzyme) showActiveStep(result.enzyme, result.reaction, result.yields, colorPw);
         const nudge = _rotNudge[pathway];
@@ -130,13 +139,4 @@ export function advanceStep(pathway, stepIndex, direction) {
 
     markDashboardDirty();
     return !!result;
-}
-
-/**
- * Dry-run check: can this reaction fire (substrates available + regulation)?
- * Used by renderer to dim unavailable enzymes.
- */
-export function canReact(pathway, stepIndex) {
-    const regFactor = getRegulationFactor(pathway, stepIndex, store);
-    return regFactor > 0;
 }

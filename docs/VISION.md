@@ -39,7 +39,7 @@ The specimens are also homologous: the crista's complex III is the b₆f's cousi
 
 ## What it gets wrong now
 
-Confirmed by probe or by reading the code. Ranked by how much it misteaches. Items 1 and 2 were fixed in milestone 0 (2026-10-24; AGENTS.md describes the result). Milestone 0.5 takes 3, 5 and an interim fix for 4; the engine (milestone 1) takes the rest of 4, and 6–8.
+Confirmed by probe or by reading the code. Ranked by how much it misteaches. Items 1 and 2 were fixed in milestone 0 (2026-10-24; AGENTS.md describes the result). Milestone 0.5 (2026-10-25) fixed 3 and 5 and put an interim rule on 4; the engine (milestone 1) takes the rest of 4, and 6–8.
 
 1. **Conservation breaks.**
    - The four-step β-oxidation spiral never shortens the chain. Thiolase returns the fatty acid and adds an acetyl-CoA (`reactions/betaoxidation.js:47-50`), so each turn makes two carbons from nothing. Codex reproduced ten turns from one fatty acid yielding ten acetyl-CoA with the fatty acid intact. The batch path is balanced, so manual and autoplay modes run different chemistries.
@@ -52,7 +52,7 @@ Confirmed by probe or by reading the code. Ranked by how much it misteaches. Ite
    - The chloroplast locks are false (`organisms.js:39-43`). Plastids run the oxidative PPP and glycolytic steps (at night, on starch), and plant β-oxidation is peroxisomal, not mitochondrial (Codex).
    - Gluconeogenesis omits the GTP of PEPCK. Reverse GAPDH spends NADPH even in the animal cell (`glycolysis.js:92-100`, Codex).
    - Fatty-acid synthesis charges 14 ATP; the textbook cost is 7, for ACC (`betaoxidation.js:72-81`). Running it as reversed β-oxidation hides the reason the two pathways are separate: to avoid a futile cycle.
-   - "Cyanobacterium: all pathways available" probably overstates it. Most cyanobacteria are thought to lack β-oxidation, and they store glycogen, not glucose **[check before acting]**.
+   - "Cyanobacterium: all pathways available" probably overstates it. Most cyanobacteria are thought to lack β-oxidation, and they store glycogen, not glucose **[check before acting]**. *Checked in 0.5:* "a functional β-oxidation pathway appears to be missing in cyanobacteria" (von Berlepsch et al. 2012), so the cyanobacterium now runs that line only as fatty-acid synthesis. In the dark without O₂ *Synechocystis* makes D-lactate, acetate, succinate and H₂ (Akiyama & Osanai 2023), not ethanol. And the halophile can't catabolize glucose to pyruvate at all (Todor et al. 2015), so its glycolysis is locked.
 4. **Switches decide what chemistry should.**
    - Sunlight globally reverses upper glycolysis and β-oxidation (`autoplay.js:62-63, 79`). Turn the light on in the animal cell and it starts gluconeogenesis and fatty-acid synthesis.
    - Oxygen disables Krebs and PDH by rule (`krebs.js:8`, `fermentation.js:8`). The real dependency runs through NAD⁺ regeneration.
@@ -154,11 +154,12 @@ Additions are marked with arrows on the trace, as in the classic figures. Experi
 Each stage leaves a better simulator. Round 2 reordered round 1's list (Codex's, with the bench pulled earlier): the engine comes first, with energetics and biosynthetic demand inside it, and the bench follows.
 
 0. **Respiratory control and the conservation leaks** (a9's cut, 2026-10-24; built). Fix both conservation leaks. Pumping slows as Δp nears each chain's stall, and ATP synthase's direction comes from Δp against the phosphorylation potential, so it can run backward.
-0.5. **The rest of the correctness pass.**
+0.5. **The rest of the correctness pass** (built 2026-10-25).
    - Add lactate and LDH. Correct the preset texts and locks, PEPCK's GTP, fatty-acid synthesis's cost (7 ATP), and the NADPH that reverse GAPDH spends in the animal cell. Weight flux by carbon extent. Clear the unreachable code.
    - Sunlight's reversal becomes an interim rule for the photosynthetic specimens only; real directions come from ΔG in the engine and aren't built twice.
    - Oxygen's rule on Krebs and PDH stays until the engine has compartments. Without them, cytosolic LDH would regenerate the matrix's NAD⁺ and keep the cycle turning in anoxia (Codex).
    - *What you see:* the animal cell ferments to lactate, light no longer makes it gluconeogenic, the chloroplast gets its PPP back, and line weights are honest. Mostly the presets stop misstating the biology.
+   - *As built:* each preset ferments as its organism does (lactate in the animal cell and the cyanobacterium, ethanol in the anaerobe, none in the chloroplast or the halophile), and β-oxidation runs only as fatty-acid synthesis in the cyanobacterium and the chloroplast. Line weight reads carbon atoms per second. NNT also got a thermodynamic gate (Δp against the two nicotinamide ratios): without it, the anoxic mitochondrion drained every NADH into NADPH, leaving LDH nothing to ferment with. Still open for the engine: light doesn't switch plastid enzymes (thioredoxin), per-organism enzyme sets are coarse (the cyanobacterial Krebs cycle, the chloroplast's ADH), and the round-robin can't speed glycolysis up in anoxia, so the anoxic animal cell starves.
 1. **The engine,** one milestone developed in two phases.
    - *Phase A, the core.* Landing order (Codex):
      1. species, units, compartments (volumes, boundaries, reservoir exchanges) and reaction identities;
@@ -235,6 +236,9 @@ Ranked roughly by delight per unit of work. All stay true to the science.
   - Park et al. 2016, *Nat Chem Biol*, 10.1038/nchembio.2077.
   - Bennett et al. 2009, *Nat Chem Biol*, 10.1038/nchembio.186.
   - Ito, Watanabe & Osanai 2023, *Plant Physiol*, 10.1093/plphys/kiad580: *Synechocystis*'s high NADP⁺/NAD⁺ ratio.
+  - von Berlepsch et al. 2012, *Plant Physiol*, 10.1104/pp.112.195263: cyanobacteria appear to lack β-oxidation.
+  - Akiyama & Osanai 2023, *Front Microbiol*, 10.3389/fmicb.2023.1332449: *Synechocystis*'s dark anoxic products, D-lactate among them.
+  - Todor et al. 2015, *PLOS ONE*, 10.1371/journal.pone.0135693: *Halobacterium salinarum* can't catabolize glucose to pyruvate.
   - SABIO-RK.
   - Escher, for data-rich metabolic maps (Codex).
   - VCell, for separating model, geometry and solver (Codex).

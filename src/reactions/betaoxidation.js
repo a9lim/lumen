@@ -1,6 +1,9 @@
 // Beta-oxidation / fatty acid synthesis — 4-step spiral cleaving 2C units.
 // Forward (catabolic): uses FAD + NAD+, produces acetyl-CoA per round.
-// Reverse (anabolic): uses NADPH + ATP, builds fatty acid chain.
+// Reverse (anabolic): uses NADPH + ATP, builds fatty acid chain: each
+// condensation takes a malonyl-CoA, which acetyl-CoA carboxylase (ACC) makes
+// from acetyl-CoA for one ATP, so palmitate costs 7 ATP and 14 NADPH.
+// Results carry n, the chain length the step acted on (flux.js weighs carbon by it).
 // 7 rounds fully oxidize palmitoyl-CoA (C16) to 8 acetyl-CoA. Each molecule
 // on the spiral carries its chain length (state.js acyl), so a round
 // shortens the chain by the two carbons it releases.
@@ -36,33 +39,33 @@ export function advanceBetaOx(idx, direction) {
         // ACAD (fwd): Acyl-CoA dehydrogenase — FAD-linked oxidation
         if (fwd && store.fattyAcid > 0 && store.fadh2 < store.totalFad) {
             const n = put('enoyl', takeAcyl()); store.fadh2++;
-            return { enzyme: 'ACAD', reaction: `${C(n)} acyl-CoA + FAD → ${C(n)} enoyl-CoA + FADH₂`, yields: { fadh2: 1 } };
-        // ACC+ER (rev): Enoyl reductase — NADPH-dependent reduction + ATP-dependent carboxylation
-        } else if (rev && acyl.enoyl.length > 0 && store.nadph > 0 && store.atp > 0) {
-            const n = take('enoyl'); putAcyl(n); store.nadph--; store.atp--;
-            return { enzyme: 'ACC+ER', reaction: `${C(n)} enoyl-CoA + NADPH + ATP → ${C(n)} acyl-CoA + NADP⁺ + ADP`, yields: { nadphConsume: 1, atpConsume: 1 } };
+            return { enzyme: 'ACAD', reaction: `${C(n)} acyl-CoA + FAD → ${C(n)} enoyl-CoA + FADH₂`, yields: { fadh2: 1 }, n };
+        // ER (rev): Enoyl reductase — NADPH-dependent reduction
+        } else if (rev && acyl.enoyl.length > 0 && store.nadph > 0) {
+            const n = take('enoyl'); putAcyl(n); store.nadph--;
+            return { enzyme: 'ER', reaction: `${C(n)} enoyl-CoA + NADPH → ${C(n)} acyl-CoA + NADP⁺`, yields: { nadphConsume: 1 }, n };
         }
     }
     else if (idx === 1) {
         // ECH (fwd): Enoyl-CoA hydratase — hydration
         if (fwd && acyl.enoyl.length > 0) {
             const n = put('hydroxy', take('enoyl'));
-            return { enzyme: 'ECH', reaction: `${C(n)} enoyl-CoA + H₂O → ${C(n)} OH-acyl-CoA`, yields: null };
+            return { enzyme: 'ECH', reaction: `${C(n)} enoyl-CoA + H₂O → ${C(n)} OH-acyl-CoA`, yields: null, n };
         // DH (rev): Dehydratase — dehydration
         } else if (rev && acyl.hydroxy.length > 0) {
             const n = put('enoyl', take('hydroxy'));
-            return { enzyme: 'DH', reaction: `${C(n)} OH-acyl-CoA → ${C(n)} enoyl-CoA + H₂O`, yields: null };
+            return { enzyme: 'DH', reaction: `${C(n)} OH-acyl-CoA → ${C(n)} enoyl-CoA + H₂O`, yields: null, n };
         }
     }
     else if (idx === 2) {
         // HACD (fwd): 3-Hydroxyacyl-CoA DH — NAD+-linked oxidation
         if (fwd && acyl.hydroxy.length > 0 && store.nadh < store.totalNad) {
             const n = put('keto', take('hydroxy')); store.nadh++;
-            return { enzyme: 'HACD', reaction: `${C(n)} OH-acyl-CoA + NAD⁺ → ${C(n)} keto-CoA + NADH`, yields: { nadh: 1 } };
+            return { enzyme: 'HACD', reaction: `${C(n)} OH-acyl-CoA + NAD⁺ → ${C(n)} keto-CoA + NADH`, yields: { nadh: 1 }, n };
         // KR (rev): Ketoacyl reductase — NADPH-dependent reduction
         } else if (rev && acyl.keto.length > 0 && store.nadph > 0) {
             const n = put('hydroxy', take('keto')); store.nadph--;
-            return { enzyme: 'KR', reaction: `${C(n)} keto-CoA + NADPH → ${C(n)} OH-acyl-CoA + NADP⁺`, yields: { nadphConsume: 1 } };
+            return { enzyme: 'KR', reaction: `${C(n)} keto-CoA + NADPH → ${C(n)} OH-acyl-CoA + NADP⁺`, yields: { nadphConsume: 1 }, n };
         }
     }
     else if (idx === 3) {
@@ -72,22 +75,23 @@ export function advanceBetaOx(idx, direction) {
             const n = take('keto');
             if (n <= 4) {
                 store.acetylCoA += 2;
-                return { enzyme: 'Thiolase', reaction: 'Acetoacetyl-CoA + CoA → 2 Acetyl-CoA', yields: null };
+                return { enzyme: 'Thiolase', reaction: 'Acetoacetyl-CoA + CoA → 2 Acetyl-CoA', yields: null, n };
             }
             putAcyl(n - 2); store.acetylCoA++;
-            return { enzyme: 'Thiolase', reaction: `${C(n)} keto-CoA + CoA → ${C(n - 2)} acyl-CoA + Acetyl-CoA`, yields: null };
-        // KAS (rev): Ketoacyl synthase — condensation extends chain by 2C at ATP cost.
-        // It extends the longest chain short of C16, or starts one from two acetyl-CoA.
+            return { enzyme: 'Thiolase', reaction: `${C(n)} keto-CoA + CoA → ${C(n - 2)} acyl-CoA + Acetyl-CoA`, yields: null, n };
+        // ACC + KAS (rev): ketoacyl synthase condenses a malonyl-CoA, made from acetyl-CoA by
+        // ACC for one ATP, extending the chain by 2C. It extends the longest chain short of
+        // C16, or starts one from two acetyl-CoA.
         } else if (rev && store.atp > 0 && store.acetylCoA > 0) {
             if (acyl.short.length > store.fattyAcid) acyl.short.length = store.fattyAcid;
             if (acyl.short.length) {
                 const i = acyl.short.indexOf(Math.max(...acyl.short)), n = acyl.short.splice(i, 1)[0];
                 store.fattyAcid--; store.acetylCoA--; store.atp--; put('keto', n + 2);
-                return { enzyme: 'KAS', reaction: `${C(n)} acyl-CoA + Acetyl-CoA + ATP → ${C(n + 2)} keto-CoA + ADP`, yields: { atpConsume: 1 } };
+                return { enzyme: 'ACC + KAS', reaction: `${C(n)} acyl-CoA + Acetyl-CoA + ATP → ${C(n + 2)} keto-CoA + ADP`, yields: { atpConsume: 1 }, n: n + 2 };
             }
             if (store.acetylCoA >= 2) {
                 store.acetylCoA -= 2; store.atp--; put('keto', 4);
-                return { enzyme: 'KAS', reaction: '2 Acetyl-CoA + ATP → Acetoacetyl-CoA + ADP', yields: { atpConsume: 1 } };
+                return { enzyme: 'ACC + KAS', reaction: '2 Acetyl-CoA + ATP → Acetoacetyl-CoA + ADP', yields: { atpConsume: 1 }, n: 4 };
             }
         }
     }
@@ -107,17 +111,17 @@ export function runBetaOxCycle() {
     store.nadh += t;
     counters.betaoxRuns++;
     const from = n === 16 ? 'Palmitoyl-CoA' : `${C(n)} acyl-CoA`;
-    return { enzyme: `β-Oxidation (×${t})`, reaction: `${from} → ${n / 2} Acetyl-CoA + ${t} FADH₂ + ${t} NADH`, yields: { fadh2: t, nadh: t } };
+    return { enzyme: `β-Oxidation (×${t})`, reaction: `${from} → ${n / 2} Acetyl-CoA + ${t} FADH₂ + ${t} NADH`, yields: { fadh2: t, nadh: t }, n };
 }
 
-/** Batch: de novo fatty acid synthesis (8 Acetyl-CoA + 14 NADPH + 14 ATP → Palmitoyl-CoA).
- *  Uses different cofactors than degradation: NADPH (not NADH/FADH2) and ATP. */
+/** Batch: de novo fatty acid synthesis (8 Acetyl-CoA + 7 ATP + 14 NADPH → Palmitoyl-CoA).
+ *  Uses different cofactors than degradation: NADPH (not NADH/FADH2), and ATP for ACC. */
 export function runBetaOxReverse() {
     if (!simState.betaoxEnabled) return false;
-    if (store.acetylCoA < 8 || store.nadph < 14 || store.atp < 14) return false;
+    if (store.acetylCoA < 8 || store.nadph < 14 || store.atp < 7) return false;
     store.acetylCoA -= 8;
     store.nadph -= 14;
-    store.atp -= 14;
+    store.atp -= 7;
     store.fattyAcid++;
-    return { enzyme: 'FA synthesis (×7)', reaction: '8 Acetyl-CoA + 14 NADPH + 14 ATP → Palmitoyl-CoA', yields: { nadphConsume: 14, atpConsume: 14 } };
+    return { enzyme: 'FA synthesis (×7)', reaction: '8 Acetyl-CoA + 7 ATP + 14 NADPH → Palmitoyl-CoA', yields: { nadphConsume: 14, atpConsume: 7 }, n: 16 };
 }

@@ -13,13 +13,13 @@ const LABEL_AT = {
     g0: [0, -0.45], g1: [0, -0.45], g2: [0, -0.45], g3: [0, -0.45], g5: [0, -0.45], g6: [0, -0.45], g7: [0, -0.45], g8: [0, -0.45], g9: [0, -0.45],
     c7: [0, -0.42], c0: [-0.2, 0], p10: { abs: [6.35, 1.62], align: 'left' },
     p0: [-0.25, -0.3], p1: { abs: [2.75, 0.5] }, p2: { abs: [5.35, 0.42] },
-    pdh: [0.2, -0.15], pdc: [0, -0.42], adh: [0, 0.42], aldh: [0.2, 0], acs: [0, -0.4], kin: [0.3, 0.12],
+    pdh: [0.2, -0.15], pdc: [0, -0.42], adh: [0, 0.42], ldh: [0.25, 0.1], aldh: [0.2, 0], acs: [0, -0.4], kin: [0.3, 0.12],
     b0: [0, -0.4], b1: [0.22, 0], b2: [0.55, 0.42], b3: [-0.22, 0],
 };
 /** Phone overrides, in the same grid (it is transposed after). */
 const NARROW_LABEL_AT = {
     p0: { abs: [2.6, 2.1] }, p1: { abs: [4.3, 1.1] }, b1: [-0.22, 0], b3: [0.22, 0],
-    p10: { abs: [6.75, 2.35] }, c7: [0, -0.6],
+    p10: { abs: [6.75, 2.35] }, c7: [0, -0.6], ldh: [-0.4, -0.15],
 };
 
 export const MapView = {
@@ -126,8 +126,10 @@ export const MapView = {
         for (const id of ['c7', 'c0', 'c6', 'c5', 'c3', 'c2', 'c10']) set(id, cA, !!lk.calvin);
         for (const id of ['p0', 'p1', 'p2', 'p10']) set(id, pA, !!lk.ppp);
         set('pdh', Math.max(kA, bA), !!lk.krebs && !!lk.betaox);
-        set('pdc', fmA, !!lk.glycolysis);
+        // Each fermentation only where the organism has it: PDC for ethanol, LDH for lactate
+        set('pdc', fmA, !!lk.glycolysis || !s.ferments.ethanol);
         set('adh', Math.max(fmA, kA), !!lk.glycolysis && !!lk.krebs);
+        set('ldh', Math.max(fmA, kA), !!lk.glycolysis || !s.ferments.lactate);
         for (const id of ['aldh', 'acs']) set(id, Math.max(kA, bA), !!lk.krebs && !!lk.betaox);
         for (const id of ['kin', 'k0', 'k1', 'k2', 'k3', 'k4', 'k5', 'k6', 'k7']) set(id, kA, !!lk.krebs);
         for (const id of ['b0', 'b1', 'b2', 'b3', 'bspur']) set(id, bA, !!lk.betaox);
@@ -138,7 +140,7 @@ export const MapView = {
     /** Trains move at a speed set by each segment's flux. */
     update(dt) {
         const sp = 42 * this.G.us * dt;
-        for (const id in this.segs) this.phase[id] += (flux[id] || 0) * sp * 6;
+        for (const id in this.segs) this.phase[id] += (flux[id] || 0) * sp;
         for (const id in this.pulse) this.pulse[id] = Math.max(0, this.pulse[id] - dt * 1.6);
         for (const L of this.loops) if (L.pulse) L.pulse = Math.max(0, L.pulse - dt * 1.6);
     },

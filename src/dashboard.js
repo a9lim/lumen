@@ -20,10 +20,9 @@ const _pwColor = {
     krebs: '--pw-krebs', run_krebs: '--pw-krebs',
     calvin: '--pw-calvin', run_calvin: '--pw-calvin',
     ppp: '--pw-ppp', run_ppp: '--pw-ppp',
-    pdh: '--pw-pdh', pdc: '--pw-ferment', adh: '--pw-ferment',
+    pdh: '--pw-pdh', pdc: '--pw-ferment', adh: '--pw-ferment', ldh: '--pw-ferment',
     aldh: '--pw-ferment', acs: '--pw-ferment', fermentation: '--pw-ferment',
     betaox: '--pw-betaox', run_betaox: '--pw-betaox',
-    ros: '--pw-ros', sod: '--pw-ros', catalase: '--pw-ros', gpx: '--pw-ros', run_ros_scavenge: '--pw-ros',
 };
 
 const _YIELD_NAME = { atp: 'ATP', nadh: 'NADH', nadph: 'NADPH', fadh2: 'FADH₂', co2Fixed: 'CO₂ fixed' };

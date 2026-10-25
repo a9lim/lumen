@@ -6,7 +6,7 @@
 // carries a buffer bar across the track.
 import { MapView, FLIP } from './map.js';
 import { LINES, CO2, KEY_BOX, KC, PAIR, COF, parseCof } from './maplayout.js';
-import { flux } from './flux.js';
+import { flux, RUNNING } from './flux.js';
 import { store, simState } from './state.js';
 import { SPECIMENS } from './specimens.js';
 import { cartouche } from './plate.js';
@@ -14,14 +14,15 @@ import { getRegulationGate } from './regulation.js';
 import * as K from './complexes.js';
 
 const TAU = Math.PI * 2;
-const FREF = 0.55;   // events per second drawn at full weight
+const FREF = 3.3;    // carbon atoms per second drawn at full weight
+const FINK = 1;     // carbon atoms per second drawn at full ink
 
 /** An idle line is 2 px at two-thirds ink, so the network reads when quiet; flux thickens it to full ink. */
 const weight = (f, us) => { const w0 = Math.max(1.6, 2 * us); return w0 + (6.2 * us - w0) * Math.pow(Math.min(1, Math.abs(f) / FREF), 0.7); };
 function idleInk(base) { return K.mix(base, K.P.canvas, K.P.dark ? 0.2 : 0.34); }
 function inkOf(seg, f) {
     const base = K.ink(seg.ink);
-    return K.mix(idleInk(base), base, Math.min(1, Math.abs(f) * 6));
+    return K.mix(idleInk(base), base, Math.min(1, Math.abs(f) / FINK));
 }
 function trace(c, pts) { c.beginPath(); c.moveTo(pts[0][0], pts[0][1]); for (let i = 1; i < pts.length; i++) c.lineTo(pts[i][0], pts[i][1]); }
 
@@ -35,10 +36,10 @@ export function drawMap(c, hover, dt) {
     c.font = `italic ${Math.max(10, 11.5 * us)}px ${_FONT.text}`;
     for (const [id, a0, b0, a1, b1] of CO2) {
         const f = Math.abs(flux[id] || 0), v = M.vis[id];
-        if (f < 0.04 || !v || v.hidden) continue;
+        if (f < 2 * RUNNING || !v || v.hidden) continue;
         const a = M.G.rot && a1 ? a1 : a0, b = M.G.rot && b1 ? b1 : b0;
         const A = M.T(...a), B = M.T(...b), dx = B[0] - A[0], dy = B[1] - A[1], L = Math.hypot(dx, dy) || 1;
-        c.globalAlpha = Math.min(1, f * 8) * v.a;
+        c.globalAlpha = Math.min(1, f * 1.3) * v.a;
         c.strokeStyle = K.rgba(P.text, 0.45); c.lineWidth = 1; c.setLineDash([2.5, 2.5]);
         c.beginPath(); c.moveTo(A[0], A[1]); c.lineTo(B[0], B[1]); c.stroke(); c.setLineDash([]);
         c.fillStyle = P.muted;
@@ -68,10 +69,10 @@ export function drawMap(c, hover, dt) {
     c.strokeStyle = P.canvas; c.lineCap = 'butt';
     for (const s of live) {
         const f = flux[s.id] || 0;
-        if (Math.abs(f) < 0.02 || s.len < 6) continue;
+        if (Math.abs(f) < RUNNING || s.len < 6) continue;
         const w = weight(f, us), gapPx = 34 * us, n = Math.max(1, Math.round(s.len / gapPx)), step = s.len / n;
         const dir = f > 0 ? 1 : -1, h = Math.max(1.1, w / 2 - 0.4), d = Math.min(h * 0.9, 3.2 * us);
-        c.globalAlpha = M.vis[s.id].a * Math.min(1, Math.abs(f) * 10); c.lineWidth = Math.max(1, 0.32 * w);
+        c.globalAlpha = M.vis[s.id].a * Math.min(1, Math.abs(f) * 1.7); c.lineWidth = Math.max(1, 0.32 * w);
         for (let i = 0; i < n; i++) {
             let v = ((M.phase[s.id] + i * step) % s.len + s.len) % s.len;
             if (v < 4 || v > s.len - 4) continue;
@@ -89,7 +90,7 @@ export function drawMap(c, hover, dt) {
     M.gates = 0;
     for (const s of live) {
         if (!s.label || M.vis[s.id].a < 0.5) continue;
-        const fwd = FLIP.has(s.id) ? 'reverse' : 'forward', dir = (flux[s.id] || 0) < -0.02 ? (fwd === 'forward' ? 'reverse' : 'forward') : fwd;
+        const fwd = FLIP.has(s.id) ? 'reverse' : 'forward', dir = (flux[s.id] || 0) < -RUNNING ? (fwd === 'forward' ? 'reverse' : 'forward') : fwd;
         const g = getRegulationGate(s.key, s.step, store, dir);
         if (g) { drawGate(c, s, g, us); M.gates++; }
     }
@@ -222,7 +223,8 @@ function connections(c, list, x, y, fs, lit, pulse, draw) {
     let w = 0;
     c.save(); c.font = `${fs * 0.86}px ${_FONT.text}`; c.textBaseline = 'middle'; c.textAlign = 'left';
     for (const t of list) {
-        const [pool, sg, n] = parseCof(t), sign = (sg > 0 ? '+' : '−') + n, sw = c.measureText(sign).width;
+        const [p0, sg, n] = parseCof(t), sign = (sg > 0 ? '+' : '−') + n, sw = c.measureText(sign).width;
+        const pool = p0 === 'redh' ? (simState.calvinEnabled ? 'nadph' : 'nadh') : p0;
         if (draw) {
             c.fillStyle = K.P.canvas; c.fillRect(x + w - 1, y - fs * 0.6, sw + 3.2 * gs + 2, fs * 1.2);
             c.fillStyle = K.P.text2; c.fillText(sign, x + w, y + 0.5);
@@ -245,8 +247,9 @@ function drawLabels(c, hover, us) {
         const pair = PAIR[s.id];
         if (!isLive(s.id) && !isLive(pair)) { s.lab.box = null; continue; }
         const fa = flux[s.id] || 0, fb = pair ? flux[pair] || 0 : 0;
-        const f = fa - fb, other = Math.abs(fb) > Math.abs(fa) + 0.005 || !isLive(s.id);
-        const rev = f < -0.02 || (!isLive(s.id) && isLive(pair));
+        const f = fa - fb, other = Math.abs(fb) > Math.abs(fa) + 0.03 || !isLive(s.id);
+        // An organism that runs this line only backward labels it that way even while it idles
+        const rev = f < -RUNNING || (!isLive(s.id) && isLive(pair)) || oneWay(s.line);
         const text = rev && s.rev ? s.rev : s.label;
         // Which connections: the twin's when the Calvin track is the one running, else this line's, by direction
         const cid = other && pair ? pair : s.id, cc = COF[cid];
@@ -260,7 +263,7 @@ function drawLabels(c, hover, us) {
         c.fillStyle = hover === s ? P.text : K.ink(other ? M.segs[pair].ink : s.ink);
         c.strokeText(text, x0, y); c.fillText(text, x0, y);
         if (cof.length) {
-            const lit = Math.min(1, Math.abs(flux[cid] || 0) * 4);
+            const lit = Math.min(1, Math.abs(flux[cid] || 0) * 0.67);
             connections(c, cof, x0 + tw + 5, y, fs, lit, Math.max(M.pulse[s.id] || 0, pair ? M.pulse[pair] || 0 : 0), true);
             s.lab.glyphAt = [x0 + tw + 5 + fs * 1.3, y];
         } else s.lab.glyphAt = null;
@@ -276,7 +279,8 @@ function drawLoops(c, us, hover) {
         const vis = segIds.map(id => M.vis[id]).filter(Boolean);
         L.hidden = !vis.length || vis.every(v => v.hidden) || Math.max(...vis.map(v => v.a)) < 0.35;
         if (L.hidden) continue;
-        const name = M.G.rot ? L.short : L.name, base = K.ink(LINES[L.line].ink);
+        const lst = lineState(L.line), back = lst && lst.rev && L.revName;
+        const name = M.G.rot ? (back ? L.revShort : L.short) : back ? L.revName : L.name, base = K.ink(LINES[L.line].ink);
         c.font = `italic ${fs}px ${_FONT.text}`; c.textAlign = 'center'; c.textBaseline = 'middle';
         const w = c.measureText(name).width;
         c.font = `${fs * 0.82}px ${_FONT.text}`;
@@ -298,13 +302,16 @@ function drawLoops(c, us, hover) {
         if (cof.length) {
             const cfs = fs * 0.82, gw = connections(c, cof, 0, 0, cfs, 0, 0, false);
             const gx = L.span && !M.G.rot ? x0 + 2 * L.hw + 8 : L.pos[0] - gw / 2, gy = L.span && !M.G.rot ? L.pos[1] : L.pos[1] + fs * 1.05;
-            connections(c, cof, gx, gy, cfs, st ? Math.min(1, st.flux * 4) : 0, L.pulse || 0, true);
+            connections(c, cof, gx, gy, cfs, st ? Math.min(1, st.flux * 0.67) : 0, L.pulse || 0, true);
             L.glyphAt = [gx + cfs, gy];
         } else L.glyphAt = null;
     }
 }
 
-const SHORT = { 'Pentose phosphate': 'Pentose P', 'Pyruvate dehydrogenase': 'PDH', 'Gluconeogenesis': 'Gluconeogen.', 'Fatty-acid synthesis': 'FA synthesis', 'Ethanol salvage': 'Salvage' };
+const SHORT = { 'Pentose phosphate': 'Pentose P', 'Pyruvate dehydrogenase': 'PDH', 'Gluconeogenesis': 'Gluconeogen.', 'Fatty-acid synthesis': 'FA synthesis', 'Ethanol salvage': 'Salvage', 'Lactate oxidation': 'Lactate ox.' };
+
+/** Whether the organism runs this line only backward (its preset's oneWay). */
+const oneWay = (line) => !!(LINES[line].toggle && simState.oneWay[LINES[line].toggle]);
 
 /** Line name, renamed when its trains run backward. */
 export function lineState(id) {
@@ -313,10 +320,17 @@ export function lineState(id) {
     let mx = 0, sum = 0;
     for (const s of segs) { const f = flux[s.id] || 0; mx = Math.max(mx, Math.abs(f)); sum += f; }
     const L = LINES[id];
-    let rev = sum < -0.02;
-    if (id === 'ferm') rev = Math.abs(flux.aldh || 0) + Math.abs(flux.acs || 0) > Math.abs(flux.pdc || 0) + 0.01 || (flux.adh || 0) < -0.02;
+    let rev = sum < -RUNNING || oneWay(id), name = rev && L.rev ? L.rev : L.name;
+    if (id === 'ferm') {
+        // Fermentation runs pyruvate down to lactate or ethanol; salvage runs them back to fuel
+        const f = (k) => flux[k] || 0, pos = (x) => Math.max(0, x);
+        const ferm = Math.abs(f('pdc')) + pos(f('adh')) + pos(f('ldh')), lactOx = pos(-f('ldh'));
+        const etOx = Math.abs(f('aldh')) + Math.abs(f('acs')) + pos(-f('adh'));
+        rev = lactOx + etOx > ferm + RUNNING / 2;
+        name = rev ? (lactOx > etOx ? 'Lactate oxidation' : L.rev) : L.name;
+    }
     const on = Math.max(...segs.map(s => M.vis[s.id].a)) > 0.5;
-    return { id, name: rev && L.rev ? L.rev : L.name, flux: mx, on, ink: L.ink, rev };
+    return { id, name, flux: mx, on, ink: L.ink, rev };
 }
 
 function drawKey(c, us) {
@@ -327,20 +341,20 @@ function drawKey(c, us) {
     const colW = narrow ? x1 - x0 : (x1 - x0) * 0.42;
     c.textBaseline = 'alphabetic'; c.textAlign = 'left';
     c.font = `italic ${fs}px ${_FONT.text}`; c.fillStyle = P.muted;
-    c.fillText('Lines, by flux', x0, y0 + fs);
+    c.fillText('Lines, by carbon flux', x0, y0 + fs);
     const rows = Object.keys(LINES).map(lineState).filter(Boolean);
     const rowH = Math.min(22 * us + 4, (narrow ? (y1 - y0) * 0.45 : y1 - y0 - fs - 34) / 7);
     rows.forEach((r, i) => {
         const y = y0 + fs + 8 + rowH * (i + 0.5);
-        if (r.on) { c.strokeStyle = K.mix(idleInk(K.ink(r.ink)), K.ink(r.ink), Math.min(1, r.flux * 6)); c.lineWidth = weight(r.flux, us); c.setLineDash([]); }
+        if (r.on) { c.strokeStyle = K.mix(idleInk(K.ink(r.ink)), K.ink(r.ink), Math.min(1, r.flux / FINK)); c.lineWidth = weight(r.flux, us); c.setLineDash([]); }
         else { c.strokeStyle = K.ink(r.ink); c.lineWidth = 1; c.setLineDash([3, 3.5]); }
         c.lineCap = 'butt'; c.beginPath(); c.moveTo(x0 + 2, y); c.lineTo(x0 + 22 * us, y); c.stroke(); c.setLineDash([]); c.lineCap = 'round';
         c.font = `${fs}px ${_FONT.text}`; c.textBaseline = 'middle';
         let name = r.name;
-        if (c.measureText(name).width > colW - 30 * us - c.measureText('00/min').width - 8) name = SHORT[name] || name;
-        c.fillStyle = r.flux > 0.02 ? P.text : P.muted; c.fillText(name, x0 + 30 * us, y);
+        if (c.measureText(name).width > colW - 30 * us - c.measureText('000 C/min').width - 8) name = SHORT[name] || name;
+        c.fillStyle = r.flux > RUNNING ? P.text : P.muted; c.fillText(name, x0 + 30 * us, y);
         c.textAlign = 'right'; c.fillStyle = P.text2;
-        c.fillText(r.on ? Math.round(r.flux * 60) + '/min' : 'off', x0 + colW, y);
+        c.fillText(r.on ? Math.round(r.flux * 60) + ' C/min' : 'off', x0 + colW, y);
         c.textAlign = 'left';
     });
     // The cartouche: what the marks are, rows only for what the scene shows, with the pools' counts

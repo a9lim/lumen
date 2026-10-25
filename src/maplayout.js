@@ -14,7 +14,7 @@ export const STATIONS = {
     f16bp: [7, 3, 'F1,6BP', 'b', 'corr'], g3p: [9, 3, 'G3P', 'b', 'corr'], bpg: [11, 3, '1,3-BPG', 'b', 'corr'],
     pga3: [13, 3, '3-PGA', 'b', 'corr'], pga2: [15, 3, '2-PGA', 'b'], pep: [17, 3, 'PEP', 'b'], pyruvate: [19, 3, 'Pyruvate', 'bl', 'hub'],
     pgl6: [3, 1.5, '6-PGL', 'l'], pga6: [4.5, 0, '6-PGA', 't'], r5p: [7, 1, 'R5P', 'tr', 'hub'], rubp: [13, 1, 'RuBP', 't'],
-    acetaldehyde: [21, 3, 'Acetaldehyde', 'tr', 'hub'], ethanol: [23, 3, 'Ethanol', 'r'], aceticAcid: [21, 5, 'Acetic acid', 'r'],
+    lactate: [19, 1.6, 'Lactate', 'l'], acetaldehyde: [21, 3, 'Acetaldehyde', 'tr', 'hub'], ethanol: [23, 3, 'Ethanol', 'r'], aceticAcid: [21, 5, 'Acetic acid', 'r'],
     acetylCoA: [19, 5, 'Acetyl-CoA', 'tl', 'hub'],
     fattyAcid: [21, 7, 'Fatty acid', 'l', 'hub'], enoylCoA: [23, 7, 'Enoyl-CoA', 'r'], hydroxyCoA: [23, 9, 'OH-CoA', 'r'], ketoCoA: [21, 9, 'Keto-CoA', 'b'],
     citrate: [...kp(-45), 'Citrate', 'in', 'hub'], isocitrate: [...kp(0), 'Isocitrate', 'in'], akg: [...kp(45), 'α-KG', 'in'],
@@ -24,7 +24,7 @@ export const STATIONS = {
 
 /** Phone overrides: shorter names, other sides. */
 export const NARROW_LABEL = { isocitrate: 'Isocit.', succinate: 'Succ.', fumarate: 'Fum.', malate: 'Mal.', acetaldehyde: 'Acetald.', aceticAcid: 'Acetate', enoylCoA: 'Enoyl', hydroxyCoA: 'OH-acyl', ketoCoA: 'Keto' };
-export const NARROW_SIDE = { acetylCoA: 'tl', aceticAcid: 'b', fattyAcid: 'bl', ketoCoA: 'b', pga6: 'l', pgl6: 'r', pyruvate: 'r' };
+export const NARROW_SIDE = { acetylCoA: 'tl', aceticAcid: 'b', fattyAcid: 'bl', ketoCoA: 'b', pga6: 'l', pgl6: 'r', pyruvate: 'r', lactate: 't' };
 
 /** The lines: ink, the name in the key, and the name when trains run backward. */
 export const LINES = {
@@ -60,6 +60,7 @@ export const TRACKS = {
     pdh: { line: 'pdh', pts: ['pyruvate', 'acetylCoA'], segs: [['pdh', 'pyruvate', 'acetylCoA', 'pdh', 0, 'PDH']] },
     ferm: { line: 'ferm', pts: ['pyruvate', 'acetaldehyde', 'ethanol'], segs: [
         ['pdc', 'pyruvate', 'acetaldehyde', 'pdc', 0, 'PDC'], ['adh', 'acetaldehyde', 'ethanol', 'adh', 0, 'ADH']] },
+    lact: { line: 'ferm', pts: ['pyruvate', 'lactate'], segs: [['ldh', 'pyruvate', 'lactate', 'ldh', 0, 'LDH']] },
     acet: { line: 'ferm', pts: ['acetaldehyde', 'aceticAcid', 'acetylCoA'], segs: [
         ['aldh', 'acetaldehyde', 'aceticAcid', 'aldh', 0, 'ALDH'], ['acs', 'aceticAcid', 'acetylCoA', 'acs', 0, 'ACS']] },
     kin: { line: 'krebs', pts: ['acetylCoA', 'citrate'], segs: [['kin', 'acetylCoA', 'citrate', 'krebs', 0, 'CS']] },
@@ -69,8 +70,8 @@ export const TRACKS = {
         ['k4', 'succoa', 'succinate', 'krebs', 4, 'SCS'], ['k5', 'succinate', 'fumarate', 'krebs', 5, 'SDH'],
         ['k6', 'fumarate', 'malate', 'krebs', 6, 'FUM'], ['k7', 'malate', 'oaa', 'krebs', 7, 'MDH']] },
     box: { line: 'box', pts: ['fattyAcid', 'enoylCoA', 'hydroxyCoA', 'ketoCoA', 'fattyAcid'], closed: true, segs: [
-        ['b0', 'fattyAcid', 'enoylCoA', 'betaox', 0, 'ACAD', 'ACC + ER'], ['b1', 'enoylCoA', 'hydroxyCoA', 'betaox', 1, 'ECH', 'DH'],
-        ['b2', 'hydroxyCoA', 'ketoCoA', 'betaox', 2, 'HACD', 'KR'], ['b3', 'ketoCoA', 'fattyAcid', 'betaox', 3, 'Thiolase', 'KAS']] },
+        ['b0', 'fattyAcid', 'enoylCoA', 'betaox', 0, 'ACAD', 'ER'], ['b1', 'enoylCoA', 'hydroxyCoA', 'betaox', 1, 'ECH', 'DH'],
+        ['b2', 'hydroxyCoA', 'ketoCoA', 'betaox', 2, 'HACD', 'KR'], ['b3', 'ketoCoA', 'fattyAcid', 'betaox', 3, 'Thiolase', 'ACC + KAS']] },
     bspur: { line: 'box', pts: ['fattyAcid', 'acetylCoA'], segs: [['bspur', 'fattyAcid', 'acetylCoA', 'betaox', 3, '']] },
 };
 
@@ -84,26 +85,26 @@ export const PAIR = { g2: 'c2', g3: 'c3', g5: 'c5', g6: 'c6', p10: 'c10' };
  * varies (up to two, or three for PRK).
  */
 export const COF = {
-    g0: [['atp-1'], []], g2: [['atp-1'], []], g5: [['nadh+2'], ['nadph-2']], g6: [['atp+2'], ['atp-2']], g9: [['atp+2'], ['atp-2']],
+    g0: [['atp-1'], []], g2: [['atp-1'], []], g5: [['nadh+2'], ['nadh-2']], g6: [['atp+2'], ['atp-2']], g9: [['atp+2'], ['atp-4']],
     c7: [['atp-'], []], c5: [['nadph-2'], []], c6: [['atp-2'], []],
     p0: [['nadph+'], []], p2: [['nadph+'], []], pdh: [['nadh+2'], []],
-    adh: [['nadh-2'], ['nadh+2']], aldh: [['nadh+2'], []], acs: [['atp-2'], []],
+    adh: [['nadh-2'], ['nadh+2']], ldh: [['nadh-2'], ['nadh+2']], aldh: [['nadh+2'], []], acs: [['atp-2'], []],
     k2: [['nadh+'], []], k3: [['nadh+'], []], k4: [['atp+'], ['atp-']], k5: [['fadh2+'], ['fadh2-']], k7: [['nadh+'], ['nadh-']],
-    b0: [['fadh2+1'], ['nadph-1', 'atp-1']], b2: [['nadh+1'], ['nadph-1']], b3: [[], ['atp-1']],
+    b0: [['fadh2+1'], ['nadph-1']], b2: [['nadh+1'], ['nadph-1']], b3: [[], ['atp-1']],
     // Whole turns, under each loop's name
     run_calvin: [['atp-18', 'nadph-12'], []], run_ppp: [['nadph+12'], []], run_krebs: [['nadh+6', 'fadh2+2', 'atp+2'], []],
-    run_betaox: [['fadh2+7', 'nadh+7'], ['nadph-14', 'atp-14']],
-    run_glycolysis_upper: [['atp-2'], []], run_glycolysis_lower: [['atp+4', 'nadh+2'], ['atp-2']],
+    run_betaox: [['fadh2+7', 'nadh+7'], ['nadph-14', 'atp-7']],
+    run_glycolysis_upper: [['atp-2'], []], run_glycolysis_lower: [['atp+4', 'nadh+2'], ['atp-6', 'redh-2']],
 };
-/** 'nadh+2' → ['nadh', +1, '2'] */
+/** 'nadh+2' → ['nadh', +1, '2']. 'redh' is GAPDH's reductant backward: NADPH while the Calvin cycle runs, else NADH (mapdraw resolves it). */
 export const parseCof = (t) => { const m = /^([a-z0-9]+?)([+-])(\d*)$/.exec(t); return [m[1], m[2] === '+' ? 1 : -1, m[3]]; };
 
-/** Batch services: whole-cycle reactions, clicked on the loop's name. */
+/** Batch services: whole-cycle reactions, clicked on the loop's name (revName while the line runs backward). */
 export const LOOPS = [
     { key: 'run_calvin', line: 'calvin', at: [10, 1.85], narrowAt: [11, 1.9], name: 'Calvin cycle', short: 'Calvin', times: '×6', info: 'run_calvin' },
     { key: 'run_ppp', line: 'ppp', at: [4.75, 1.45], narrowAt: [5.2, 1.75], name: 'Pentose P', short: 'PPP', times: '×6', info: 'run_ppp' },
     { key: 'run_krebs', line: 'krebs', at: [KC[0], KC[1] + 0.1], name: 'Krebs cycle', short: 'Krebs', times: '×2', info: 'run_krebs' },
-    { key: 'run_betaox', line: 'box', at: [22, 8], name: 'β-oxidation', short: 'β-ox', times: '×7', info: 'run_betaox' },
+    { key: 'run_betaox', line: 'box', at: [22, 8], name: 'β-oxidation', short: 'β-ox', revName: 'FA synthesis', revShort: 'FAS', times: '×7', info: 'run_betaox' },
     { key: 'run_glycolysis_upper', line: 'glyc', at: [5, 4.2], narrowAt: [12.15, 6.3], span: [1, 9], name: 'Glucose ⇌ G3P', short: 'Glc ⇌ G3P', info: 'run_glyc_upper' },
     { key: 'run_glycolysis_lower', line: 'glyc', at: [14, 4.2], narrowAt: [12.15, 8.9], span: [9, 19], name: 'G3P ⇌ pyruvate', short: 'G3P ⇌ Pyr', info: 'run_glyc_lower' },
 ];

@@ -12,12 +12,12 @@ export function advancePPP(idx, direction) {
         if (store.g6p > 0 && nadpFree() > 0) {
             let t = Math.min(store.g6p, nadpFree(), 2);
             store.g6p -= t; store.pgl6 += t; store.nadph += t;
-            return { enzyme: 'G6PDH', reaction: 'G6P → 6-PGL + NADPH', yields: { nadph: t } };
+            return { enzyme: 'G6PDH', reaction: 'G6P → 6-PGL + NADPH', yields: { nadph: t }, n: t };
         }
     }
     // Step 1: Lactonase — hydrolysis (spontaneous in vivo)
     else if (idx === 1) {
-        if (store.pgl6 > 0) { let t = Math.min(store.pgl6, 2); store.pgl6 -= t; store.pga6 += t; return { enzyme: 'Lactonase', reaction: '6-PGL → 6-PGA', yields: null }; }
+        if (store.pgl6 > 0) { let t = Math.min(store.pgl6, 2); store.pgl6 -= t; store.pga6 += t; return { enzyme: 'Lactonase', reaction: '6-PGL → 6-PGA', yields: null, n: t }; }
     }
     // Step 2: 6PGDH — oxidative decarboxylation, second NADPH + CO2
     else if (idx === 2) {
@@ -25,7 +25,7 @@ export function advancePPP(idx, direction) {
             let t = Math.min(store.pga6, nadpFree(), 2);
             store.pga6 -= t; store.r5p += t; store.nadph += t; store.co2Produced += t;
             counters.pppRuns += t;
-            return { enzyme: '6PGDH', reaction: '6-PGA → R5P + CO₂ + NADPH', yields: { nadph: t } };
+            return { enzyme: '6PGDH', reaction: '6-PGA → R5P + CO₂ + NADPH', yields: { nadph: t }, n: t };
         }
     }
     return false;

@@ -1,5 +1,6 @@
 // Fermentation and pyruvate processing — anaerobic NAD+ regeneration
-// and aerobic ethanol salvage pathway.
+// (to lactate by LDH, or to ethanol by PDC and ADH, as the organism has them:
+// simState.ferments) and the aerobic salvage of ethanol and lactate.
 import { store, simState } from '../state.js';
 
 
@@ -8,17 +9,17 @@ export function advancePDH() {
     if (!simState.oxygenAvailable) return false;
     if (store.pyruvate >= 2 && store.nadh <= store.totalNad - 2) {
         store.pyruvate -= 2; store.acetylCoA += 2; store.nadh += 2; store.co2Produced += 2;
-        return { enzyme: 'Pyruvate DH', reaction: '2 Pyruvate → 2 Acetyl-CoA + 2 CO₂ + 2 NADH', yields: { nadh: 2 } };
+        return { enzyme: 'Pyruvate DH', reaction: '2 Pyruvate → 2 Acetyl-CoA + 2 CO₂ + 2 NADH', yields: { nadh: 2 }, n: 2 };
     }
     return false;
 }
 
 /** PDC (anaerobic): Pyruvate → Acetaldehyde + CO2 — first step of fermentation */
 export function advancePDC() {
-    if (simState.oxygenAvailable || store.pyruvate < 2) return false;
+    if (simState.oxygenAvailable || !simState.ferments.ethanol || store.pyruvate < 2) return false;
     store.pyruvate -= 2; store.acetaldehyde += 2; store.co2Produced += 2;
     simState.fermenting = true;
-    return { enzyme: 'PDC', reaction: '2 Pyruvate → 2 Acetaldehyde + 2 CO₂', yields: null };
+    return { enzyme: 'PDC', reaction: '2 Pyruvate → 2 Acetaldehyde + 2 CO₂', yields: null, n: 2 };
 }
 
 /** ADH (bidirectional): Ethanol ↔ Acetaldehyde.
@@ -29,11 +30,30 @@ export function advanceADH(direction) {
     const rev = direction !== 'forward';
     if (fwd && store.ethanol >= 2 && store.totalNad - store.nadh >= 2) {
         store.ethanol -= 2; store.acetaldehyde += 2; store.nadh += 2;
-        return { enzyme: 'ADH', reaction: '2 Ethanol + 2 NAD⁺ → 2 Acetaldehyde + 2 NADH', yields: { nadh: 2 } };
+        return { enzyme: 'ADH', reaction: '2 Ethanol + 2 NAD⁺ → 2 Acetaldehyde + 2 NADH', yields: { nadh: 2 }, n: 2 };
     }
     if (rev && store.acetaldehyde >= 2 && store.nadh >= 2) {
         store.acetaldehyde -= 2; store.nadh -= 2; store.ethanol += 2;
-        return { enzyme: 'ADH', reaction: '2 Acetaldehyde + 2 NADH → 2 Ethanol', yields: null };
+        return { enzyme: 'ADH', reaction: '2 Acetaldehyde + 2 NADH → 2 Ethanol', yields: { nadhConsume: 2 }, n: 2 };
+    }
+    return false;
+}
+
+/** LDH (bidirectional): Pyruvate ↔ Lactate.
+ *  Forward (fermentation): reduces pyruvate, regenerating NAD⁺ for glycolysis.
+ *  Reverse (with oxygen): oxidizes lactate back to pyruvate, as the heart and liver do. */
+export function advanceLDH(direction) {
+    if (!simState.ferments.lactate) return false;
+    const fwd = direction !== 'reverse';
+    const rev = direction !== 'forward';
+    if (fwd && store.pyruvate >= 2 && store.nadh >= 2) {
+        store.pyruvate -= 2; store.nadh -= 2; store.lactate += 2;
+        simState.fermenting = !simState.oxygenAvailable;
+        return { enzyme: 'LDH', reaction: '2 Pyruvate + 2 NADH → 2 Lactate + 2 NAD⁺', yields: { nadhConsume: 2 }, n: 2 };
+    }
+    if (rev && store.lactate >= 2 && store.totalNad - store.nadh >= 2) {
+        store.lactate -= 2; store.nadh += 2; store.pyruvate += 2;
+        return { enzyme: 'LDH (reverse)', reaction: '2 Lactate + 2 NAD⁺ → 2 Pyruvate + 2 NADH', yields: { nadh: 2 }, n: 2 };
     }
     return false;
 }
@@ -42,20 +62,20 @@ export function advanceADH(direction) {
 export function advanceALDH() {
     if (!simState.oxygenAvailable || store.acetaldehyde < 2 || store.totalNad - store.nadh < 2) return false;
     store.acetaldehyde -= 2; store.aceticAcid += 2; store.nadh += 2;
-    return { enzyme: 'ALDH', reaction: '2 Acetaldehyde → 2 Acetic Acid + 2 NADH', yields: { nadh: 2 } };
+    return { enzyme: 'ALDH', reaction: '2 Acetaldehyde → 2 Acetic Acid + 2 NADH', yields: { nadh: 2 }, n: 2 };
 }
 
 /** Combined fermentation (anaerobic): Pyruvate + NADH → Ethanol + CO2 — regenerates NAD+ for glycolysis */
 export function advanceFermentation() {
-    if (simState.oxygenAvailable || store.pyruvate < 2 || store.nadh < 2) return false;
+    if (simState.oxygenAvailable || !simState.ferments.ethanol || store.pyruvate < 2 || store.nadh < 2) return false;
     store.pyruvate -= 2; store.nadh -= 2; store.ethanol += 2; store.co2Produced += 2;
     simState.fermenting = true;
-    return { enzyme: 'PDC/ADH', reaction: '2 Pyruvate + 2 NADH → 2 Ethanol + 2 CO₂', yields: null };
+    return { enzyme: 'PDC/ADH', reaction: '2 Pyruvate + 2 NADH → 2 Ethanol + 2 CO₂', yields: { nadhConsume: 2 }, n: 2 };
 }
 
 /** ACS (aerobic): Acetic Acid + ATP → Acetyl-CoA — feeds salvaged carbon into Krebs */
 export function advanceACS() {
     if (!simState.oxygenAvailable || store.aceticAcid < 2 || store.atp < 2) return false;
     store.aceticAcid -= 2; store.atp -= 2; store.acetylCoA += 2;
-    return { enzyme: 'ACS', reaction: '2 Acetic Acid + 2 ATP → 2 Acetyl-CoA', yields: { atpConsume: 2 } };
+    return { enzyme: 'ACS', reaction: '2 Acetic Acid + 2 ATP → 2 Acetyl-CoA', yields: { atpConsume: 2 }, n: 2 };
 }

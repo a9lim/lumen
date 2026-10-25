@@ -2,7 +2,7 @@
 name: Lumen
 title: Lumen — Interactive Cellular Metabolism Simulator
 description: Trace connected carbon metabolism, electron transport, conserved cofactor pools, enzyme feedback, and reactive oxygen species across five stylized cell presets.
-updated: 2026-10-24
+updated: 2026-10-25
 ---
 
 # Lumen — Interactive Cellular Metabolism Simulator
@@ -11,7 +11,7 @@ Lumen is a browser-based cellular-metabolism model. Reactions share one mutable 
 
 ## Pathways
 
-The carbon network covers glycolysis and its reverse path, the pentose phosphate pathway, the Calvin cycle, the Krebs cycle, pyruvate dehydrogenase, ethanol fermentation and salvage, beta-oxidation, and a simplified reverse fatty-acid-synthesis path. Respiratory, linear-photosynthetic, and cyclic-photosynthetic electron flow connect those reactions to ATP synthesis, bacteriorhodopsin, nicotinamide nucleotide transhydrogenase, and ROS scavenging.
+The carbon network covers glycolysis and its reverse path, the pentose phosphate pathway, the Calvin cycle, the Krebs cycle, pyruvate dehydrogenase, lactate and ethanol fermentation and their salvage, beta-oxidation, and a simplified reverse fatty-acid-synthesis path. Gluconeogenesis pays for its bypasses: pyruvate carboxylase and PEP carboxykinase spend an ATP and a GTP per PEP, and its GAPDH spends NADH, or NADPH where the Calvin cycle runs. Respiratory, linear-photosynthetic, and cyclic-photosynthetic electron flow connect those reactions to ATP synthesis, bacteriorhodopsin, nicotinamide nucleotide transhydrogenase, and ROS scavenging.
 
 ## Electron Transport Chain
 
@@ -23,13 +23,13 @@ The dispatcher applies explicit feedback gates before substrate mutation. High A
 
 ## Organism Presets
 
-Five stylized presets configure different pathway and environment subsets: cyanobacterium, animal cell, obligate anaerobe, plant chloroplast, and archaeon. Selecting one resets the shared pools, applies preset-specific ATP/NADH/NADPH/FADH2 ratios, toggles light and oxygen, and locks pathways marked unavailable by that preset.
+Five stylized presets configure different pathway and environment subsets: cyanobacterium, animal cell, obligate anaerobe, plant chloroplast, and archaeon. Selecting one resets the shared pools, applies preset-specific ATP/NADH/NADPH/FADH2 ratios, toggles light and oxygen, and locks pathways marked unavailable by that preset. Each preset ferments the way its organism does: the animal cell and the cyanobacterium to lactate, the anaerobe to ethanol, and the chloroplast and the halophile not at all (the halophile cannot break glucose down). Cyanobacteria and chloroplasts make fatty acids but have no beta-oxidation there, so that line runs only as fatty-acid synthesis; the chloroplast keeps its plastid glycolysis and pentose phosphate pathway. Under autoplay, light drives gluconeogenesis and fatty-acid synthesis only in the specimens with photosystems, an interim rule until directions come from thermodynamics.
 
 Each preset also shows its own membrane, which carries only the complexes that organism has: a cyanobacterial thylakoid with phycobilisomes, where respiration and photosynthesis share plastoquinone and plastocyanin; a chloroplast thylakoid with photosystem II in a stacked granum and photosystem I and ATP synthase in the stroma lamella; a mitochondrial crista with ATP synthase dimers at its tip; an anaerobe's plasma membrane under a peptidoglycan wall, with no chain at all, where ATP synthase runs backward on glycolytic ATP to keep the gradient; and a halophile's purple membrane, where bacteriorhodopsin pumps one proton per photon under autoplay. A membrane reaction runs only where its complexes are present, so mitochondria ignore light and the chloroplast has no respiratory chain. Custom shows a composite membrane with every complex.
 
 ## Educational Use
 
-Users can add glucose or fatty acid, toggle five pathway groups plus light, oxygen, and uncoupling, then compare step-by-step reactions with the autoplay schedule. The carbon network is drawn as a transit map: clicking an enzyme's segment runs it, line weight and train speed show recent flux, and trains run backward when a pathway reverses. Readouts in the margin expose cofactor ratios, gas and water balances, ATP sources, ROS, cell health, and sixty-second sparklines. The Stats tab opens on a live Z-scheme: every carrier at its midpoint redox potential, with each electron in flight drawn as a bead on the carrier it has reached, so light visibly lifts electrons at P680 and P700 while respiration only falls toward oxygen. Each specimen's figure shows where its cut comes from: a drawing of the cell or organelle with the section boxed.
+Users can add glucose or fatty acid, toggle five pathway groups plus light, oxygen, and uncoupling, then compare step-by-step reactions with the autoplay schedule. The carbon network is drawn as a transit map: clicking an enzyme's segment runs it, line weight and train speed show recent carbon flux (the carbon atoms each reaction carries along its segment), and trains run backward when a pathway reverses. Readouts in the margin expose cofactor ratios, gas and water balances, ATP sources, ROS, cell health, and sixty-second sparklines. The Stats tab opens on a live Z-scheme: every carrier at its midpoint redox potential, with each electron in flight drawn as a bead on the carrier it has reached, so light visibly lifts electrons at P680 and P700 while respiration only falls toward oxygen. Each specimen's figure shows where its cut comes from: a drawing of the cell or organelle with the section boxed.
 
 ## Proton Gradient and Chemiosmotic Coupling
 
@@ -47,4 +47,4 @@ Lumen provides keyboard shortcuts, labeled controls, light, dark, and sunlight-f
 
 ## Fatty Acid Metabolism
 
-The detailed beta-oxidation view advances four reaction stages, and each molecule on the spiral keeps its chain length, so every round releases one acetyl-CoA and leaves a chain two carbons shorter until acetoacetyl-CoA splits into the last two. Its batch action models one palmitoyl-CoA as eight acetyl-CoA, seven NADH, and seven FADH2, or a shortened chain by its length; odd-chain fatty acids are not modeled. The simplified reverse batch consumes eight acetyl-CoA, fourteen NADPH, and fourteen ATP to restore one fatty-acid unit.
+The detailed beta-oxidation view advances four reaction stages, and each molecule on the spiral keeps its chain length, so every round releases one acetyl-CoA and leaves a chain two carbons shorter until acetoacetyl-CoA splits into the last two. Its batch action models one palmitoyl-CoA as eight acetyl-CoA, seven NADH, and seven FADH2, or a shortened chain by its length; odd-chain fatty acids are not modeled. The simplified reverse batch consumes eight acetyl-CoA, seven ATP (one for each malonyl-CoA that acetyl-CoA carboxylase makes), and fourteen NADPH to restore one fatty-acid unit.

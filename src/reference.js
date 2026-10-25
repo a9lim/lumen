@@ -25,7 +25,7 @@ export const REFERENCE = {
 <li><b>Phosphoglycerate kinase (PGK)</b>: $\\text{1,3-BPG} + \\text{ADP} \\rightleftharpoons \\text{3-PGA} + \\text{ATP}$ — the first substrate-level phosphorylation.</li>
 <li><b>Phosphoglycerate mutase (PGM)</b>: $\\text{3-PGA} \\to \\text{2-PGA}$</li>
 <li><b>Enolase (ENO)</b>: $\\text{2-PGA} \\to \\text{PEP} + \\text{H}_2\\text{O}$ — dehydration creates the high-energy enol phosphate.</li>
-<li><b>Pyruvate kinase (PK)</b>: $\\text{PEP} + \\text{ADP} \\to \\text{Pyruvate} + \\text{ATP}$ — the second substrate-level phosphorylation. Essentially irreversible; gluconeogenesis bypasses this with PC + PEPCK (2 ATP cost).</li>
+<li><b>Pyruvate kinase (PK)</b>: $\\text{PEP} + \\text{ADP} \\to \\text{Pyruvate} + \\text{ATP}$ — the second substrate-level phosphorylation. Essentially irreversible; gluconeogenesis bypasses this with pyruvate carboxylase and PEP carboxykinase, an ATP and a GTP per PEP.</li>
 </ol>
 
 <h3>Net equation</h3>
@@ -40,7 +40,7 @@ $$\\text{Glucose} + 2\\,\\text{NAD}^+ + 2\\,\\text{ADP} + 2\\,\\text{P}_i \\long
 <ul>
 <li><b>PPP</b>: G6P is the branch point — PGI diverts it toward glycolysis, while G6PDH diverts it toward the PPP. F6P and G3P from the PPP non-oxidative branch re-enter glycolysis.</li>
 <li><b>Krebs cycle</b>: Pyruvate enters via $\\text{PDH} \\to \\text{Acetyl-CoA}$.</li>
-<li><b>Fermentation</b>: Without oxygen, pyruvate is reduced to ethanol (or lactate in animals) to regenerate $\\text{NAD}^+$.</li>
+<li><b>Fermentation</b>: Without oxygen, pyruvate is reduced to lactate (by LDH, in animal cells and cyanobacteria) or decarboxylated and reduced to ethanol (by PDC and ADH, in yeasts and some bacteria) to regenerate $\\text{NAD}^+$.</li>
 <li><b>Calvin cycle</b>: Several glycolytic enzymes (GAPDH, PGK, ALDO, FBPase, PGI) operate in reverse during carbon fixation.</li>
 </ul>
 
@@ -176,7 +176,7 @@ $$\\text{Acetyl-CoA} + 3\\,\\text{NAD}^+ + \\text{FAD} + \\text{GDP} + \\text{P}
     betaox: {
         title: 'Beta oxidation & fatty acid synthesis',
         body: `
-<p>Beta oxidation is the mitochondrial pathway that breaks down fatty acids into acetyl-CoA units, generating large amounts of $\\text{FADH}_2$ and NADH. Fatty acid synthesis (the reverse direction in this simulation) builds fatty acids from acetyl-CoA using NADPH and ATP.</p>
+<p>Beta oxidation is the pathway that breaks down fatty acids (in mitochondria in animals, in peroxisomes in plants; cyanobacteria appear to lack it) into acetyl-CoA units, generating large amounts of $\\text{FADH}_2$ and NADH. Fatty acid synthesis (the reverse direction in this simulation) builds fatty acids from acetyl-CoA using NADPH and ATP.</p>
 
 <h3>Activation</h3>
 <p>Before entering beta oxidation, a fatty acid must be activated to acyl-CoA by acyl-CoA synthetase, consuming 2 ATP equivalents ($\\text{ATP} \\to \\text{AMP} + \\text{PP}_i$). The acyl-CoA is then transported into the mitochondrial matrix via the carnitine shuttle.</p>
@@ -199,7 +199,7 @@ $$\\text{Palmitoyl-CoA} + 7\\,\\text{FAD} + 7\\,\\text{NAD}^+ + 7\\,\\text{CoA} 
 <p>Biosynthesis uses different enzymes, a different cellular compartment (cytoplasm), and different cofactors:</p>
 <ul>
 <li>Uses NADPH (not NADH/$\\text{FADH}_2$) as the reductant</li>
-<li>Uses ATP for each elongation cycle</li>
+<li>Uses one ATP for each elongation cycle, spent by acetyl-CoA carboxylase (ACC) making the malonyl-CoA it condenses</li>
 <li>Catalyzed by fatty acid synthase (FAS), a large multi-enzyme complex</li>
 <li>Malonyl-CoA (from $\\text{Acetyl-CoA} + \\text{CO}_2$ via ACC) provides 2-carbon units</li>
 </ul>
@@ -306,7 +306,7 @@ $$\\Delta G'^\\circ = -nF\\Delta E = -2 \\times 96{,}485 \\times 1.14 \\approx -
 
 <h3>Priority and direction</h3>
 <p>The ETC runs at double speed because membrane reactions in real cells (~milliseconds) are faster than matrix/cytoplasmic reactions (~seconds). ATP synthase fires $3\\times$ per ETC tick to reflect its high throughput.</p>
-<p>Metabolic reactions are direction-aware: when sunlight is on, glycolysis upper half and beta oxidation run in reverse (gluconeogenesis and FA synthesis) to reflect anabolic conditions. When off, they run forward (catabolic).</p>
+<p>Metabolic reactions are direction-aware: while a membrane with photosystems is in the light, glycolysis's upper half and beta oxidation run in reverse (gluconeogenesis and FA synthesis) to reflect anabolic conditions. Otherwise they run forward (catabolic). Without oxygen, the organism's own fermentation regenerates NAD⁺: lactate or ethanol. This rule is interim; a thermodynamic engine will set directions instead.</p>
 
 <h3>Regulation gating</h3>
 <p>Each auto-fired reaction checks its allosteric regulation factor $f \\in [0, 1.5]$. If $f = 0$ (fully blocked), the reaction is silently skipped. If $0 < f < 1$ (partial inhibition), the reaction fires probabilistically:</p>
@@ -401,7 +401,7 @@ $$\\text{H}^+_{\\text{lumen}} \\xrightarrow{\\text{UCP}} \\text{H}^+_{\\text{mat
 <p>Chemical uncouplers like 2,4-dinitrophenol (DNP) are lipid-soluble weak acids that shuttle protons across the membrane. DNP was briefly used as a weight-loss drug in the 1930s (it works — the body burns more fuel to compensate for the wasted gradient) but was banned after causing hyperthermia, cataracts, and deaths. It remains a cautionary tale about the dangers of tampering with bioenergetics.</p>
 
 <h3>Simulation model</h3>
-<p>With uncoupling disabled, a basal 2% proton leak per tick occurs (reflecting real membrane leakiness). Enabling uncoupling increases this to 10% per tick. Each leaked proton is visible as a downward-moving particle through the UCP channel. The UCP complex glows when uncoupling is active and gradient is available.</p>
+<p>With uncoupling disabled, a basal 2% proton leak per tick occurs (reflecting real membrane leakiness). Enabling uncoupling increases this to 10% per tick. While uncoupling is on, the leaked protons cross through the UCP channel; otherwise they cross the bilayer.</p>
 `,
     },
 

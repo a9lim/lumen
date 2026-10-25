@@ -27,7 +27,6 @@ _freezeTokens();
     ['pw-krebs',   'prussian'],
     ['pw-ferment', 'umber'],
     ['pw-betaox',  'ochre'],
-    ['pw-ros',     'accent'],
     ['co-atp',     'atp'],
     ['co-nadh',    'nadh'],
     ['co-nadph',   'nadph'],

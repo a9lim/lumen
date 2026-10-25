@@ -9,7 +9,7 @@ import { resetFlux } from './flux.js';
 import Renderer from './renderer.js';
 import Particles from './particles.js';
 import Stroma from './stroma.js';
-import { ORGANISMS } from './organisms.js';
+import { ORGANISMS, CUSTOM } from './organisms.js';
 import { SPECIMENS, SPECIMEN_OF } from './specimens.js';
 import { REFERENCE } from './reference.js';
 import { drawLocator } from './locator.js';
@@ -91,6 +91,7 @@ export function bindEvents(dom, hooks) {
         drawSpecimenIcons();
         if (key === 'custom') {
             simState.lockedPathways = {};
+            simState.ferments = { ...CUSTOM.ferments }; simState.oneWay = CUSTOM.oneWay;
             for (const t of Object.values(pathwayRows)) { t.disabled = false; t.closest('.lu-row').classList.remove('locked'); t.closest('.lu-row').title = ''; }
             dom.organismDesc.textContent = 'Manual control of all pathways, on a membrane with every complex';
             return;
@@ -98,13 +99,14 @@ export function bindEvents(dom, hooks) {
         const org = ORGANISMS[key];
         simState.activeOrganism = key;
         simState.lockedPathways = org.lockedReason || {};
+        simState.ferments = { ...org.ferments }; simState.oneWay = org.oneWay || {};
         for (const [pw, t] of Object.entries(pathwayRows)) {
             const reason = org.lockedReason?.[pw];
             t.checked = org.pathways[pw];
             t.dispatchEvent(new Event('change'));
             t.disabled = !org.pathways[pw] && !!reason;
             t.closest('.lu-row').classList.toggle('locked', !!reason);
-            t.closest('.lu-row').title = reason || '';
+            t.closest('.lu-row').title = reason || simState.oneWay[pw] || '';
         }
         dom.lightToggle.checked = org.environment.light; dom.lightToggle.dispatchEvent(new Event('change'));
         dom.oxygenToggle.checked = org.environment.oxygen; dom.oxygenToggle.dispatchEvent(new Event('change'));
@@ -214,7 +216,7 @@ export function bindEvents(dom, hooks) {
     // ── Colophon: play, theme, help ──
     const about = initAboutPanel({
         title: 'Lumen',
-        lastUpdated: '2026-10-24',
+        lastUpdated: '2026-10-25',
         description: 'Explore how cells make energy. A membrane in cross-section sits above the cell’s carbon network, drawn as a transit map. Each organism puts its own membrane under the microscope. Click an enzyme on the map or a complex in the membrane to run it, or let it play, and watch protons pile up, ATP synthase turn, and the busiest lines thicken.',
         controls: [
             { label: 'Run a reaction', value: 'Click an enzyme on the map or a complex' },
@@ -249,10 +251,10 @@ export function bindEvents(dom, hooks) {
         calvin: { title: 'Calvin cycle', body: 'Fixes CO₂ into sugar using ATP and NADPH from the light reactions. It runs back along the glycolysis corridor on its own track.' },
         krebs: { title: 'Krebs cycle (TCA)', body: 'Oxidizes acetyl-CoA to CO₂, producing NADH, FADH₂, and GTP. Needs oxygen.' },
         sunlight: { title: 'Sunlight', body: 'Powers photosynthetic electron transport where the membrane has photosystems, and bacteriorhodopsin in the archaeon.' },
-        oxygen: { title: 'Ambient O₂', body: 'Enables aerobic respiration. Without it, fermentation regenerates NAD⁺.' },
+        oxygen: { title: 'Ambient O₂', body: 'Enables aerobic respiration. Without it, fermentation (to lactate or to ethanol, as the organism has it) regenerates NAD⁺.' },
         protons: { title: 'Proton gradient', body: 'Protons pumped across the membrane drive ATP synthase: four per ATP, twelve per turn.' },
         ladder: { title: 'Electrons, by redox potential', body: 'Each carrier stands at its midpoint potential, more reducing at the top; each electron now moving in the membrane is a bead on it. Light lifts electrons at P680 and P700; respiration only falls, toward oxygen.' },
-        betaox: { title: 'Beta oxidation', body: 'Breaks fatty acids into acetyl-CoA, yielding FADH₂ and NADH per round. Backward, it is fatty-acid synthesis.' },
+        betaox: { title: 'Beta oxidation', body: 'Breaks fatty acids into acetyl-CoA, yielding FADH₂ and NADH per round. Backward, it is fatty-acid synthesis, the only way it runs in cyanobacteria and chloroplasts.' },
         uncoupling: { title: 'Uncoupling', body: 'Leaks protons back across the membrane, dissipating the gradient as heat.' },
         oxStress: { title: 'Oxidative stress', body: 'ROS from electron leak damage cells; SOD, catalase, and GPx scavenge them.' },
     });

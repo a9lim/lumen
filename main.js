@@ -11,7 +11,7 @@ import { updateDashboard } from './src/dashboard.js';
 import { advanceStep, onReaction } from './src/reactions/dispatch.js';
 import { autoplayTick, protonLeakTick } from './src/autoplay.js';
 import { cacheDOMElements, bindEvents, drawSpecimenIcons } from './src/ui.js';
-import { recordReaction, updateFlux } from './src/flux.js';
+import { recordReaction, updateFlux, RUNNING } from './src/flux.js';
 import { lineState } from './src/mapdraw.js';
 import { LINES } from './src/maplayout.js';
 import { Membrane } from './src/membrane.js';
@@ -84,11 +84,11 @@ function captionText() {
     const g = store.protonGradient, turns = turnRate, mv = Math.round(deltaP()), back = turns < -0.05;
     if (Renderer.narrow) {
         return `${spec.name}, ${simState.lightOn ? 'light' : 'dark'}${simState.oxygenAvailable ? '' : ', no O₂'}${frozen ? ', still' : simState.autoPlay ? '' : ', paused'}. `
-            + (busiest && busiest.flux > 0.02 ? `${busiest.name} ${Math.round(busiest.flux * 60)}/min. ` : '')
+            + (busiest && busiest.flux > RUNNING ? `${busiest.name} ${Math.round(busiest.flux * 60)} C/min. ` : '')
             + `${g} H⁺ ${spec.where}, ${mv} mV` + (Membrane.pos.atpSyn ? `; ATP synthase ${back ? 'back ' : ''}${Math.abs(turns).toFixed(1)} turns/s.` : '.');
     }
     let s = `${spec.name} ${simState.lightOn ? 'in the light' : 'in the dark'}${simState.oxygenAvailable ? '' : ', without oxygen'}${frozen ? ', held still' : simState.autoPlay ? '' : ', paused'}: ${spec.say}. `;
-    s += busiest && busiest.flux > 0.02 ? `${busiest.name} carries the most carbon, ${Math.round(busiest.flux * 60)} reactions a minute. ` : 'No line is running. ';
+    s += busiest && busiest.flux > RUNNING ? `${busiest.name} carries the most carbon, ${Math.round(busiest.flux * 60)} carbon atoms a minute. ` : 'No line is running. ';
     s += `${g} proton${g === 1 ? '' : 's'} ${spec.where}, Δp ${mv} mV`;
     s += Membrane.pos.atpSyn ? `; ATP synthase turns ${back ? 'backward ' + (-turns).toFixed(1) + ' times a second' : turns < 0.05 ? 'not at all' : turns.toFixed(1) + ' times a second'}.` : '.';
     return s;

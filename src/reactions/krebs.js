@@ -14,19 +14,19 @@ export function advanceKrebs(idx, direction) {
         if (fwd && store.acetylCoA > 0 && store.oaa > 0) {
             let t = Math.min(store.acetylCoA, store.oaa, 2);
             store.acetylCoA -= t; store.oaa -= t; store.citrate += t;
-            return { enzyme: 'Citrate synthase', reaction: 'Acetyl-CoA + OAA → Citrate', yields: null };
+            return { enzyme: 'Citrate synthase', reaction: 'Acetyl-CoA + OAA → Citrate', yields: null, n: t };
         }
     }
     // Step 1: Aconitase — isomerization (citrate → isocitrate)
     else if (idx === 1) {
-        if (store.citrate > 0) { let t = Math.min(store.citrate, 2); store.citrate -= t; store.isocitrate += t; return { enzyme: 'Aconitase', reaction: 'Citrate → Isocitrate', yields: null }; }
+        if (store.citrate > 0) { let t = Math.min(store.citrate, 2); store.citrate -= t; store.isocitrate += t; return { enzyme: 'Aconitase', reaction: 'Citrate → Isocitrate', yields: null, n: t }; }
     }
     // Step 2: Isocitrate DH — oxidative decarboxylation, produces NADH + CO2
     else if (idx === 2) {
         if (store.isocitrate > 0 && store.nadh < store.totalNad) {
             let t = Math.min(store.isocitrate, store.totalNad - store.nadh, 2);
             store.isocitrate -= t; store.akg += t; store.nadh += t; store.co2Produced += t;
-            return { enzyme: 'Isocitrate DH', reaction: 'Isocitrate → α-KG + CO₂ + NADH', yields: { nadh: t } };
+            return { enzyme: 'Isocitrate DH', reaction: 'Isocitrate → α-KG + CO₂ + NADH', yields: { nadh: t }, n: t };
         }
     }
     // Step 3: α-Ketoglutarate DH — second decarboxylation, produces NADH + CO2
@@ -34,7 +34,7 @@ export function advanceKrebs(idx, direction) {
         if (store.akg > 0 && store.nadh < store.totalNad) {
             let t = Math.min(store.akg, store.totalNad - store.nadh, 2);
             store.akg -= t; store.succoa += t; store.nadh += t; store.co2Produced += t;
-            return { enzyme: 'α-KGDH', reaction: 'α-KG → Succinyl-CoA + CO₂ + NADH', yields: { nadh: t } };
+            return { enzyme: 'α-KGDH', reaction: 'α-KG → Succinyl-CoA + CO₂ + NADH', yields: { nadh: t }, n: t };
         }
     }
     // Step 4: Succinyl-CoA Synthetase — substrate-level phosphorylation (GTP≈ATP)
@@ -42,11 +42,11 @@ export function advanceKrebs(idx, direction) {
         if (fwd && store.succoa > 0 && store.atp < store.totalAtpAdp) {
             let t = Math.min(store.succoa, store.totalAtpAdp - store.atp, 2);
             store.succoa -= t; store.succinate += t; store.atp += t; store.atpSubstrate += t;
-            return { enzyme: 'SCS', reaction: 'Succinyl-CoA → Succinate + ATP', yields: { atp: t } };
+            return { enzyme: 'SCS', reaction: 'Succinyl-CoA → Succinate + ATP', yields: { atp: t }, n: t };
         } else if (rev && store.succinate > 0 && store.atp > 0) {
             let t = Math.min(store.succinate, store.atp, 2);
             store.succinate -= t; store.succoa += t; store.atp -= t;
-            return { enzyme: 'SCS (reverse)', reaction: 'Succinate + ATP → Succinyl-CoA', yields: { atpConsume: t } };
+            return { enzyme: 'SCS (reverse)', reaction: 'Succinate + ATP → Succinyl-CoA', yields: { atpConsume: t }, n: t };
         }
     }
     // Step 5: Succinate DH (Complex II) — FAD-linked oxidation, feeds electrons directly to ETC
@@ -54,16 +54,16 @@ export function advanceKrebs(idx, direction) {
         if (fwd && store.succinate > 0 && store.fadh2 < store.totalFad) {
             let t = Math.min(store.succinate, store.totalFad - store.fadh2, 2);
             store.succinate -= t; store.fumarate += t; store.fadh2 += t;
-            return { enzyme: 'SDH', reaction: 'Succinate → Fumarate + FADH₂', yields: { fadh2: t } };
+            return { enzyme: 'SDH', reaction: 'Succinate → Fumarate + FADH₂', yields: { fadh2: t }, n: t };
         } else if (rev && store.fumarate > 0 && store.fadh2 > 0) {
             let t = Math.min(store.fumarate, store.fadh2, 2);
             store.fumarate -= t; store.succinate += t; store.fadh2 -= t;
-            return { enzyme: 'SDH (reverse)', reaction: 'Fumarate + FADH₂ → Succinate', yields: null };
+            return { enzyme: 'SDH (reverse)', reaction: 'Fumarate + FADH₂ → Succinate', yields: null, n: t };
         }
     }
     // Step 6: Fumarase — hydration (fumarate → malate)
     else if (idx === 6) {
-        if (store.fumarate > 0) { let t = Math.min(store.fumarate, 2); store.fumarate -= t; store.malate += t; return { enzyme: 'Fumarase', reaction: 'Fumarate → Malate', yields: null }; }
+        if (store.fumarate > 0) { let t = Math.min(store.fumarate, 2); store.fumarate -= t; store.malate += t; return { enzyme: 'Fumarase', reaction: 'Fumarate → Malate', yields: null, n: t }; }
     }
     // Step 7: Malate DH — completes the cycle, regenerates OAA + NADH
     else if (idx === 7) {
@@ -71,11 +71,11 @@ export function advanceKrebs(idx, direction) {
             let t = Math.min(store.malate, store.totalNad - store.nadh, 2);
             store.malate -= t; store.oaa += t; store.nadh += t;
             counters.krebsTurns += t;
-            return { enzyme: 'Malate DH', reaction: 'Malate → OAA + NADH', yields: { nadh: t } };
+            return { enzyme: 'Malate DH', reaction: 'Malate → OAA + NADH', yields: { nadh: t }, n: t };
         } else if (rev && store.oaa > 0 && store.nadh > 0) {
             let t = Math.min(store.oaa, store.nadh, 2);
             store.oaa -= t; store.malate += t; store.nadh -= t;
-            return { enzyme: 'Malate DH (reverse)', reaction: 'OAA + NADH → Malate', yields: { nadhConsume: t } };
+            return { enzyme: 'Malate DH (reverse)', reaction: 'OAA + NADH → Malate', yields: { nadhConsume: t }, n: t };
         }
     }
     return false;

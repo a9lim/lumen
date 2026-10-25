@@ -1,6 +1,7 @@
 // Simulation state — all mutable data lives here.
 // Pools are closed-system: ATP+ADP, NAD+NADH, NADP+NADPH, FAD+FADH2 are conserved.
 import { Anim } from './anim.js';
+import { SPECIMENS } from './specimens.js';
 
 
 // ─── Runtime Flags and Animation State ───
@@ -14,6 +15,10 @@ export const simState = {
     activeOrganism: 'cyanobacterium',
     specimen: 'thylakoid',
     lockedPathways: {},
+    // Which fermentations the organism has: lactate (LDH) and ethanol (PDC + ADH)
+    ferments: { lactate: true, ethanol: false },
+    // Pathways the organism runs only one way: key → why the other way is blocked
+    oneWay: {},
     store: null,
     // Smooth rotation for cycle targets (Krebs CW, others CCW)
     calvinRot: Anim.rotAccum(),
@@ -46,13 +51,20 @@ export const store = {
     nadpBound: 0, protonsPending: 0,
     rosProduced: 0, rosScavenged: 0, cellHealth: 100,
 
-    glucose: 3, g6p: 6, f6p: 0, f16bp: 0, g3p: 0, bpg: 0, pga3: 0, pga2: 0, pep: 0, pyruvate: 0, ethanol: 0, acetaldehyde: 0, aceticAcid: 0,
+    glucose: 3, g6p: 6, f6p: 0, f16bp: 0, g3p: 0, bpg: 0, pga3: 0, pga2: 0, pep: 0, pyruvate: 0, lactate: 0, ethanol: 0, acetaldehyde: 0, aceticAcid: 0,
     pgl6: 0, pga6: 0, xu5p: 0, s7p: 0, r5p: 0,
     rubp: 6,
     acetylCoA: 0, citrate: 0, isocitrate: 0, akg: 0, succoa: 0, succinate: 0, fumarate: 0, malate: 0, oaa: 2,
     fattyAcid: 4, enoylCoA: 0, hydroxyCoA: 0, ketoCoA: 0,
 };
 simState.store = store;
+
+/**
+ * Whether light runs anabolism: only a membrane with photosystems makes the
+ * NADPH and ATP that drive gluconeogenesis and fatty-acid synthesis from light.
+ * An interim rule; the engine will take directions from ΔG instead.
+ */
+export const photosynthesizing = () => simState.lightOn && (SPECIMENS[simState.specimen] || SPECIMENS.composite).can.photo;
 
 /** NADP⁺ free to be reduced: the pool's oxidized half, less what FNR holds. */
 export const nadpFree = () => store.totalNadp - store.nadph - store.nadpBound;
@@ -96,8 +108,8 @@ export function updateAnimations(dt) {
     // Krebs rotates opposite direction (CW, -1.5 rad/s)
     simState.krebsRot.update(dt, simState.krebsEnabled && simState.oxygenAvailable && simState.autoPlay, -1.5, rotK);
     simState.pppRot.update(dt, simState.pppEnabled && simState.autoPlay, 1.5, rotK);
-    // Beta-ox reverses direction in sunlight (FA synthesis runs the cycle backward)
-    simState.betaoxRot.update(dt, simState.betaoxEnabled && simState.autoPlay, simState.lightOn ? -1.5 : 1.5, rotK);
+    // Beta-ox turns backward while photosynthesis drives fatty-acid synthesis
+    simState.betaoxRot.update(dt, simState.betaoxEnabled && simState.autoPlay, photosynthesizing() ? -1.5 : 1.5, rotK);
     simState.glycolysisFade.update(dt, simState.glycolysisEnabled ? 1 : 0);
     simState.calvinFade.update(dt, simState.calvinEnabled ? 1 : 0);
     simState.krebsFade.update(dt, (simState.krebsEnabled && simState.oxygenAvailable) ? 1 : 0);

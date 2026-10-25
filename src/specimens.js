@@ -94,10 +94,10 @@ export const SPECIMEN_OF = {
     obligateAnaerobe: 'plasma', archaeon: 'purple', custom: 'composite',
 };
 
-/** Which reactions a complex fires when clicked: [dispatch key, step]. */
+/** Which reactions a complex fires when clicked: [dispatch key, step]. UCP is the uncoupling switch's. */
 export const CLICK = {
     psii: ['etc_photo', 0], ndh1: ['etc_resp', 0], sdh: ['etc_resp', 1], psi: ['etc_cyclic', 0],
-    atpSyn: ['atp_syn', 0], br: ['br', 0], nnt: ['nnt', 0], ucp: ['ucp', 0],
+    atpSyn: ['atp_syn', 0], br: ['br', 0], nnt: ['nnt', 0],
 };
 
 /** Whether the specimen's membrane can run a clicked reaction at all. */

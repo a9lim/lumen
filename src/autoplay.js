@@ -1,7 +1,7 @@
 // Autoplay tick logic — two independent timers drive continuous metabolism.
 // Fast tick (400ms): ETC + ATP synthase (membrane-bound, continuous).
 // Slow tick (800ms): metabolic round-robin (one pathway per tick).
-import { simState, store } from './state.js';
+import { simState, store, photosynthesizing } from './state.js';
 import { markDashboardDirty } from './dashboard.js';
 import { advanceStep } from './reactions/dispatch.js';
 import Renderer from './renderer.js';
@@ -56,28 +56,33 @@ export function autoplayTick(dt) {
     // ── Metabolic slow tick (800ms) — round-robin one pathway per tick ──
     if (metabolicTimer > 0.8) {
         metabolicTimer = 0;
+        // Photosynthesis in the light runs anabolism: an interim rule for the specimens with
+        // photosystems only, until the engine takes every direction from ΔG
+        const anabolic = photosynthesizing();
         const metabolicSteps = [
             () => advanceStep('run_krebs'),
             () => advanceStep('pdh'),
-            // Glycolysis lower only in dark; upper reverses under light (gluconeogenesis feeds Calvin)
-            () => { if (!simState.lightOn) advanceStep('run_glycolysis_lower'); },
-            () => advanceStep('run_glycolysis_upper', null, simState.lightOn ? 'reverse' : undefined),
+            // Glycolysis lower only while not photosynthesizing; upper reverses then (gluconeogenesis feeds Calvin)
+            () => { if (!anabolic) advanceStep('run_glycolysis_lower'); },
+            () => advanceStep('run_glycolysis_upper', null, anabolic ? 'reverse' : undefined),
             () => advanceStep('run_calvin'),
             () => advanceStep('run_ppp'),
             () => {
-                // Aerobic: ethanol salvage pathway (ADH forward + ALDH + ACS)
-                // Anaerobic: fermentation (NAD+ regeneration via ADH reverse)
+                // Aerobic: ethanol and lactate salvage (ADH forward + ALDH + ACS; LDH backward)
+                // Anaerobic: fermentation, whichever the organism has (PDC + ADH, or LDH)
                 if (simState.oxygenAvailable) {
                     advanceStep('adh', null, 'forward');
                     advanceStep('aldh');
                     advanceStep('acs');
+                    advanceStep('ldh', null, 'reverse');
                 } else {
                     advanceStep('fermentation');
                     advanceStep('adh', null, 'reverse');
+                    advanceStep('ldh', null, 'forward');
                 }
             },
-            // Beta-ox reverses under light (FA synthesis stores photosynthetic surplus)
-            () => advanceStep('run_betaox', null, simState.lightOn ? 'reverse' : undefined),
+            // Beta-ox reverses while photosynthesizing (FA synthesis stores the surplus)
+            () => advanceStep('run_betaox', null, anabolic ? 'reverse' : undefined),
             () => {
                 // Gluconeogenesis: rebuild glucose from pyruvate when glucose is depleted
                 if (store.glucose < 2 && store.pyruvate >= 2) {

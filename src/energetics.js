@@ -4,13 +4,15 @@
 // potential at which pumping costs all the energy it has to give, so a full
 // gradient throttles the chain (respiratory control). ATP synthase runs
 // whichever way Δp and the phosphorylation potential say: below balance it
-// runs backward, splitting ATP to pump protons out.
-import { simState, store } from './state.js';
+// runs backward, splitting ATP to pump protons out. NNT moves a hydride from
+// NADH to NADP⁺ only while the proton it lets in pays for the two pools' ratios.
+import { simState, store, nadpFree } from './state.js';
 import { SPECIMENS } from './specimens.js';
 
 export const MV_PER = 2;            // mV of Δp per unit of gradient
 const W = 15;                       // mV over which a rate falls to zero at equilibrium (a softened flux–force relation)
 const RT = 2.479, F = 96.485;       // kJ/mol at 25 °C; kJ/(mol·V)
+const RT_F = RT / F * 1000;         // mV: 25.7
 const H_PER_ATP = 4;                // twelve c subunits, three ATP a turn
 const DG0_ATP = 30.5;               // kJ/mol, ATP synthesis at standard conditions (pH 7, Mg²⁺)
 const PI = 0.01;                    // M phosphate, assumed: the model doesn't track it
@@ -61,6 +63,17 @@ function synthaseMargins() {
     };
 }
 
+/**
+ * How far NNT stands from balance, mV: the proton it takes in, against
+ * RT/F ln of NAD⁺·NADPH / NADH·NADP⁺ (ΔG°′ of the hydride transfer ≈ 0),
+ * both at the step's midpoint. Positive means NADH → NADPH runs downhill.
+ */
+function nntMargin() {
+    const nadh = store.nadh - 0.5, nad = store.totalNad - store.nadh + 0.5, nadph = store.nadph + 0.5, nadp = nadpFree() - 0.5;
+    if (nadh <= 0 || nadp <= 0 || store.protonGradient < 1) return -Infinity;
+    return (store.protonGradient - 0.5) * MV_PER - RT_F * Math.log(nad * nadph / (nadh * nadp));
+}
+
 /** Which way ATP synthase runs now: 'forward' (making ATP), 'reverse' (splitting it to pump), or null. */
 export function synthaseWay() {
     const m = synthaseMargins();
@@ -76,6 +89,7 @@ export function drive(key, direction, stepIndex) {
     let x;
     if (key in STALL) x = STALL[key] - (store.protonGradient + store.protonsPending + stepOf(key, stepIndex) / 2) * MV_PER;
     else if (key === 'atp_syn') { const m = synthaseMargins(); x = direction === 'reverse' ? m.rev : m.fwd; }
+    else if (key === 'nnt') x = nntMargin();
     else return 1;
     return x > 0 ? 1 - Math.exp(-x / W) : 0;
 }
@@ -89,5 +103,6 @@ export function driveReason(key, direction) {
         if (direction === 'reverse') return store.atp < 1 ? 'No ATP to split' : `Δp is ${dp} mV; ATP synthase runs backward only below ${Math.round(backThreshold())} mV`;
         return store.atp >= store.totalAtpAdp ? 'No ADP to make ATP from' : `Δp is ${dp} mV; the next ATP needs ${Math.round(atpThreshold())} mV`;
     }
+    if (key === 'nnt') return store.nadh < 1 ? 'No NADH to take a hydride from' : `Δp is ${dp} mV, too little to push NADPH any further over NADH`;
     return null;
 }
