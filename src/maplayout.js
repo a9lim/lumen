@@ -99,8 +99,8 @@ export const parseCof = (t) => { const m = /^([a-z0-9]+?)([+-])(\d*)$/.exec(t); 
 export const LOOPS = [
     { key: 'run_calvin', line: 'calvin', toggle: 'calvin', at: [10, 1.85], narrowAt: [11, 1.9], name: 'Calvin cycle', short: 'Calvin', info: 'run_calvin' },
     { key: 'run_ppp', line: 'ppp', toggle: 'ppp', at: [4.75, 1.45], narrowAt: [5.2, 1.75], name: 'Pentose P', short: 'PPP', info: 'run_ppp' },
-    { key: 'run_krebs', line: 'krebs', toggle: 'krebs', at: [KC[0], KC[1] + 0.1], name: 'Krebs cycle', short: 'Krebs', info: 'run_krebs' },
-    { key: 'run_betaox', line: 'box', toggle: 'betaox', at: [22, 8], name: 'β-oxidation', short: 'β-ox', revName: 'FA synthesis', revShort: 'FAS', info: 'run_betaox' },
+    { key: 'run_krebs', line: 'krebs', toggle: 'krebs', at: [KC[0], KC[1] + 0.1], alt: [[0, -0.95], [0, 0.72], [0, -0.55]], name: 'Krebs cycle', short: 'Krebs', info: 'run_krebs' },
+    { key: 'run_betaox', line: 'box', toggle: 'betaox', at: [22, 8], fit: 1.5, name: 'β-oxidation', short: 'β-ox', revName: 'FA synthesis', revShort: 'FAS', info: 'run_betaox' },
     { key: 'run_glycolysis_upper', line: 'glyc', toggle: 'glycolysis', segs: ['g0', 'g1', 'g2', 'g3'], at: [5, 4.2], narrowAt: [12.15, 6.3], span: [1, 9], name: 'Glucose ⇌ G3P', short: 'Glc ⇌ G3P', info: 'run_glyc_upper' },
     { key: 'run_glycolysis_lower', line: 'glyc', toggle: 'glycolysis', segs: ['g5', 'g6', 'g7', 'g8', 'g9'], at: [14, 4.2], narrowAt: [12.15, 8.9], span: [9, 19], name: 'G3P ⇌ pyruvate', short: 'G3P ⇌ Pyr', info: 'run_glyc_lower' },
 ];
@@ -111,8 +111,9 @@ export const CO2 = [
     ['p2', [5.85, 0.15], [6.4, -0.4]],
 ];   // optional 4th and 5th entries: where the spur goes on phones
 
-/** Where the flux key sits on the grid, and the empty field it owns. */
+/** Where the key sits on the grid, and the empty field it owns; where the locator sits. */
 export const KEY_BOX = [1, 5.2, 12.6, 10.4];
+export const LOC_BOX = [20.3, -0.55, 24.55, 2.25];
 export const GRID = { x0: 0, x1: 24.6, y0: -0.75, y1: 10.5 };
 /** On phones the grid turns upright and keeps a little more room across, for the Krebs labels. */
 export const GRID_NARROW = { x0: 0, x1: 24.6, y0: -0.75, y1: 11.3 };

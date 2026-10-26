@@ -1,11 +1,11 @@
-// Ladder — the Stats tab's figure: the Z-scheme drawn live. Every carrier
+// Ladder — Fig. 2's other view: the Z-scheme drawn live. Every carrier
 // stands at its midpoint potential (E′₀, volts at pH 7, more reducing up), and
 // every electron now in flight in the membrane is a bead on it, at the carrier
 // it has reached. Light lifts a bead at P680 and again at P700; respiration
 // only falls, from NADH to oxygen. The potentials are rounded: the photosynthetic
 // carriers in the order and placement of Stirbet et al. (2023), the respiratory
 // couples from a standard table (see the reference overlay). Drawn only while
-// the Stats tab is open.
+// Fig. 2 shows it.
 import Particles from './particles.js';
 import { Membrane } from './membrane.js';
 import * as K from './complexes.js';

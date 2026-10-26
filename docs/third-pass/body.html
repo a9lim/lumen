@@ -1,0 +1,314 @@
+<header class="top">
+  <a class="colophon" href="https://a9l.im/lumen/" aria-label="Lumen">{{SEAL}}<span>Lumen</span></a>
+  <p class="meta">Proposal for Lumen’s third visual pass · 26 October 2026</p>
+  <h1>The plate and its legend</h1>
+  <p class="lede">The engine made every moving thing in Lumen true. The frame around the plate hasn’t caught up. It is still a tabbed settings column from before the rebuild, the figure has four separate keys, and the readouts sit a tab away from what they describe. This pass would turn that column into the figure’s legend and give the plate a trace of what just happened. It would also fix seven animation faults that a frame-by-frame probe measured, and tidy the map. The layouts below are drawn at laptop size around today’s real plate. One section runs the real engine.</p>
+</header>
+
+<section id="now" aria-labelledby="h-now">
+  <h2 id="h-now">Where it stands <span class="sub">every specimen, both themes, desktop and phone</span></h2>
+  <div class="prose">
+    <p>The plate is the best thing on the screen. The phycobilisome fanned under photosystem II, the crista bent by its ATP synthase dimers and the purple membrane’s lattice are drawings no textbook animates, and the threads from the stroma’s molecules to the map’s enzymes make the coupling literal. Everything around the plate is older. Codex read the same screenshots and code independently and found the same problems, plus a few I had missed. Its points are marked below.</p>
+  </div>
+  <div class="now">
+    <figure><img src="{{IMG:now-cyano-open}}" alt="Lumen today at 1440 by 900: the cyanobacterial thylakoid above the transit map, with the settings column on the right." loading="lazy"><figcaption>The opening frame. The map holds a flux table and a reference box in its lower left, and the column at right repeats the lines.</figcaption></figure>
+    <figure><img src="{{IMG:now-margin}}" alt="Today's Controls tab: specimen list, lines, conditions, demand." loading="lazy"><figcaption>Controls. The specimen list takes the top 350 px; feeding, reset, taps and speed are below the fold.</figcaption></figure>
+    <figure><img src="{{IMG:now-stats2}}" alt="Today's Stats tab, scrolled: cofactor pools, proton-motive force, oxidative stress, ATP source." loading="lazy"><figcaption>Stats, scrolled. Δp, pools and stress are a tab away from the sliders that move them.</figcaption></figure>
+  </div>
+  <div class="now2">
+    <figure><img src="{{IMG:now-archaeon}}" alt="The archaeon today: its Krebs cycle and β-oxidation in the lower right, the rest of the map empty." loading="lazy"><figcaption>The archaeon. The map fits its fixed grid, not its network, so two lines sit in a corner.</figcaption></figure>
+    <figure><img src="{{IMG:now-pyr-animal}}" alt="Close view of the animal cell's pyruvate junction: Pyruvate, F1,6BP, AcCoA, PDH and a gate overlap." loading="lazy"><figcaption>Pyruvate in the animal cell: a station, two gates and PDH in one spot, and the Krebs cycle’s name over Fumarate.</figcaption></figure>
+    <figure><img src="{{IMG:now-phone}}" alt="Lumen today on a phone: a small membrane, the upright map with the key over it." loading="lazy"><figcaption>Phone. The membrane is drawn at 1.8 px per nm, too small to read.</figcaption></figure>
+  </div>
+  <div class="cols">
+    <table class="binds">
+      <caption>What the frame still says from before the rebuild</caption>
+      <tbody>
+        <tr><td>Four keys for one figure</td><td>The column’s Lines, the map’s flux table, the cartouche and the Reference tab’s legend all explain the same marks.</td></tr>
+        <tr><td>Choosing over doing</td><td>The specimen list fills the column’s top. Conditions start at 630 px, and feeding, reset, taps and speed are below the fold. <em>(Codex)</em></td></tr>
+        <tr><td>Knockouts that look like layers</td><td>The Lines checkboxes switch reactions off, but they read as show and hide. The chloroplast’s column says Glycolysis and β-oxidation where its map says Gluconeogenesis and FA synthesis, and absent lines are struck through like broken options. <em>(Codex)</em></td></tr>
+        <tr><td>Consequences behind a tab</td><td>To change the light and watch Δp, you switch to Stats and back. The Z-scheme, the liveliest figure in the column, is hidden there too.</td></tr>
+        <tr><td>A grid, not a network</td><td>The map fits a fixed grid with a box reserved for its key. Sparse cells leave whole quadrants empty, and dense junctions collide.</td></tr>
+        <tr><td>Unexplained numbers</td><td>“Glycogen 827” reads as a name with a suffix. Counts, concentrations and fluxes share one style. <em>(Codex)</em></td></tr>
+        <tr><td>A three-line caption</td><td>It says everything, so it takes 90 px under the plate at laptop width.</td></tr>
+      </tbody>
+    </table>
+    <div class="notes">
+      <div><p class="label">What already works</p><p>Two registers under one camera; the specimens; line weight and trains bound to flux; the stroma’s molecules and their threads; the red spent only on protons; callouts, scale bar, locator; the live caption; opening on a living frame. None of it goes away.</p></div>
+      <div><p class="label">How this was read</p><p>All six specimens at 1440 by 900 in both themes and at 390 px, beside Worldline, Miasma and Shoals. Then an in-page probe that tracked every particle and molecule frame by frame for eight seconds per specimen, and Codex’s independent read of the same screenshots and code (gaslamp, thread <code>lumen-layout-read</code>).</p></div>
+    </div>
+  </div>
+</section>
+
+<section id="motion" aria-labelledby="h-motion">
+  <h2 id="h-motion">The animations <span class="sub">seven faults, measured</span></h2>
+  <div class="prose">
+    <p>The probe ran at 60 fps with no long frames, so performance isn’t the problem. Particles that jump, pop and strobe are. Each row gives what the probe counted in eight seconds, what causes it, and the fix. All of these get fixed whichever layout you pick.</p>
+  </div>
+  <div class="tablewrap">
+    <table class="plan">
+      <thead><tr><th scope="col">Fault</th><th scope="col">Measured</th><th scope="col">Cause</th><th scope="col">Fix</th></tr></thead>
+      <tbody>
+        <tr><td>Cofactor molecules strobe</td><td class="num">1,408 form changes, 94% undone within 1 s; one NAD flipped 180 times (animal cell)</td><td>After each sampled event, <code>stroma.js</code> restores the pool’s count by flipping the <em>first</em> molecules in array order, so the same few strobe.</td><td>Forward and backward events pair up, so only real drift is reconciled. Drift is reconciled at random, and the glyph crossfades over 150 ms.</td></tr>
+        <tr><td>Docked molecules change their minds</td><td class="num">14–33 per 8 s</td><td>The same reconciliation flips the outcome of a molecule already docking at ATP synthase or FNR.</td><td>A docked molecule’s fate is fixed.</td></tr>
+        <tr><td>Protons appear from nowhere</td><td class="num">≈11 a second, at full opacity mid-lumen</td><td>When the drawn pumps fall behind Δp, <code>particles.js</code> tops the pool up at random positions.</td><td>The shortfall crosses up through the complexes the model says are pumping, in proportion to their rates.</td></tr>
+        <tr><td>Protons streak to ATP synthase</td><td class="num">up to 66 px in one frame</td><td>A proton bound for a site moves at the larger of 60 nm/s and five times its distance per second.</td><td>A capped drift. The site takes the nearest protons within reach and queues the rest.</td></tr>
+        <tr><td>Electrons jump</td><td class="num">up to 148 px in a frame; ≈20 jumps a second (cyanobacterium)</td><td>Every chain takes 1.39 s whatever its length, so a hop between distant complexes lasts a few frames.</td><td>Each leg is timed by its distance. Hops inside a complex stay quick, and carriers travel at a bounded speed.</td></tr>
+        <tr><td>Carriers teleport</td><td class="num">≈10 a second (cyanobacterium)</td><td>An idle PQ, PC or Fd at home is hidden, and a loaded one is drawn at the donor.</td><td>Persistent carriers that travel to the donor, load, ride and wander back.</td></tr>
+        <tr><td>Molecules dash to dock</td><td class="num">up to 117 px in a frame</td><td>Docking pulls the nearest molecule of its kind at four times its distance per second.</td><td>Take the nearest within reach, at a capped speed.</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p class="cap" style="margin-top:14px">Probe: <code>docs/third-pass/probe.mjs</code>, 1440 × 900 at 2× pixel ratio, cyanobacterium, animal cell, chloroplast and composite. If you saw a glitch that isn’t here, tell me which; this table is what a probe can count.</p>
+</section>
+
+<section id="layouts" aria-labelledby="h-layouts">
+  <h2 id="h-layouts">Three layouts <span class="sub">around the same plate</span></h2>
+  <div class="prose">
+    <p>The site leaves each sim’s control layout to its medium. Lumen’s medium is a scientific plate, and a plate comes with a legend. All three layouts drop the tabs, give the plate one key, move the line switches into it, and add a trace of the last two minutes with your actions marked on it. They differ in where the legend sits. The plates are today’s, so the in-plate changes (next sections) don’t show yet.</p>
+  </div>
+  <figure class="fig">
+    <div class="mock-scroll">
+      <div class="mock" id="mock-main" data-w="1440">
+        <div class="mock-in">
+
+          <div data-v="today" data-h="900">
+            <img class="plate" src="{{IMG:now-cyano-open}}" alt="" style="left:0;top:0;width:1440px;height:900px">
+          </div>
+
+          <div data-v="a" data-h="900">
+            <img class="plate only-light" src="{{IMG:plateA}}" alt="" style="left:0;top:0;width:1120px;height:856px">
+            <img class="plate only-dark" src="{{IMG:plateA-dark}}" alt="" style="left:0;top:0;width:1120px;height:856px">
+            <div class="m-capbar" style="top:856px;width:1120px;height:44px"><p class="c"><b>Fig. 1</b>Cyanobacterial thylakoid in the light, chemistry slowed 30×. Calvin cycle 4.8 mM C/s; Δp 185 mV; ATP synthase 0.5 turns/s.</p><span class="z"><span>−</span><span>100%</span><span>+</span><span>Fit</span></span></div>
+            <div class="m-col" style="left:1120px;width:320px;height:900px">
+              <div class="m-sec">
+                <div class="m-specs big"><img data-icon="0" class="on" alt=""><img data-icon="1" alt=""><img data-icon="2" alt=""><img data-icon="3" alt=""><img data-icon="4" alt=""><img data-icon="5" alt=""></div>
+                <p class="m-name">Cyanobacterium <i>· a thylakoid, cut through</i></p>
+                <p class="m-note" style="font-style:normal;margin-top:2px">Respiration and photosynthesis share one membrane; it stores glycogen.</p>
+              </div>
+              <div class="m-sec">
+                <p class="m-lab">Conditions</p>
+                <p class="m-sentence" data-sentence="mockA"></p>
+                <p class="m-acts"><span>Feed <u>glucose</u> · <u>fatty acid</u></span><u>Reset</u><span>Taps <u>pulse</u></span></p>
+              </div>
+              <div class="m-sec">
+                <p class="m-lab">The enzyme <span class="r">you last touched</span></p>
+                <div data-card="static"></div>
+              </div>
+              <div class="m-sec" style="flex:1">
+                <p class="m-lab"><span><b>Fig. 2</b> The last two minutes</span><span class="r">ladder</span></p>
+                <svg data-trace="mockA" viewBox="0 0 280 232" role="img" aria-label="A small trace of Δp, ATP, NADPH and O₂ over the last two minutes, with arrows where PSII was pulsed and the light was lowered."></svg>
+              </div>
+            </div>
+          </div>
+
+          <div data-v="b" data-h="900">
+            <img class="plate only-light" src="{{IMG:plateB}}" alt="" style="left:0;top:0;width:1120px;height:716px">
+            <img class="plate only-dark" src="{{IMG:plateB-dark}}" alt="" style="left:0;top:0;width:1120px;height:716px">
+            <div class="abs" style="left:18px;top:716px;width:1084px;height:140px;border-top:1px solid var(--rule)">
+              <p class="reg-lab" style="position:absolute;left:2px;top:8px"><b>c</b>The last two minutes, with what you did</p>
+              <svg data-trace="mockB" viewBox="0 0 1084 104" style="position:absolute;left:0;top:32px;width:1084px;height:104px" role="img" aria-label="Panel c: Δp, ATP and NADPH over the last two minutes, with arrows for each action."></svg>
+            </div>
+            <div class="m-capbar" style="top:856px;width:1120px;height:44px"><p class="c"><b>Fig. 1</b>Cyanobacterial thylakoid in the light, chemistry slowed 30×. Calvin cycle 4.8 mM C/s; Δp 185 mV; ATP synthase 0.5 turns/s.</p><span class="z"><span>−</span><span>100%</span><span>+</span><span>Fit</span></span></div>
+            <div class="m-col" style="left:1120px;width:320px;height:900px;padding:0">
+              <div style="height:64px;padding:18px 20px 0" class="m-specs"><img data-icon="0" class="on" alt=""><img data-icon="1" alt=""><img data-icon="2" alt=""><img data-icon="3" alt=""><img data-icon="4" alt=""><img data-icon="5" alt=""></div>
+              <div style="height:264px;padding:10px 20px 0;border-top:1px solid var(--rule)">
+                <p class="m-lab"><span><b>a</b> The membrane</span><span class="r">ladder</span></p>
+                <div class="m-dial"><span>Light</span><span class="tr"><i style="left:100%"></i></span><output>full sun</output></div>
+                <div class="m-dial"><span>Oxygen</span><span class="tr"><i style="left:100%"></i></span><output>air</output></div>
+                <div class="m-row" style="margin-top:8px"><span class="nm">Δp</span><span class="val">185 mV</span></div>
+                <div class="m-split"><span style="width:23%;background:var(--accent)"></span><span style="width:77%;background:repeating-linear-gradient(90deg,var(--accent) 0 2px,transparent 2px 4px)"></span></div>
+                <div class="m-row" style="min-height:22px"><span class="nm m-note" style="font-style:normal">Δψ 43 mV · ΔpH 142 mV (2.4 units)</span></div>
+                <p class="m-note">1.3 ATP per NADPH by linear flow; the Calvin cycle needs 1.5, so cyclic flow makes up the rest.</p>
+              </div>
+              <div style="height:388px;padding:10px 20px 0;border-top:1px solid var(--rule)">
+                <p class="m-lab"><span><b>b</b> The network</span><span class="r">mM C/s</span></p>
+                <div class="m-row" style="--line:var(--ink-sienna)"><span class="box"></span><span class="sw"></span><span class="nm">Glycolysis</span><span class="val">0.81</span></div>
+                <div class="m-row" style="--line:var(--ink-madder)"><span class="box"></span><span class="sw"></span><span class="nm">Pentose phosphate</span><span class="val">1.1</span></div>
+                <div class="m-row" style="--line:var(--ink-viridian)"><span class="box"></span><span class="sw"></span><span class="nm">Calvin cycle</span><span class="val">4.8</span></div>
+                <div class="m-row" style="--line:var(--ink-prussian)"><span class="box"></span><span class="sw"></span><span class="nm">Krebs cycle</span><span class="val">0.05</span></div>
+                <div class="m-row" style="--line:var(--ink-ochre)"><span class="box"></span><span class="sw"></span><span class="nm">FA synthesis</span><span class="val">0</span></div>
+                <p class="m-note" style="margin:2px 0 10px">No β-oxidation in this cell.</p>
+                <div class="m-dial"><span>ATP demand</span><span class="tr"><i style="left:13%"></i></span><output>0.4 mM/s</output></div>
+                <div class="m-dial"><span>Growth</span><span class="tr"><i style="left:23%"></i></span><output>0.07 /h</output></div>
+                <p class="m-acts" style="margin-top:10px"><span>Feed <u>glucose</u> · <u>fatty acid</u></span></p>
+                <p class="m-note" style="margin-top:12px">Click an enzyme and its card takes this place.</p>
+              </div>
+              <div style="height:140px;padding:10px 20px 0;border-top:1px solid var(--rule)">
+                <p class="m-lab"><span><b>c</b> The bench</span></p>
+                <p class="m-acts" style="margin-top:0"><span>Traced <u>Δp</u> · <u>ATP</u> · <u>NADPH</u> · <u>O₂</u></span></p>
+                <p class="m-acts"><span>Chemistry <u>30×</u> slower</span><u>Pause</u><u>Reset</u></p>
+              </div>
+            </div>
+            <div class="abs" style="left:1120px;top:328px;width:320px;border-top:1px solid var(--rule-strong);opacity:.35"></div>
+          </div>
+
+          <div data-v="c" data-h="1300">
+            <img class="plate only-light" src="{{IMG:plateC}}" alt="" style="left:0;top:0;width:1440px;height:780px">
+            <img class="plate only-dark" src="{{IMG:plateC-dark}}" alt="" style="left:0;top:0;width:1440px;height:780px">
+            <div class="m-strip" style="left:300px;top:0;width:1140px;height:58px;background:var(--canvas)">
+              <span class="grp"><img data-icon="0" alt="" style="width:42px;height:22.5px"><span>Cyanobacterium ▾</span></span>
+              <span class="grp"><span class="k">Light</span><span class="tr"><i style="left:100%"></i></span><output>100%</output></span>
+              <span class="grp"><span class="k">O₂</span><span class="tr"><i style="left:100%"></i></span><output>air</output></span>
+              <span class="grp"><span class="k">ATP demand</span><span class="tr"><i style="left:13%"></i></span><output>0.4</output></span>
+              <span class="grp"><span class="k">Growth</span><span class="tr"><i style="left:23%"></i></span><output>0.07</output></span>
+              <span class="grp"><u class="m-btn">+ Glucose</u><u class="m-btn">+ Fatty acid</u></span>
+            </div>
+            <div class="abs" style="left:20px;top:782px;width:1400px;height:52px;display:flex;align-items:center;gap:18px;border-top:1px solid var(--rule);font-size:14.7px">
+              <span class="card-name">Cytochrome b₆f</span>
+              <span class="m-num" style="color:var(--text2)">1.96 mM/s = capacity 20 × thermodynamics <b style="color:var(--accent);font-weight:400">0.17</b> × saturation 0.57 × regulation 1.00</span>
+              <span class="m-note">Δp holds it near equilibrium.</span>
+              <span style="flex:1"></span>
+              <span class="card-acts" style="margin:0"><span>Pulse</span><span>Inhibit</span><span>Hold</span></span>
+            </div>
+            <div class="m-capbar" style="top:836px;width:1440px;height:44px"><p class="c"><b>Fig. 1</b>Cyanobacterial thylakoid in the light, chemistry slowed 30×. Calvin cycle 4.8 mM C/s; Δp 185 mV; ATP synthase 0.5 turns/s.</p><span class="z"><span>−</span><span>100%</span><span>+</span><span>Fit</span></span></div>
+            <div class="fold" style="top:900px"><span>where a 900 px screen ends</span></div>
+            <div class="abs" style="left:20px;top:920px;width:1400px;height:190px">
+              <p class="reg-lab"><b>c</b>The last two minutes, with what you did</p>
+              <svg data-trace="mockC" viewBox="0 0 1400 150" style="width:1400px;height:150px;margin-top:10px" role="img" aria-label="Panel c below the fold: the trace."></svg>
+            </div>
+            <div class="abs" style="left:20px;top:1130px;width:900px;font-size:16.3px;color:var(--text2);line-height:1.6">
+              <p><b style="font-weight:600;color:var(--text)">Fig. 1.</b> A cyanobacterial thylakoid, cut through, to scale (a), over the cell’s carbon network drawn as a transit map (b). Protons are drawn one for each 2 mV of Δp; every molecule under the membrane is one of the slab’s mean count; line weight is carbon flux …</p>
+            </div>
+            <div class="dim" style="height:200px"></div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+    <div class="bar">
+      <p class="cap"><span class="n">Fig. 1</span><span id="cap-main"></span></p>
+      <div class="ctl"><span class="seg" role="group" aria-label="Layout"><button class="b" type="button" data-show="today" aria-pressed="false">Today</button><button class="b" type="button" data-show="a" aria-pressed="true">A · The legend</button><button class="b" type="button" data-show="b" aria-pressed="false">B · The aligned margin</button><button class="b" type="button" data-show="c" aria-pressed="false">C · The folio</button></span></div>
+    </div>
+  </figure>
+
+  <div class="three">
+    <div>
+      <h3>A · The legend</h3>
+      <p>The column becomes the figure’s legend, read top to bottom with no tabs. It holds the specimens as their six drawings in one row, the conditions as a sentence whose values you drag, the card of the enzyme you last touched, and Fig. 2, the last two minutes. The lines move into the plate’s key, where they are drawn.</p>
+      <p><span class="k">Plate</span> 1120 × 856, up from 1140 × 806 (the caption shrinks to one line). <span class="k">Cost</span> medium. <span class="k">Risk</span> a sentence is an unfamiliar control, and Fig. 2 is small at 320 px.</p>
+    </div>
+    <div>
+      <h3>B · The aligned margin</h3>
+      <p>The column is cut where the plate is cut, and its rules continue the plate’s. Beside panel a are the membrane’s conditions and Δp. Beside b are the network’s knockouts, demand and feeding, which give way to the enzyme card when you touch one. Beside c is the trace’s controls. Panel c is a third register in the plate. <em>(Codex’s second choice.)</em></p>
+      <p><span class="k">Plate</span> 1120 × 716, plus c. <span class="k">Cost</span> medium-high: each specimen cuts the plate at its own height. <span class="k">Risk</span> rows of fixed height overflow, and the margin grows back.</p>
+    </div>
+    <div>
+      <h3>C · The folio</h3>
+      <p>The page scrolls. The conditions are one ruled row in the colophon’s band, the plate runs the full width, and the enzyme strip sits under it. Panel c and the long legend are below the fold. The specimen chooser opens a gallery. <em>(Codex’s first choice.)</em></p>
+      <p><span class="k">Plate</span> 1440 × 780, 29% wider. <span class="k">Cost</span> high: page scroll against canvas pan, and a page model none of the siblings use. <span class="k">Risk</span> what you changed and what it did are on different screens.</p>
+    </div>
+  </div>
+  <div class="prose" style="margin-top:30px">
+    <p><span class="pick">My pick is A</span>, with one idea from B: the legend’s rules can line up with the plate’s, so the column reads as part of the figure. Codex picked C because it gives the plate the most room and the bench a natural place. I’d keep C for phones, where it fits best (below), but on a laptop it puts what you changed and what it did on different screens. A keeps both in view, and it is how a figure in a paper is read: the plate, then its legend.</p>
+  </div>
+</section>
+
+<section id="live" aria-labelledby="h-live">
+  <h2 id="h-live">The legend, running <span class="sub">on Lumen’s real engine</span></h2>
+  <div class="prose">
+    <p>This is A’s column at full size, driven by Lumen’s engine itself, bundled into this page (the cyanobacterium, warmed for 40 model seconds). Drag a value in the sentence, or focus one and use the arrow keys. Each change puts an arrow on the trace, the way additions are marked on an oxygen-electrode trace. The enzyme card reads the engine’s own rate factors. Lower the light, and watch photosynthetic control release cytochrome b₆f as Δp falls.</p>
+  </div>
+  <div class="demo">
+    <div class="demo-col">
+      <div class="m-sec">
+        <p class="m-lab">Conditions</p>
+        <p class="m-sentence" data-sentence="live"></p>
+        <p class="m-acts"><span>Pulse <u class="m-btn" role="button" tabindex="0" data-pulse="PSII">PSII</u> · <u class="m-btn" role="button" tabindex="0" data-pulse="PFK">PFK</u> · <u class="m-btn" role="button" tabindex="0" data-pulse="RBPC">RuBisCO</u></span><u class="m-btn" role="button" tabindex="0" id="live-reset">Reset</u></p>
+        <p class="hint">Drag a value sideways, or focus it and use the arrow keys.</p>
+      </div>
+      <div class="m-sec">
+        <p class="m-lab">The enzyme <span class="r"><select id="live-enz" class="b" style="font-size:13.4px;padding:1px 4px" aria-label="Enzyme"></select></span></p>
+        <div data-card="live"></div>
+      </div>
+    </div>
+    <div class="demo-fig">
+      <p class="m-lab" style="margin:0"><span><b>Fig. 2</b> The last two minutes of wall time, with what you did</span><span class="r" id="live-clock"></span></p>
+      <svg id="live-trace" viewBox="0 0 760 330" role="img" aria-label="Live trace from Lumen's engine: Δp, the ATP share of the adenylates, the NADPH share, and O₂ made, over the last two minutes, with arrows at each change."></svg>
+      <p class="demo-read" id="live-read"></p>
+    </div>
+  </div>
+  <div class="cols" style="margin-top:30px">
+    <div class="prose" style="font-size:17.5px">
+      <p><strong>The sentence.</strong> The conditions are what the caption already says, so in A they are the legend’s first sentence, and each value in it is the control. A specimen without an uncoupler or oxygen leaves that clause out. The keyboard path is a slider role on each value, and phones drag the same way.</p>
+      <p><strong>The card.</strong> It replaces the inspector’s dropdown and follows your last click on the plate. A dropdown stays for keyboard use. The rate is drawn as a budget, capacity times each factor on a log scale, so you see which factor holds an enzyme back. After a hold, the card shows the flux control coefficients.</p>
+    </div>
+    <div class="prose" style="font-size:17.5px">
+      <p><strong>Fig. 2.</strong> Today’s sparklines, grown into the bench’s first register. Its time is wall time, two minutes, because at 30× that is four seconds of the cell’s. That’s enough to watch a pulse spread and fade. It isn’t enough for an experiment, which is the next section’s point.</p>
+      <p><strong>The ladder</strong> (the Z-scheme from Stats) becomes Fig. 2’s other view, one word away. Δψ, ΔpH, the pools’ shares, stress and ATP’s sources go into the plate’s key, where the counts are already.</p>
+    </div>
+  </div>
+</section>
+
+<section id="bench" aria-labelledby="h-bench">
+  <h2 id="h-bench">What Fig. 2 grows into <span class="sub">milestone 2, the bench</span></h2>
+  <div class="prose">
+    <p>The engine already reproduces the classic oxygen-electrode experiment. In the animal cell (Chance and Williams 1955), extra ADP demand speeds respiration about 3.6-fold, and oligomycin cuts it back. An uncoupler then releases it to its maximum, and cyanide stops it. Below is Lumen’s own run, 230 model seconds.</p>
+  </div>
+  <figure class="fig">
+    <svg id="cw-trace" viewBox="0 0 1160 330" role="img" aria-label="Lumen's engine reproducing Chance and Williams: O₂ uptake, Δp, ATP and NADH in the animal cell, with arrows at ADP, oligomycin, uncoupler and cyanide." style="display:block;width:100%;height:auto"></svg>
+    <div class="bar"><p class="cap"><span class="n">Fig. 3</span>The animal cell’s mitochondria on Lumen’s engine. O₂ uptake goes from 0.44 mM/s at low ATP demand to 1.6 with ADP (a respiratory control ratio of 3.6), then 0.17 under oligomycin, which leaves only the leak. The uncoupler takes it to 3.5 and collapses Δp, and cyanide stops it.</p></div>
+  </figure>
+  <div class="prose" style="margin-top:22px">
+    <p>One thing this shows for the layout: at the default 30× slowdown this run takes two hours. The bench needs clocks faster than life, 1× and beyond, with the plate thinned to match. The window already supports that, since a centre past eight turnovers a second is drawn one turnover in <i>w</i>. So Fig. 2 is wall time now, and its axis switches to model time when the bench lands. The layout doesn’t change.</p>
+  </div>
+</section>
+
+<section id="plate" aria-labelledby="h-plate">
+  <h2 id="h-plate">Inside the plate <span class="sub">whatever the layout</span></h2>
+  <div class="tablewrap">
+    <table class="plan">
+      <thead><tr><th scope="col">Where</th><th scope="col">Change</th></tr></thead>
+      <tbody>
+        <tr><td>One key</td><td>The flux table and the cartouche merge into one plate key. Its line rows are the knockout switches, named per specimen (Gluconeogenesis, FA synthesis), and a cell’s missing lines are left out with one line saying why. The Reference tab’s legend goes; its net equations move to the reference overlay.</td></tr>
+        <tr><td>The map fits its network</td><td>Each specimen’s map is fitted to the stations it has, not the full grid. The layout stays hand-drawn, with no force layout. The archaeon’s two lines and the anaerobe’s corridor grow to fill panel b, and the key takes whichever corner is free.</td></tr>
+        <tr><td>Junctions</td><td>Measured label placement where it crowds: pyruvate with acetyl-CoA, the Krebs cycle’s name, FA synthesis, β-oxidation. Gates take a free slot rather than a fixed offset.</td></tr>
+        <tr><td>Counts</td><td>Station counts in the muted tone, with one line in the key saying they are molecules in the drawn slab.</td></tr>
+        <tr><td>Threads</td><td>They stay, since they are the coupling. They run along the gutter between the registers instead of through the map’s text, keep one thread per enzyme at a time, and the enzyme in the card gets its threads emphasized. <em>(Codex)</em></td></tr>
+        <tr><td>A pulse that stays visible</td><td>The pulsed enzyme’s name keeps a mark that fades with the pulse (1.5 model seconds), and a held one keeps it until you let go. It also gets an arrow on Fig. 2.</td></tr>
+        <tr><td>The colophon’s band</td><td>Panel a starts below it, so photons no longer cross “Lumen”. The “lumen” label at the sac’s end stops overlapping the bilayer.</td></tr>
+        <tr><td>Caption</td><td>One line at laptop width: what, the busiest line, Δp, the rotor. The long form moves to the legend.</td></tr>
+        <tr><td>Scale bar</td><td>Fewer ticks when it is short, so 0, 5 and 10 nm stop colliding on phones. <em>(Codex)</em></td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section id="phones" aria-labelledby="h-phones">
+  <h2 id="h-phones">Phones <span class="sub">the folio, in any case</span></h2>
+  <div class="prose">
+    <p>On a phone the page scrolls through the figure in reading order, and each part of the legend follows the register it describes. That means splitting today’s single canvas into one per register. One-finger vertical drags scroll the page, sideways drags pan panel a, and pinching zooms.</p>
+  </div>
+  <div class="phone">
+    <div><b>Specimen</b>The six drawings in a row, the chosen one named.</div>
+    <div><b>a, the membrane</b>Drawn at 3.5 px per nm, about twice today’s, and panned sideways. Its conditions sentence and Δp follow.</div>
+    <div><b>b, the network</b>The upright map at full width, its key under it, not over it.</div>
+    <div><b>The enzyme</b>The card, under the map, after a tap. Taps pulse or inhibit by a mode switch kept next to the scene. <em>(Codex)</em></div>
+    <div><b>Fig. 2</b>The trace, full width. Jump links (Membrane · Network · Trace) under the colophon. <em>(Codex)</em></div>
+  </div>
+</section>
+
+<section id="order" aria-labelledby="h-order">
+  <h2 id="h-order">Order of work</h2>
+  <ol class="steps">
+    <li><strong>The animations</strong>, all seven, with the probe kept as a regression check. These don’t depend on the layout, so they can start now.</li>
+    <li><strong>Inside the plate</strong>: one key, the fitted map, junction placement, counts, threads, pulse marks, the colophon’s band, a one-line caption.</li>
+    <li><strong>The legend</strong> (or the layout you choose): the specimen row, the sentence, the enzyme card, Fig. 2 and its ladder view; the tabs and the old Stats go.</li>
+    <li><strong>Phones</strong>: one canvas per register, the folio.</li>
+    <li><strong>Verify and land</strong>: every specimen in both themes at 1440, 1024 and 390, reduced motion, 60 fps, the probe and the engine tests; Codex reviews the diff; AGENTS.md and about.md updated; committed in <code>projects/lumen</code>, with the pointer bumped in the parent.</li>
+  </ol>
+</section>
+
+<section id="ask" aria-labelledby="h-ask">
+  <h2 id="h-ask">For you to decide</h2>
+  <div class="qs">
+    <div><h3>1. The layout</h3><p>A (the legend), B (the aligned margin) or C (the folio), or a mix? I’d build A on desktop and C on phones.</p></div>
+    <div><h3>2. The sentence</h3><p>Conditions as a sentence of draggable values, or as labelled dials in the same order and place? The demo above has the sentence; dials are the safer, more familiar choice.</p></div>
+    <div><h3>3. Fig. 2 now</h3><p>Add the trace of the last two minutes now, as the bench’s first register, or wait for milestone 2? I’d add it now, since it is what makes a pulse readable.</p></div>
+    <div><h3>4. The enzyme card</h3><p>Follow your last click in the legend, as in the demo? Or pin the card on the plate next to the enzyme? Pinned is closer to the thing, but it covers the plate.</p></div>
+    <div><h3>5. The carriers</h3><p>Persistent PQ, PC and Fd that travel, load and ride (the teleport fix) mean a real rewrite of how electrons are drawn. Is that in scope for this pass?</p></div>
+    <div><h3>6. Anything I missed</h3><p>Which animations looked buggy to you? I’d like to match the probe against what you saw, and add anything it can’t count.</p></div>
+  </div>
+</section>
+
+<footer>Plates: Lumen at <code>a4690d3</code>, 1440 × 900, light and dark. The traces in Figs. 2 and 3 come from Lumen’s engine (<code>src/engine/</code>, bundled with esbuild). The mocks’ columns are HTML in the site’s type and inks. Sources and the probe: <code>projects/lumen/docs/third-pass/</code>.</footer>

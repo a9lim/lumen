@@ -337,7 +337,7 @@ export function createEngine(cellId, opts = {}) {
         dp() { return dpOf(state.x); },
         psi() { return psiOf(state.x); },
         dpH() { return phOf(state.x); },
-        /** Why a reaction runs as it does: its factors and ΔG (kJ/mol). */
+        /** Why a reaction runs as it does: its factors, ΔG (kJ/mol) and its kinetic law ('cm', 'leak', 'diffusion', 'demand'). */
         factors(j) {
             const c = RX[j], x = state.x, psi = psiOf(x), ph = phOf(x), dp = psi + ph;
             rate1(j, x);
@@ -352,7 +352,7 @@ export function createEngine(cellId, opts = {}) {
             for (const [i, nu, K] of c.sub) { const r = Math.max(x[i], 0) / K; num *= Math.pow(r, nu); d1 *= Math.pow(1 + r, nu); }
             for (const [i, nu, K] of c.pro) d2 *= Math.pow(1 + Math.max(x[i], 0) / K, nu);
             const sat = c.law === 'cm' ? num / (d1 + d2 - 1) : 1;
-            return { dG, thermo: 1 - Math.exp(dG / RT), sat, reg: c.law === 'cm' ? regFactor(c, x, dp) : 1, vf: RF, vb: RB, v: RF - RB };
+            return { dG, thermo: 1 - Math.exp(dG / RT), sat, reg: c.law === 'cm' ? regFactor(c, x, dp) : 1, vf: RF, vb: RB, v: RF - RB, law: c.law || 'cm' };
         },
         /**
          * Pulse a reaction (sign 1) or inhibit it (−1) now, in model time; a second pulse

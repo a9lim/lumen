@@ -2,7 +2,7 @@
 name: Lumen
 title: Lumen — Interactive Cellular Metabolism Simulator
 description: Pulse the enzymes of a kinetic model of cellular energy metabolism (glycolysis, the Krebs and Calvin cycles, electron transport, ATP synthase) and watch flux, cofactor pools and the proton gradient answer, in five organisms.
-updated: 2026-10-25
+updated: 2026-10-26
 ---
 
 # Lumen — Interactive Cellular Metabolism Simulator
@@ -61,11 +61,11 @@ Complex I and the Q-cycle leak superoxide, faster as Δp rises. Superoxide dismu
 
 ## Educational Use
 
-The margin sets light and oxygen (as fractions of full sun and of air), ATP demand and growth, switches pathways and uncoupling, and adds glucose or fatty acid to the medium. The Stats tab opens on a live Z-scheme: each carrier at its midpoint potential, with the electrons in flight drawn on the carriers they have reached. Below it the inspector explains any enzyme's rate: its ΔG and the thermodynamic, saturation and regulation factors whose product sets it. The tab also shows the cofactor pools with sixty-second sparklines, Δp beside the Δp ATP synthesis needs, oxidative stress, ATP's sources and the cell's exchange with its medium. The canonical behaviours of bioenergetics follow from the model rather than from rules: respiratory control, the Pasteur effect (glycolysis speeds up when oxygen is removed), the effects of uncoupling, and the switch between light and dark metabolism.
+The figure's legend, beside it, is where you set the conditions and read the results. Its first sentence states the light and oxygen (as fractions of full sun and of air), ATP demand and growth, and the slowdown, and each value in it is a control: drag it, step it with the arrow keys, or click it for a dial. Below that sits a card for the enzyme you last clicked, which shows its rate as a budget: its capacity times the thermodynamic, saturation and regulation factors (and light, a switch or a pulse where they act), so the factor holding it back is the one that cuts the bar most. Holding an enzyme there or on the plate compares the cell with an unchanged copy and reports the enzyme's flux control coefficients. Fig. 2 traces the last two minutes of Δp, the ATP share of the adenylates, the reduced share of the cell's main carrier and its headline flux, with an arrow at each change you made. Its other view is a live Z-scheme: each carrier at its midpoint potential, with the electrons in flight drawn on the carriers they have reached. The lines are knocked out from the plate's key, which also counts the drawn molecules. The canonical behaviours of bioenergetics follow from the model rather than from rules: respiratory control, the Pasteur effect (glycolysis speeds up when oxygen is removed), the effects of uncoupling, and the switch between light and dark metabolism.
 
 ## Accessibility
 
-Lumen provides keyboard shortcuts, labeled controls, and light, dark and sunlight-following themes. The inspector's select and buttons reach every enzyme without a pointer. Line states carry patterns as well as color: switched-off lines are dashed, gates are dashed or barred, and trains are chevrons. With reduced motion requested, Lumen opens on a still frame and moves only after the first interaction.
+Lumen provides keyboard shortcuts, labeled controls, and light, dark and sunlight-following themes. The enzyme card's select and buttons reach every enzyme without a pointer, each value in the conditions sentence is a slider to the keyboard and screen readers, and the knockouts are checkboxes as well as the key's rows. Line states carry patterns as well as color: switched-off lines are dashed, gates are dashed or barred, and trains are chevrons. With reduced motion requested, Lumen opens on a still frame and moves only after the first interaction.
 
 ## Limitations
 

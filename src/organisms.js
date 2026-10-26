@@ -1,4 +1,4 @@
-// Organism presets — what the margin says of each: its description, and why
+// Organism presets — what the legend says of each: its description, and why
 // a line it lacks is missing. Each preset's chemistry is its cell in
 // src/engine/cells.js (reactions, compartments, pools, environment), and its
 // membrane is its specimen in specimens.js.

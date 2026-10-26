@@ -1,8 +1,10 @@
 /* ═══════════════════════════════════════════════
-   Lumen — the figure and its margin.
-   One scene (canvas) with a live caption under it, and a margin to the
-   right ruled off by a hairline: no cards, shadows or rounded panels. On
-   phones the margin becomes a sheet over the lower scene.
+   Lumen — the figure and its legend.
+   One plate (canvas) with a live caption under it, and its legend to the
+   right, ruled off by a hairline and read top to bottom: the specimen, the
+   conditions as a sentence whose values are the controls, the enzyme last
+   touched, and Fig. 2. No cards, shadows or rounded panels. On phones the
+   legend becomes a sheet over the lower scene.
    ═══════════════════════════════════════════════ */
 
 #reference-overlay { z-index: 9999; }
@@ -10,7 +12,7 @@
 /* ─── Stage ─── */
 .lu-stage {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) 300px;
+    grid-template-columns: minmax(0, 1fr) clamp(280px, 22vw, 320px);
     height: 100vh;
     height: 100dvh;
 }
@@ -38,7 +40,7 @@
     display: flex;
     align-items: baseline;
     gap: 16px;
-    padding: 9px 20px 12px;
+    padding: 9px 20px 11px;
     border-top: 1px solid var(--border);
 }
 .lu-capbar .caption { flex: 1; min-width: 0; margin: 0; }
@@ -68,6 +70,30 @@
 }
 .lu-btn:hover { color: var(--text); text-decoration-color: var(--border-strong); }
 .lu-btn[aria-pressed="true"] { color: var(--text); text-decoration-color: var(--text); }
+/* Taps pulse or inhibit: only where taps are the pointer */
+.lu-mode { display: none; flex-shrink: 0; }
+@media (pointer: coarse) { .lu-mode { display: inline; } }
+
+/* A word that acts, inside the legend's running text */
+.lu-word {
+    padding: 0;
+    border: 0;
+    background: none;
+    color: var(--text);
+    font: inherit;
+    cursor: pointer;
+    text-decoration: underline;
+    text-decoration-color: var(--border-strong);
+    text-decoration-thickness: 1px;
+    text-underline-offset: 0.22em;
+    transition: color 0.15s var(--ease-out), text-decoration-color 0.15s var(--ease-out);
+}
+.lu-word:hover { text-decoration-color: var(--text); }
+.lu-word:disabled { color: var(--text-muted); text-decoration: line-through; text-decoration-thickness: 1px; cursor: not-allowed; }
+.lu-word[aria-pressed="true"] { text-decoration-color: var(--text); text-decoration-thickness: 1.5px; }
+.lu-views .lu-word[aria-pressed="false"] { color: var(--text-muted); text-decoration-color: transparent; }
+.lu-views .lu-word[aria-pressed="false"]:hover { color: var(--text); }
+.lu-word:focus-visible { outline: 1.5px solid var(--text); outline-offset: 2px; }
 
 .lu-open {
     position: absolute;
@@ -87,8 +113,9 @@
 .lu-open:hover { color: var(--text); border-bottom-color: var(--text); }
 .lu-closed .lu-open { display: block; }
 
-/* ─── Margin ─── */
-.lu-margin {
+/* ─── The legend ─── */
+.lu-legend {
+    position: relative;
     display: flex;
     flex-direction: column;
     min-height: 0;
@@ -97,131 +124,76 @@
     background: var(--bg-canvas);
     user-select: text;
 }
-.lu-closed .lu-margin { visibility: hidden; border-left: 0; }
+.lu-closed .lu-legend { visibility: hidden; border-left: 0; }
+.lu-close { position: absolute; top: 8px; right: 6px; z-index: 2; font-size: 1.15rem; line-height: 1; color: var(--text-muted); }
+.lu-legend-body { flex: 1; overflow-y: auto; padding: 4px 20px 20px; scrollbar-width: thin; }
 
-.lu-margin-head {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 14px 16px 0 20px;
-    border-bottom: 1px solid var(--border);
-}
-
-.lu-tabs { display: flex; gap: 18px; }
-.lu-tabs .tab-btn {
-    padding: 6px 0 9px;
-    border: 0;
-    border-bottom: 1px solid transparent;
-    margin-bottom: -1px;
-    background: none;
-    color: var(--text-muted);
-    font: inherit;
-    font-size: var(--font-lg);
-    cursor: pointer;
-    transition: color 0.15s var(--ease-out), border-color 0.15s var(--ease-out);
-}
-.lu-tabs .tab-btn:hover { color: var(--text); }
-.lu-tabs .tab-btn.active { color: var(--text); border-bottom-color: var(--text); }
-.lu-close { font-size: 1.25rem; line-height: 1; color: var(--text-muted); }
-
-.lu-panels { flex: 1; overflow-y: auto; padding: 4px 20px 24px; scrollbar-width: thin; }
-.tab-panel { display: none; }
-.tab-panel.active { display: block; }
-
-.lu-group { padding: 14px 0 12px; border-bottom: 1px solid var(--border); }
-.lu-group:last-of-type { border-bottom: 0; }
+.lu-sec { padding: 12px 0 11px; border-bottom: 1px solid var(--border); }
+.lu-sec:last-child { border-bottom: 0; }
 .lu-label {
     display: flex;
     align-items: center;
     gap: 4px;
-    margin: 0 0 8px;
+    margin: 0 0 7px;
     font-size: var(--font-base);
     font-weight: 400;
     font-style: italic;
     color: var(--text-muted);
 }
+.lu-label-row { justify-content: space-between; gap: 10px; }
+.lu-label-row > span { display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; }
+.lu-fig-n { font-style: normal; font-weight: 600; color: var(--text); }
+.lu-views { font-size: var(--font-sm); color: var(--text-muted); }
+.lu-views .lu-word { font-style: italic; }
 
-.lu-desc { margin: 8px 0 0; font-size: var(--font-sm); line-height: 1.45; color: var(--text-secondary); }
+.lu-desc { margin: 6px 0 0; font-size: var(--font-sm); line-height: 1.45; color: var(--text-secondary); }
 
-/* Specimens: each with its locator drawing as an icon, the chosen one in its inks */
-.lu-specimens { display: flex; flex-direction: column; align-items: stretch; }
+/* Specimens: the six locator drawings in one row, the chosen one in its inks */
+.lu-specimens { display: flex; justify-content: space-between; align-items: center; gap: 2px; margin-right: 18px; }
 .lu-specimens button {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    padding: 3px 0;
+    display: block;
+    padding: 2px 0 5px;
     border: 0;
+    border-bottom: 1px solid transparent;
     background: none;
-    color: var(--text-secondary);
-    font: inherit;
-    font-size: var(--font-lg);
-    text-align: left;
     cursor: pointer;
-    transition: color 0.15s var(--ease-out);
+    transition: border-color 0.15s var(--ease-out), opacity 0.15s var(--ease-out);
 }
-.lu-spec-icon { width: 56px; height: 30px; flex-shrink: 0; }
-.lu-specimens button:hover { color: var(--text); }
-.lu-specimens button[aria-checked="true"] { color: var(--text); }
+.lu-spec-icon { display: block; width: 40px; height: 22px; }
+.lu-specimens button:hover { border-bottom-color: var(--border-strong); }
+.lu-specimens button[aria-checked="true"] { border-bottom-color: var(--text); }
 .lu-specimens button:focus-visible { outline: 1.5px solid var(--text); outline-offset: 1px; }
+.lu-spec-name { margin: 8px 0 0; font-size: var(--font-lg); color: var(--text); }
+.lu-spec-name i { font-size: var(--font-sm); color: var(--text-muted); }
 
-/* Rows: a hairline box, a swatch of the line's ink, the name */
-.lu-row {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    min-height: 30px;
-    font-size: var(--font-base);
+/* The conditions: a sentence whose values are the controls */
+.lu-sentence { margin: 0; font-size: var(--font-lg); line-height: 1.62; color: var(--text-secondary); }
+.lu-v {
     color: var(--text);
-    cursor: pointer;
+    white-space: nowrap;
+    cursor: ew-resize;
+    border-bottom: 1px dotted var(--text-muted);
+    touch-action: pan-y;
+    user-select: none;
+    -webkit-user-select: none;
+    transition: color 0.15s var(--ease-out), border-color 0.15s var(--ease-out);
 }
-.lu-row .lu-name { flex: 1; }
-.lu-row kbd {
-    font: inherit;
-    font-size: var(--font-sm);
-    color: var(--text-muted);
-    min-width: 1.2em;
-    text-align: right;
-}
-.lu-row input[type="checkbox"] {
-    appearance: none;
-    flex-shrink: 0;
-    width: 13px;
-    height: 13px;
-    margin: 0;
-    border: 1px solid var(--text-muted);
-    background: none;
-    cursor: pointer;
-    display: grid;
-    place-content: center;
-}
-.lu-row input[type="checkbox"]::after {
-    content: '';
-    width: 7px; height: 7px;
-    background: var(--line, var(--text));
-    transform: scale(0);
-    transition: transform 0.12s var(--ease-out);
-}
-.lu-row input[type="checkbox"]:checked { border-color: var(--line, var(--text)); }
-.lu-row input[type="checkbox"]:checked::after { transform: scale(1); }
-.lu-row input[type="checkbox"]:focus-visible { outline: 2px solid var(--text); outline-offset: 2px; }
+.lu-v:hover, .lu-v.drag, .lu-v.open { color: var(--accent); border-bottom-color: var(--accent); }
+.lu-v.tog { cursor: pointer; }
+.lu-v:focus-visible { outline: 1.5px solid var(--accent); outline-offset: 2px; }
+.lu-hint { margin: 6px 0 0; font-size: var(--font-sm); font-style: italic; color: var(--text-muted); }
+.lu-dialbox { margin: 8px 0 2px; }
+.lu-acts { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 16px; margin: 9px 0 0; font-size: var(--font-base); color: var(--text-muted); }
+.lu-act-group { white-space: nowrap; }
 
-.lu-swatch { width: 22px; border-top: 3px solid var(--line); flex-shrink: 0; }
-.lu-row input:not(:checked) ~ .lu-swatch { border-top: 1px dashed var(--line); }
-.lu-row.locked { color: var(--text-muted); cursor: not-allowed; }
-.lu-row.locked .lu-name { text-decoration: line-through; text-decoration-thickness: 1px; }
-.lu-row.locked .lu-swatch { opacity: 0.4; }
-
-/* Dials: a hairline track, a dot, the value; under its switch, or named on their own row */
-.lu-dial { display: grid; grid-template-columns: 1fr 4.6em; align-items: center; gap: 8px; min-height: 26px; padding-left: 21px; }
-.lu-dial-named { grid-template-columns: 6.6em 1fr 4.6em; padding-left: 0; font-size: var(--font-base); }
+/* Dials: a hairline track, a dot, the value */
+.lu-dial { display: grid; grid-template-columns: 6.2em 1fr 5.4em; align-items: center; gap: 8px; min-height: 26px; font-size: var(--font-base); color: var(--text); }
 .lu-dial output { font-size: var(--font-sm); color: var(--text-secondary); font-variant-numeric: lining-nums tabular-nums; text-align: right; }
-.lu-dial.locked { color: var(--text-muted); }
 .lu-dial input[type=range] {
-    --slider-color: var(--text);
+    --slider-color: var(--accent);
     -webkit-appearance: none; appearance: none;
     width: 100%; height: 18px; margin: 0; background: transparent; cursor: pointer;
 }
-.lu-dial input[type=range]:disabled { cursor: not-allowed; opacity: 0.4; }
 .lu-dial input[type=range]::-webkit-slider-runnable-track { height: 1px; background: var(--border-strong); }
 .lu-dial input[type=range]::-moz-range-track { height: 1px; background: var(--border-strong); }
 .lu-dial input[type=range]::-moz-range-progress { height: 1px; background: var(--slider-color); }
@@ -230,61 +202,35 @@
 .lu-dial input[type=range]:focus-visible { outline: none; }
 .lu-dial input[type=range]:focus-visible::-webkit-slider-thumb { outline: 1.5px solid var(--accent); outline-offset: 1px; }
 
-/* The inspector: a plain select on a hairline, its factors in small type */
-.lu-select { width: 100%; padding: 3px 0; font: inherit; font-size: var(--font-base); color: var(--text); background: transparent; border: 0; border-bottom: 1px solid var(--border-strong); border-radius: 0; }
+/* The enzyme: the rate as a budget, capacity times each factor on a log scale */
+.lu-select { max-width: 9.5em; padding: 1px 0; font: inherit; font-size: var(--font-sm); font-style: normal; color: var(--text-secondary); background: transparent; border: 0; border-bottom: 1px solid var(--border-strong); border-radius: 0; cursor: pointer; }
 .lu-select:focus-visible { outline: 1.5px solid var(--text); outline-offset: 2px; }
-.lu-factors { min-height: 3.6em; margin: 6px 0 4px; font-variant-numeric: lining-nums tabular-nums; }
+.lu-card { min-height: 8.6em; }
+.lu-card-name { margin: 0; font-size: var(--font-lg); line-height: 1.3; color: var(--text); }
+.lu-card-name i { font-size: var(--font-sm); color: var(--text-muted); }
+.lu-card-rate { margin: 2px 0 8px; font-size: var(--font-sm); line-height: 1.4; color: var(--text-secondary); font-variant-numeric: lining-nums tabular-nums; }
+.lu-budget { display: grid; grid-template-columns: 8.4em 1fr 3em; gap: 1px 8px; align-items: center; font-size: var(--font-sm); font-variant-numeric: lining-nums tabular-nums; }
+.lu-budget .k { color: var(--text-secondary); white-space: nowrap; }
+.lu-budget .v { text-align: right; color: var(--text); }
+.lu-budget .tot { color: var(--text); font-weight: 600; }
+.lu-budget .b { position: relative; height: 7px; border-bottom: 1px solid var(--border); }
+.lu-budget .b > span { position: absolute; left: 0; top: 0; height: 7px; background: var(--ink); transition: width 0.25s var(--ease-out), left 0.25s var(--ease-out); }
+/* What a factor took away is hatched, so the bar reads without colour */
+.lu-budget .b > .cut { background: repeating-linear-gradient(135deg, var(--ink) 0 1.5px, transparent 1.5px 4px); }
+.lu-card-why { margin: 7px 0 0; font-size: var(--font-sm); font-style: italic; line-height: 1.42; color: var(--text-muted); }
+.lu-card-acts { margin-top: 8px; }
+.lu-control { font-variant-numeric: lining-nums tabular-nums; }
 
-.lu-actions { display: flex; flex-wrap: wrap; gap: 4px 10px; margin: 0 0 6px -6px; }
-.lu-seg .lu-btn { padding: 2px 4px; }
-.lu-val { font-size: var(--font-sm); color: var(--text-secondary); font-variant-numeric: lining-nums tabular-nums; min-width: 2.2em; text-align: center; }
+/* Fig. 2: the trace, or the ladder */
+.lu-trace { display: block; width: 100%; height: 204px; }
+.lu-ladder { display: block; width: 100%; height: 300px; }
+.lu-readings { margin: 8px 0 0; display: grid; gap: 3px; font-size: var(--font-sm); line-height: 1.42; color: var(--text-secondary); font-variant-numeric: lining-nums tabular-nums; }
+.lu-readings b { font-weight: 400; color: var(--text); }
 
-.panel-hint { margin: 14px 0 0; font-size: var(--font-sm); font-style: italic; line-height: 1.45; color: var(--text-muted); }
-
-/* ─── Stats ─── */
-.lu-ladder { display: block; width: 100%; height: 330px; }
-
-.lu-pool { display: grid; grid-template-columns: 1fr auto; align-items: baseline; gap: 3px 8px; margin-bottom: 12px; font-size: var(--font-sm); }
-.lu-pool .lu-name { color: var(--text-secondary); }
-.lu-pool .lu-val { color: var(--text); text-align: right; }
-.lu-bar { display: block; grid-column: 1 / -1; height: 4px; border: 1px solid var(--border-strong); }
-.lu-bar > span { display: block; height: 100%; width: 0; background: var(--line, var(--text)); transition: width 0.3s var(--ease-out); }
-.lu-spark { display: block; grid-column: 1 / -1; width: 100%; height: 26px; }
-.lu-spark-red { margin-top: 6px; }
-
-.lu-stat { display: flex; justify-content: space-between; align-items: baseline; min-height: 24px; font-size: var(--font-sm); }
-.lu-stat .lu-name { color: var(--text-secondary); }
-.lu-stat .lu-val { color: var(--text); text-align: right; }
-.lu-health { margin: 2px 0 6px; }
-.lu-health > span { background: var(--ink-viridian); }
-.lu-health > span[data-level="low"] { background: var(--ink-sienna); }
-/* Critical health is drawn hatched as well as red, so it reads without colour */
-.lu-health > span[data-level="critical"] { background: repeating-linear-gradient(135deg, var(--accent) 0 2px, transparent 2px 4px); }
-
-.lu-split { display: flex; height: 4px; margin-top: 6px; border: 1px solid var(--border-strong); }
-.lu-split > span { display: block; height: 100%; width: 0; transition: width 0.3s var(--ease-out); }
-#atp-source-sub { background: var(--ink-sienna); }
-#atp-source-ox { background: repeating-linear-gradient(90deg, var(--ink-mulberry) 0 2px, transparent 2px 3px); }
-
-/* ─── Reference ─── */
-.lu-eqs, .lu-legend { margin: 0; font-size: var(--font-sm); line-height: 1.4; }
-.lu-eqs dt { margin-top: 8px; color: var(--text); padding-left: 30px; position: relative; }
-.lu-eqs dt::before { content: ''; position: absolute; left: 0; top: 0.7em; width: 22px; border-top: 3px solid var(--line, var(--text-muted)); }
-.lu-eqs dt:first-child { margin-top: 0; }
-.lu-eqs dd { margin: 1px 0 0 30px; color: var(--text-secondary); }
-
-.lu-legend { display: grid; grid-template-columns: 30px 1fr; gap: 7px 8px; align-items: start; }
-.lu-legend dd { margin: 0; color: var(--text-secondary); }
-.lg { display: block; margin-top: 0.35em; }
-.lg-proton { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); margin-left: 8px; }
-.lg-electron { width: 6px; height: 6px; border-radius: 50%; border: 1.2px solid var(--text); margin-left: 8px; }
-.lg-photon { width: 22px; height: 6px; background: linear-gradient(90deg, transparent 0 0) ; border-top: 1.4px dotted var(--ink-ochre); }
-.lg-line { width: 22px; border-top: 4px solid var(--ink-prussian); }
-.lg-off { width: 22px; border-top: 1px dashed var(--ink-prussian); margin-top: 0.6em; }
-.lg-hub { width: 9px; height: 9px; border-radius: 50%; border: 1.5px solid var(--text); margin-left: 6px; }
-svg.lg { width: 26px; height: 12px; margin-top: 0.2em; overflow: visible; }
-
+/* ─── The reference overlay ─── */
 .lu-ref-title { margin: 0; padding: 6px 0 9px; font-size: var(--font-lg); font-weight: 400; }
+.lu-ref-head { display: flex; align-items: center; justify-content: space-between; padding: 10px 16px 0 20px; border-bottom: 1px solid var(--border); }
+.lu-ref-head .lu-close { position: static; }
 #reference-overlay .sim-overlay-panel {
     width: min(640px, calc(100vw - 32px));
     max-height: min(80vh, 760px);
@@ -307,37 +253,38 @@ svg.lg { width: 26px; height: 12px; margin-top: 0.2em; overflow: visible; }
 .sim-tooltip.canvas-tip .ct-eq { font-size: var(--font-sm); color: var(--text); }
 .sim-tooltip.canvas-tip em { font-size: var(--font-sm); color: var(--text-muted); }
 
-/* ─── Phones: the margin is a sheet ─── */
+/* The knockouts' checkboxes are for the keyboard and screen readers; the plate's key is their face */
+.lu-knockouts { min-inline-size: 0; }
+.lu-knockouts:focus-within { position: static; width: auto; height: auto; margin: 9px 0 0; clip: auto; overflow: visible; white-space: normal; border: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 4px 12px; font-size: var(--font-sm); }
+.lu-knockouts:focus-within legend { font-style: italic; color: var(--text-muted); padding: 0; margin-bottom: 2px; width: 100%; }
+
+/* ─── Phones: a folio. The page scrolls through the figure in reading order, and each
+   part of the legend follows the register it describes: the specimen, panel a (panned
+   sideways), the caption and the conditions, panel b, the enzyme, Fig. 2 ─── */
+.lu-scene-map { display: none; }
 @media (max-width: 760px) {
-    .lu-stage, .lu-closed .lu-stage { grid-template-columns: minmax(0, 1fr); }
-    .lu-capbar { padding: 8px 12px 10px; gap: 8px; }
+    html:has(> .lu-body) { overflow: auto; }
+    .sim-body.lu-body { overflow: visible; height: auto; }
+    .lu-body > .colophon { position: sticky; top: 0; left: 0; z-index: 100; width: 100%; box-sizing: border-box; margin: 0; padding: 10px 16px; background: var(--bg-canvas); border-bottom: 1px solid var(--border); }
+    .lu-stage, .lu-closed .lu-stage { display: flex; flex-direction: column; height: auto; }
+    .lu-figure, .lu-legend, .lu-closed .lu-legend, .lu-legend-body { display: contents; visibility: visible; }
+    .lu-open, #close-legend { display: none !important; }
+    .lu-sec-spec { order: 1; }
+    #sim-container { order: 2; }
+    .lu-capbar { order: 3; }
+    .lu-sec-cond { order: 4; }
+    #map-container { order: 5; }
+    .lu-sec-enz { order: 6; }
+    .lu-fig2 { order: 7; }
+    .lu-refs { order: 8; }
+    .lu-sec { padding: 12px 16px; }
+    .lu-sec-spec { border-bottom: 0; }
+    .lu-scene { flex: none; touch-action: pan-y; }
+    .lu-scene-map { display: block; border-top: 1px solid var(--border); }
+    .lu-capbar { padding: 8px 16px 10px; gap: 8px; border-bottom: 1px solid var(--border); }
     .lu-capbar .caption { font-size: 0.86rem; line-height: 1.4; }
-    .lu-zoom .lu-zoom-level, #zoom-reset-btn { display: none; }
-    /* The scene starts under the colophon, so a panned map never runs beneath it */
-    .lu-figure { padding-top: 54px; }
-    .lu-open { display: block; position: fixed; top: 16px; right: 12px; }
-    .lu-margin {
-        position: fixed;
-        left: 0; right: 0; bottom: 0;
-        z-index: 200;
-        max-height: 64vh;
-        border-left: 0;
-        border-top: 1px solid var(--border-strong);
-        transition: transform 0.35s var(--ease-out), visibility 0s;
-    }
-    .lu-closed .lu-margin { visibility: hidden; transform: translateY(100%); transition: transform 0.35s var(--ease-out), visibility 0s 0.35s; }
-    .lu-margin-head { padding: 8px 12px 0 16px; }
-    .lu-panels { padding: 2px 16px 20px; }
-    .lu-tabs .tab-btn { font-size: var(--font-base); }
-    .lu-specimens { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px 8px; }
-    .lu-specimens button { flex-direction: column; gap: 2px; font-size: var(--font-sm); text-align: center; }
-    .lu-row { min-height: 40px; }
-}
-
-@media (pointer: coarse) {
-    .lu-row kbd { display: none; }
-}
-
-@media (prefers-reduced-motion: reduce) {
-    .lu-margin, .lu-closed .lu-margin { transition: none; }
+    .lu-zoom { display: none; }
+    .lu-specimens { margin-right: 0; }
+    .lu-dial { min-height: 40px; }
+    .lu-trace { height: 220px; }
 }

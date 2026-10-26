@@ -37,8 +37,10 @@ export const Membrane = {
     hit: [],          // [{ key, x, y, w, h }]
     tip: null,        // cristae: { x, y, r } and the dimer's transforms
     narrow: false,
+    pulseOf: null,    // complex key → its reactions' pulse factor now (main.js), for the callouts' marks
 
-    layout(specId, x0, x1, top, narrow, budget) {
+    /** Lay out the specimen between x0 and x1; with fixedS (px per nm) the cut takes its own width instead, and x1 follows. */
+    layout(specId, x0, x1, top, narrow, budget, fixedS) {
         const spec = SPECIMENS[specId] || SPECIMENS.thylakoid;
         this.specId = specId; this.spec = spec; this.narrow = narrow;
         this.x0 = x0; this.x1 = x1;
@@ -48,7 +50,8 @@ export const Membrane = {
         const endL = spec.frame === 'cristae' ? 48 : 6, endR = spec.frame === 'cristae' ? 26 : spec.frame === 'sac' || spec.frame === 'granum' ? 14 : 6;
         const blockNm = F.outer + MEM + (F.single ? 0 : F.lumen + MEM) + BELOW;
         const fs = this.fs = narrow ? 10 : 12, lh = fs + 4;
-        const s = this.s = Math.max(2.1, Math.min(narrow ? 3.4 : 7, (x1 - x0) / (foot + endL + endR), (budget - 2 * lh - 8) / blockNm));
+        if (fixedS) x1 = this.x1 = x0 + (foot + endL + endR) * fixedS;
+        const s = this.s = fixedS || Math.max(2.1, Math.min(narrow ? 3.4 : 7, (x1 - x0) / (foot + endL + endR), (budget - 2 * lh - 8) / blockNm));
 
         // Complexes along the straight membrane, centred in the space between the ends
         const span = x1 - x0 - (endL + endR) * s, spare = Math.max(0, span - foot * s);
@@ -258,13 +261,18 @@ export const Membrane = {
     },
 
     drawLabels(c, hoverKey) {
-        drawCallouts(c, this.callouts, this.fs, hoverKey);
+        drawCallouts(c, this.callouts, this.fs, hoverKey, this.pulseOf && ((k) => {
+            const p = this.pulseOf(k);
+            if (!p || Math.abs(p.f - 1) < 0.03) return null;
+            return { text: (p.held ? 'held ' : '') + '×' + (p.f >= 1.95 ? p.f.toFixed(1) : p.f.toFixed(2)), a: Math.min(1, 0.35 + Math.abs(Math.log(p.f)) / Math.log(5)) };
+        }));
         // The lumen's name, in its far end where no complex stands
         const L = this.lumen, sd = this.spec.sides, fs = this.fs;
         c.save(); c.font = `italic ${fs}px ${_FONT.text}`; c.fillStyle = K.P.muted; c.textBaseline = 'middle';
         if (this.spec.frame === 'sac' || this.spec.frame === 'granum') {
             const R = (this.mid - this.upperMid) / 2;
-            c.textAlign = 'center'; c.fillText(this.narrow ? 'lumen' : sd.lumen.replace('thylakoid ', ''), this.x1 - 12 * this.s + R * 0.1, (L.y0 + L.y1) / 2);
+            // in the straight part, just short of the sac's rounded end, where the bilayer doesn't close in on it
+            c.textAlign = 'right'; c.fillText(this.narrow ? 'lumen' : sd.lumen.replace('thylakoid ', ''), this.x1 - 12 * this.s - R * 0.15, (L.y0 + L.y1) / 2);
         } else if (this.spec.frame === 'cristae') {
             c.textAlign = 'left'; c.fillText(sd.lumen, this.tip.x + this.tip.r * 0.2, (L.y0 + L.y1) / 2);
         } else {

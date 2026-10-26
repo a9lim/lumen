@@ -3,6 +3,23 @@
 // KaTeX math: $$...$$ for display, $...$ for inline.
 
 export const REFERENCE = {
+    equations: {
+        title: 'Net equations',
+        body: `
+<p>Each line's textbook budget, per turn as drawn; the model runs every step as its own reaction, so the cell's real yields follow its conditions.</p>
+<table>
+<tr><td style="padding:4px 8px">Glycolysis</td><td style="padding:4px 8px">Glc → 2 Pyr + 2 ATP + 2 NADH</td></tr>
+<tr><td style="padding:4px 8px">Calvin cycle ×6</td><td style="padding:4px 8px">6 CO₂ + 18 ATP + 12 NADPH → 2 G3P</td></tr>
+<tr><td style="padding:4px 8px">Krebs cycle ×2</td><td style="padding:4px 8px">2 AcCoA → 4 CO₂ + 6 NADH + 2 ATP, and 2 QH₂ by succinate dehydrogenase</td></tr>
+<tr><td style="padding:4px 8px">Pentose phosphate ×6</td><td style="padding:4px 8px">G6P → 12 NADPH + 6 CO₂</td></tr>
+<tr><td style="padding:4px 8px">Fermentation</td><td style="padding:4px 8px">2 Pyr + 2 NADH → 2 EtOH + 2 CO₂, or → 2 lactate</td></tr>
+<tr><td style="padding:4px 8px">β-oxidation ×7</td><td style="padding:4px 8px">Palmitoyl-CoA → 8 AcCoA + 7 NADH, and 7 QH₂ through ETF</td></tr>
+<tr><td style="padding:4px 8px">Fatty-acid synthesis ×7</td><td style="padding:4px 8px">8 AcCoA + 14 NADPH + 7 ATP → palmitate</td></tr>
+<tr><td style="padding:4px 8px">Oxidative phosphorylation</td><td style="padding:4px 8px">NADH + ½O₂ → H₂O; the ATP it yields is the cell's own P/O ratio (Fig. 2's ladder)</td></tr>
+<tr><td style="padding:4px 8px">Linear light reactions</td><td style="padding:4px 8px">H₂O + NADP⁺ → ½O₂ + NADPH, with the ATP its protons buy</td></tr>
+</table>
+`,
+    },
     glycolysis: {
         title: 'Glycolysis',
         body: `
@@ -303,7 +320,7 @@ $$v = V_{\\max} \\cdot \\eta_{\\text{reg}} \\cdot \\eta_{\\text{sat}} \\cdot \\e
 <li>$\\eta_{\\text{sat}}$ is how saturated the enzyme is with its substrates and products (convenience kinetics).</li>
 <li>$\\eta_{\\text{reg}}$ is its effectors: ATP/ADP, NADH/NAD⁺, AMP, citrate, light, and others.</li>
 </ul>
-<p>More enzyme makes a reaction faster but cannot move its equilibrium. The inspector in the Stats tab shows each factor for any enzyme.</p>
+<p>More enzyme makes a reaction faster but cannot move its equilibrium. The enzyme card in the legend shows each factor for the enzyme you last clicked, as a budget from its capacity down to its rate.</p>
 
 <h3>Time</h3>
 <p>The system is stiff (fast membrane steps beside slow storage), so it is integrated by a linearly implicit Rosenbrock method, which keeps every conservation law exactly. A trajectory depends only on model time, not on how the screen's frames slice it. The figure runs the chemistry slowed, 30× by default (300× to 3×); slowing it changes how much chemistry a second shows, not the chemistry.</p>
@@ -465,7 +482,7 @@ $$\\text{PPP} \\xrightarrow{\\text{NADPH}} \\text{GR} \\xrightarrow{\\text{GSH}}
     ladder: {
         title: 'Electrons, by redox potential',
         body: `
-<p>The figure at the top of the Stats tab is the <b>Z-scheme</b>, drawn live. Every carrier of the membrane's chains stands at its midpoint redox potential $E'_0$ (volts at pH 7), with more reducing (more negative) potentials at the top, so an electron moving down the ladder gives up free energy, $\\Delta G'_0 = -nF\\,\\Delta E'_0$. Each electron in flight in the cross-section is a bead on its carrier.</p>
+<p>Fig. 2's ladder view is the <b>Z-scheme</b>, drawn live. Every carrier of the membrane's chains stands at its midpoint redox potential $E'_0$ (volts at pH 7), with more reducing (more negative) potentials at the top, so an electron moving down the ladder gives up free energy, $\\Delta G'_0 = -nF\\,\\Delta E'_0$. Each electron in flight in the cross-section is a bead on its carrier.</p>
 <h3>Two lifts</h3>
 <p>Electrons fall on their own, but light lifts them. A photon absorbed at P680 raises an electron by about 2 V, to P680*, from which it falls through pheophytin, the plastoquinones and the cytochrome $b_6f$ complex to plastocyanin. A second photon at P700 lifts it again, to P700*, and it falls through A₀, A₁ and the iron–sulfur clusters to ferredoxin and NADP⁺. Water, at $+0.82$ V, refills P680 through the Mn₄CaO₅ cluster. Cyclic flow (the dashed return from ferredoxin to plastoquinone) loops an electron around photosystem I and makes no NADPH.</p>
 <h3>Only down</h3>

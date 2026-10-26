@@ -8,7 +8,7 @@
    =================================================================== */
 import { Membrane } from './membrane.js';
 import { MapView } from './map.js';
-import { drawMap } from './mapdraw.js';
+import { drawMapLines, drawMapText, keyHeight } from './mapdraw.js';
 import { PAIR } from './maplayout.js';
 import Particles from './particles.js';
 import Stroma from './stroma.js';
@@ -31,6 +31,12 @@ const _SEG_INFO = { g0: 'HK', g1: 'PGI', g2: 'PFK', g3: 'ALDO', g5: 'GAPDH', g6:
 const _REV_INFO = { g0: 'G6Pase', g2: 'FBPase' };
 const buzz = () => { if (typeof _haptics !== 'undefined') _haptics.trigger('light'); };
 const HOLD_MS = 400;   // a press this long sustains a small perturbation until let go (and starts the paired baseline)
+const COLOPHON_W = 270, COLOPHON_H = 58;   // the colophon's corner, screen px, which the scene's photons stay out of
+const FOLIO_S = 3.4;   // px per nm of panel a on phones: about twice what fitting the cut to the screen gives
+function size(cv, w, h, dpr) {
+    cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr);
+    cv.style.width = w + 'px'; cv.style.height = h + 'px';
+}
 // What a stroma molecule's tooltip says
 const _MOL_INFO = {
     atp: { on: 'ATP', off: 'ADP', total: 'totalAtpAdp', pool: 'adenylates', charged: 'carry three phosphates', what: 'Adenosine triphosphate / diphosphate', does: 'ATP synthase and the kinases make ATP; nearly every pathway spends it.' },
@@ -45,15 +51,16 @@ const Renderer = {
     worldW: 0, worldH: 0, narrow: false,
     etcComplexes: {}, membraneY: 0, membraneH: 0,
     specId: 'thylakoid',
-    onPulse: null, onRelease: null, onFactors: null, onInteract: null,
+    onPulse: null, onRelease: null, onFactors: null, onInteract: null, onToggleLine: null,
     hover: null, warm: false, _warmUntil: 0,
     rotor: { phase: 0, target: 0, seen: 0, split: 0 },
     _o2: { out: 0, in: 0 },
     _cache: null, _cacheKey: '', _wantKey: '', _wantT: 0,
 
-    init(canvas) {
+    init(canvas, mapCanvas) {
         this.canvas = canvas;
         this.ctx = canvas.getContext('2d');
+        this.mapCanvas = mapCanvas; this.mapCtx = mapCanvas.getContext('2d');
         this.camera = createCamera({ width: 100, height: 100, zoom: 1, minZoom: 1, maxZoom: 4, clamp: (c) => this._clamp(c) });
         this.resize();
         this.camera.bindWheel(canvas);
@@ -62,31 +69,63 @@ const Renderer = {
             reset: document.getElementById('zoom-reset-btn'), display: document.getElementById('zoom-indicator'),
             onReset: () => this.resetView(),
         });
-        this._initInteraction();
+        this._bindInput(canvas, 'scene');
+        this._bindInput(mapCanvas, 'map');
         K.readPalette();
     },
 
     resize() {
-        const r = this.canvas.parentElement.getBoundingClientRect();
+        this.folio = window.matchMedia('(max-width: 760px)').matches;
         this.dpr = Math.min(2, window.devicePixelRatio || 1);
-        this.W = Math.max(10, Math.round(r.width)); this.H = Math.max(10, Math.round(r.height));
-        this.canvas.width = Math.round(this.W * this.dpr); this.canvas.height = Math.round(this.H * this.dpr);
-        this.canvas.style.width = this.W + 'px'; this.canvas.style.height = this.H + 'px';
+        const r = this.canvas.parentElement.getBoundingClientRect();
+        this.W = Math.max(10, Math.round(r.width));
+        if (!this.folio) this.H = Math.max(10, Math.round(r.height));
         this.layout();
+        // On phones each register has its own canvas, as tall as it draws, and the page scrolls
+        if (this.folio) { this.canvas.parentElement.style.height = this.H + 'px'; this.mapCanvas.parentElement.style.height = this.mapH + 'px'; }
+        else { this.canvas.parentElement.style.height = ''; this.mapCanvas.parentElement.style.height = ''; }
+        size(this.canvas, this.W, this.H, this.dpr);
+        size(this.mapCanvas, this.folio ? this.W : 0, this.folio ? this.mapH : 0, this.dpr);
         this.camera.viewportW = this.W; this.camera.viewportH = this.H;
         this.resetView();
     },
 
     /** Lay out the membrane and the map for the current specimen and size. */
     layout() {
+        if (this.folio) { this._layoutFolio(); return; }
         const W = this.W, H = this.H, narrow = this.narrow = W < 640;
         const pad = narrow ? 12 : 18, top = narrow ? 14 : 66;
+        MapView.keyScreen = null;
         const memBottom = Membrane.layout(this.specId, pad, W - pad, top, narrow, narrow ? 1e9 : Math.max(200, H * 0.46 - top));
         // The registers' titles and the scale bar sit between them
         this.titleY = memBottom + (narrow ? 15 : 18);
-        const mapTop = memBottom + (narrow ? 48 : 58);
+        const mapTop = this._mapTop = memBottom + (narrow ? 48 : 58);
         const mh = MapView.build(pad, mapTop, W - 2 * pad, Math.max(200, H - mapTop - 12), narrow);
         this.worldW = W; this.worldH = Math.max(H, mapTop + mh + (narrow ? 24 : 14));
+        this._afterLayout();
+    },
+
+    /**
+     * Phones: panel a at a readable fixed scale, as wide as the cut needs and
+     * panned sideways; panel b, the upright map, on its own canvas at the
+     * screen's width. The page scrolls between them and the legend's parts.
+     */
+    _layoutFolio() {
+        const W = this.W, pad = 12;
+        this.narrow = true;
+        const memBottom = Membrane.layout(this.specId, pad, 0, 12, true, 1e9, FOLIO_S);
+        this.titleY = memBottom + 15;
+        this.H = Math.round(this.titleY + 12);
+        this.worldW = Math.max(W, Math.round(Membrane.x1 + pad)); this.worldH = this.H;
+        this._mapTop = 30;
+        const mh = MapView.build(pad, this._mapTop, W - 2 * pad, 1e4, true);
+        // the key goes under the map, where it has the width for its two columns
+        MapView.keyScreen = { x: pad, y: this._mapTop + mh + 10, w: W - 2 * pad };
+        this.mapH = Math.round(MapView.keyScreen.y + keyHeight(MapView.G.us) + 12);
+        this._afterLayout();
+    },
+
+    _afterLayout() {
         this.etcComplexes = {};
         for (const [k, p] of Object.entries(Membrane.pos)) this.etcComplexes[k] = { cx: p.x, cy: p.y };
         this.membraneY = Membrane.memTop; this.membraneH = Membrane.memBot - Membrane.memTop;
@@ -96,16 +135,26 @@ const Renderer = {
         this._cacheKey = '';
     },
 
+    /** A new cell under the microscope (a preset): the map fits what it has. */
+    cellChanged() {
+        if (this.folio) return;
+        const mh = MapView.rebuild();
+        this.worldH = Math.max(this.H, this._mapTop + mh + (this.narrow ? 24 : 14));
+        this._clamp(this.camera);
+    },
+
     setSpecimen(id) {
         if (!SPECIMENS[id] || id === this.specId) return;
         this.specId = id;
         Particles.clear();
-        this.layout();
+        // phones size each canvas to what it draws, so a new cut resizes them; desktop only re-lays the world
+        if (this.folio) this.resize(); else { this.layout(); this._clamp(this.camera); }
     },
 
     resetView() {
         const c = this.camera;
-        c.zoom = 1; c.x = this.W / 2; c.y = this.H / 2;
+        // a phone's cut opens on its left end, where each specimen's story starts
+        c.zoom = 1; c.x = this.folio ? this.W / 2 : this.W / 2; c.y = this.H / 2;
         this._clamp(c);
     },
 
@@ -154,8 +203,14 @@ const Renderer = {
     },
 
     draw(dt) {
-        const c = this.ctx;
         MapView.updateVis(dt);
+        const hov = this.hover && this.hover.kind !== 'mem' ? (this.hover.seg || this.hover.loop || this.hover.row) : null;
+        this._drawScene(this.ctx, dt, !this.folio, hov);
+        if (this.folio) this._drawMapCanvas(dt, hov);
+    },
+
+    /** The scene: panel a, and on wide screens panel b under the same camera. */
+    _drawScene(c, dt, withMap, hov) {
         c.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
         c.fillStyle = K.P.canvas; c.fillRect(0, 0, this.W, this.H);
         c.save();
@@ -164,29 +219,63 @@ const Renderer = {
         Membrane.drawLive(c, this.rotor.phase);
         Stroma.draw(c, Membrane.s * this.camera.zoom * this.dpr);
         Stroma.drawRadicals(c);
-        drawMap(c, this.hover && this.hover.kind !== 'mem' ? (this.hover.seg || this.hover.loop) : null, dt);
-        Stroma.drawThreads(c);
+        if (withMap) {
+            // Threads run under the map's names, so they never cross text
+            drawMapLines(c, hov, dt);
+            Stroma.drawThreads(c);
+            drawMapText(c, hov);
+        }
         drawDetail(c, Membrane, this.camera.zoom);
-        Particles.draw(c);
+        // Photons come from above: keep them out of the colophon's corner (screen space)
+        if (!this.narrow) {
+            c.save(); c.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
+            c.beginPath(); c.rect(COLOPHON_W, 0, this.W, this.H); c.rect(0, COLOPHON_H, COLOPHON_W, this.H); c.clip();
+            this.camera.applyToCanvas(c);
+            Particles.draw(c);
+            c.restore();
+        } else Particles.draw(c);
         drawCarrierSites(c, Membrane, this.camera.zoom, Particles.riding || []);
         Membrane.drawLabels(c, this.hover && this.hover.kind === 'mem' ? this.hover.key : null);
-        this._drawTitles(c);
-        // Where the cut is: the map's empty top right, on wide screens (the composite has no cell)
-        if (!this.narrow && this.specId !== 'composite') {
-            const [lx, ly] = MapView.T(20.3, -0.55), [lx2, ly2] = MapView.T(24.55, 2.25);
+        this._drawTitles(c, withMap);
+        // Where the cut is: the map's empty top right (or its left column), on wide screens (the composite has no cell)
+        if (withMap && !this.narrow && this.specId !== 'composite') {
+            const L = MapView.locBox, [lx, ly] = MapView.T(L[0], L[1]), [lx2, ly2] = MapView.T(L[2], L[3]);
             if (lx2 - lx > 120) drawLocator(c, lx, ly, lx2 - lx, ly2 - ly, this.specId, { fs: 12, label: 'a' });
         }
         c.restore();
+        // Phones: the cut runs on past the screen's edge; the paper fades there, toward the rest of it
+        if (this.folio) {
+            const cam = this.camera, vw = this.W / cam.zoom, more = [cam.x - vw / 2 > 1, cam.x + vw / 2 < this.worldW - 1];
+            for (const [i, side] of [[0, -1], [1, 1]]) {
+                if (!more[i]) continue;
+                const x0 = side < 0 ? 0 : this.W - 28, g = c.createLinearGradient(x0, 0, x0 + 28, 0);
+                g.addColorStop(side < 0 ? 0 : 1, K.P.canvas); g.addColorStop(side < 0 ? 1 : 0, K.rgba(K.P.canvas, 0));
+                c.fillStyle = g; c.fillRect(x0, 0, 28, this.H);
+            }
+        }
+    },
+
+    /** Phones: panel b on its own canvas, the upright map at the screen's width. */
+    _drawMapCanvas(dt, hov) {
+        const c = this.mapCtx;
+        c.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
+        c.fillStyle = K.P.canvas; c.fillRect(0, 0, this.W, this.mapH);
+        panelTitle(c, 14, 20, 'b', 'Carbon network, by flux', 10.5);
+        drawMapLines(c, hov, dt);
+        drawMapText(c, hov);
+        // Where the cut is: the upright map's empty top right
+        if (this.specId !== 'composite') { const U = MapView.G.U; drawLocator(c, this.W - 12 - 4.3 * U, this._mapTop + 0.3 * U, 4.3 * U, 2.5 * U, this.specId, { fs: 10.5, label: 'a' }); }
     },
 
     /** Panel a's title and scale under the cross-section, a hairline, panel b's title over the map. */
-    _drawTitles(c) {
+    _drawTitles(c, withMap = true) {
         const n = this.narrow, fs = n ? 10.5 : 12.5, x0 = Membrane.x0, y = this.titleY, spec = Membrane.spec;
         const r = panelTitle(c, x0 + 2, y, 'a', n ? spec.name : spec.name + ', cut through, to scale', fs);
         scaleBar(c, r + (n ? 14 : 22), y - 2, Membrane.s, 10, fs - 1.5);
         c.save(); c.font = `italic ${fs}px ${_FONT.text}`; c.fillStyle = K.P.muted; c.textAlign = 'right'; c.textBaseline = 'alphabetic';
         if (!n || Membrane.x1 - r > 150) c.fillText(spec.sides.below, Membrane.x1 - 2, y);
         c.restore();
+        if (!withMap) return;
         hairline(c, x0, Membrane.x1, y + 9);
         panelTitle(c, x0 + 2, y + 9 + fs + 8, 'b', n ? 'Carbon network' : 'The carbon network, by flux', fs);
     },
@@ -235,7 +324,8 @@ const Renderer = {
     },
 
     // ─── Input ───
-    _pick(clientX, clientY) {
+    _pick(clientX, clientY, which = 'scene') {
+        if (which === 'map') { const r = this.mapCanvas.getBoundingClientRect(); return MapView.hitTest(clientX - r.left, clientY - r.top, 11); }
         const r = this.canvas.getBoundingClientRect();
         const w = this.camera.screenToWorld(clientX - r.left, clientY - r.top);
         const tol = 9 / this.camera.zoom;
@@ -244,11 +334,15 @@ const Renderer = {
         }
         const B = Membrane.band;
         if (B && w.y > B.y0 - 4 && w.y < B.y1 + 4) { const m = Stroma.pick(w.x, w.y, Math.max(tol, 1.2 * Membrane.s)); if (m) return { kind: 'mol', m }; }
-        return MapView.hitTest(w.x, w.y, tol);
+        return this.folio ? null : MapView.hitTest(w.x, w.y, tol);
     },
 
     _info(hit) {
         if (!hit) return null;
+        if (hit.kind === 'key') {
+            const r = hit.row;
+            return { name: r.name, desc: `${r.on ? 'Click to knock out' : 'Click to restore'} its enzymes (key ${r.key}). Line weight and the figure read carbon flux, ${r.flux}.` };
+        }
         if (hit.kind === 'mem') {
             const info = ENZYMES[_ETC_INFO[hit.key]];
             if (!info) return null;
@@ -281,6 +375,7 @@ const Renderer = {
 
     /** Pulse (sign 1) or inhibit (−1) what's under the pointer, each enzyme once; hold sustains it. */
     _fire(hit, sign, hold = false) {
+        if (hit && hit.kind === 'key') { if (!hold && this.onToggleLine) { this.onInteract && this.onInteract(); this.onToggleLine(hit.row.toggle); return true; } return false; }
         const t = this._target(hit);
         if (!t || !this.onPulse) return false;
         if (this.onInteract) this.onInteract();
@@ -300,33 +395,44 @@ const Renderer = {
         this._tooltip.show(x, y);
     },
 
-    _initInteraction() {
-        const c = this.canvas;
-        let down = null, moved = false, holdTimer = 0, held = null;
+    /**
+     * Input on a canvas: 'scene' (the membrane, and on wide screens the map
+     * under the same camera) or 'map' (the phones' map canvas). A click pulses
+     * what it hits, right or middle click inhibits, and holding still for
+     * 400 ms holds it until let go. A drag pans the scene (on phones sideways
+     * only, since the page scrolls), and two fingers pinch it.
+     */
+    _bindInput(c, which) {
+        const pick = (x, y) => this._pick(x, y, which), pans = which === 'scene';
+        let down = null, moved = false, holdTimer = 0, held = null, lastTouch = -1e9;
+        // the mouse events a browser emulates after a touch would pulse (or toggle) a second time
+        const emulated = () => performance.now() - lastTouch < 800;
         c.addEventListener('mousedown', (e) => {
+            if (emulated()) return;
             down = { x: e.clientX, y: e.clientY, b: e.button }; moved = false;
             // Held still on an enzyme, the pulse holds at its peak until let go
             clearTimeout(holdTimer);
-            const hit = this._pick(e.clientX, e.clientY);
+            const hit = pick(e.clientX, e.clientY);
             holdTimer = setTimeout(() => { if (down && !moved && this._fire(hit, down.b === 0 ? 1 : -1, true)) { held = hit; buzz(); } }, HOLD_MS);
         });
         window.addEventListener('mousemove', (e) => {
             if (down && down.b === 0) {
                 if (Math.abs(e.clientX - down.x) + Math.abs(e.clientY - down.y) > 4) moved = true;
-                if (moved) { this.camera.panBy(e.movementX, e.movementY); this._tooltip?.hide(); return; }
+                if (moved) { if (pans) this.camera.panBy(e.movementX, this.folio ? 0 : e.movementY); this._tooltip?.hide(); return; }
             }
             if (e.target !== c) return;
-            const hit = this._pick(e.clientX, e.clientY);
+            const hit = pick(e.clientX, e.clientY);
             this.hover = hit;
             const info = this._info(hit);
-            c.style.cursor = hit && (hit.kind === 'seg' || hit.kind === 'loop' || (hit.kind === 'mem' && COMPLEX[hit.key])) ? 'pointer' : hit ? 'help' : (this.camera.zoom > 1.001 || this.worldH > this.H + 1 ? 'grab' : '');
+            c.style.cursor = hit && (hit.kind === 'seg' || hit.kind === 'loop' || hit.kind === 'key' || (hit.kind === 'mem' && COMPLEX[hit.key])) ? 'pointer'
+                : hit ? 'help' : pans && (this.camera.zoom > 1.001 || this.worldH > this.H + 1 || this.worldW > this.W + 1) ? 'grab' : '';
             if (info) this._tip(e.clientX, e.clientY, info); else this._tooltip?.hide();
         });
         window.addEventListener('mouseup', (e) => {
             clearTimeout(holdTimer);
             if (held) { this._let(held); held = null; }
-            else if (down && !moved && e.target === c) {
-                if (this._fire(this._pick(e.clientX, e.clientY), e.button === 0 ? 1 : -1)) buzz();
+            else if (down && !moved && e.target === c && !emulated()) {
+                if (this._fire(pick(e.clientX, e.clientY), e.button === 0 ? 1 : -1)) buzz();
             }
             down = null;
         });
@@ -337,17 +443,18 @@ const Renderer = {
         window.addEventListener('blur', letGo);
         document.addEventListener('visibilitychange', () => { if (document.hidden) letGo(); });
 
-        // Touch: one finger pans and taps, holding still sustains (with the long-press tooltip), two pinch
+        // Touch: one finger pans and taps, holding still sustains (with the long-press tooltip), two pinch.
+        // On phones the page scrolls up and down (touch-action: pan-y), so the scene only pans sideways
         let t0 = null, tap = false, pinch = 0, touchTimer = 0;
         c.addEventListener('touchstart', (e) => {
-            clearTimeout(touchTimer);
+            clearTimeout(touchTimer); lastTouch = performance.now();
             if (e.touches.length === 2) {
-                const [a, b] = e.touches; pinch = Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY); tap = false;
+                const [a, b] = e.touches; pinch = pans ? Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY) : 0; tap = false;
                 if (held) { this._let(held); held = null; }
             } else if (e.touches.length === 1) {
                 const t = e.touches[0];
                 t0 = { x: t.clientX, y: t.clientY, lx: t.clientX, ly: t.clientY }; tap = true;
-                const hit = this._pick(t.clientX, t.clientY);
+                const hit = pick(t.clientX, t.clientY);
                 touchTimer = setTimeout(() => {
                     if (!tap) return;
                     tap = false;   // a long press is not a tap
@@ -357,7 +464,7 @@ const Renderer = {
             }
         }, { passive: true });
         c.addEventListener('touchmove', (e) => {
-            e.preventDefault();
+            if (!this.folio) e.preventDefault();
             const r = c.getBoundingClientRect();
             if (e.touches.length === 2 && pinch) {
                 const [a, b] = e.touches, d = Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY);
@@ -365,18 +472,19 @@ const Renderer = {
             } else if (e.touches.length === 1 && t0) {
                 const t = e.touches[0];
                 if (Math.abs(t.clientX - t0.x) + Math.abs(t.clientY - t0.y) > 8) { tap = false; clearTimeout(touchTimer); }
-                this.camera.panBy(t.clientX - t0.lx, t.clientY - t0.ly); t0.lx = t.clientX; t0.ly = t.clientY;
+                if (pans) this.camera.panBy(t.clientX - t0.lx, this.folio ? 0 : t.clientY - t0.ly);
+                t0.lx = t.clientX; t0.ly = t.clientY;
             }
         }, { passive: false });
         const touchOver = () => { clearTimeout(touchTimer); if (held) { this._let(held); held = null; } tap = false; t0 = null; pinch = 0; };
         c.addEventListener('touchcancel', touchOver);
         c.addEventListener('touchend', (e) => {
-            clearTimeout(touchTimer);
+            clearTimeout(touchTimer); lastTouch = performance.now();
             if (held && !e.touches.length) { this._let(held); held = null; tap = false; }
             if (tap && e.changedTouches.length === 1 && e.touches.length === 0) {
                 const t = e.changedTouches[0];
                 const inhibit = typeof window._lumenReverseMode === 'function' && window._lumenReverseMode();
-                if (this._fire(this._pick(t.clientX, t.clientY), inhibit ? -1 : 1)) buzz();
+                if (this._fire(pick(t.clientX, t.clientY), inhibit ? -1 : 1)) buzz();
             }
             if (e.touches.length < 2) pinch = 0;
             if (!e.touches.length) { tap = false; t0 = null; }
@@ -384,7 +492,7 @@ const Renderer = {
         if (window.matchMedia('(pointer: coarse)').matches && typeof bindTooltipTouch === 'function') {
             if (!this._tooltip) { this._tooltip = createSimTooltip(); this._tooltip.el.classList.add('canvas-tip'); }
             bindTooltipTouch(c, (x, y) => {
-                const info = this._info(this._pick(x, y));
+                const info = this._info(pick(x, y));
                 return info ? { text: info.name + (info.eq ? '\n' + info.eq : '') + '\n' + info.desc, screenX: x, screenY: y } : null;
             }, this._tooltip);
         }

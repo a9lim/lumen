@@ -19,7 +19,9 @@
 //   w (Win.thin, which the caption states).
 // - Threads and dockings are sampled from the one-way fluxes that change a
 //   drawn pool in the slab's compartment: coupling between a pool and an
-//   enzyme, not one molecule's journey.
+//   enzyme, not one molecule's journey. A reaction's forward and backward
+//   events pair up: the paired share is exchange (a thread, the pool as it
+//   was), and only its net share changes a molecule.
 // - The lumen's protons are drawn one per 2 mV of Δp, not counted: almost all
 //   translocated protons are bound to buffers.
 import { store } from './state.js';
@@ -50,6 +52,8 @@ const CHAINS = {
 const NDH1F_CYCLIC = { keys: ['fd', 'ndh1', 'pq', 'cytb6f', 'pc', 'psi'], type: 'cyclic', gates: { 3: 'CYTBF', 4: 'PSI' } };
 // Electrons per turnover where not two: a drawn turnover is a pair, so PSI's are drawn at half its rate
 const ELECTRONS = { PSI: 1 };
+// Protons each turnover pumps up through a drawn complex (per electron pair; ATP synthase's run backward are its ring's)
+const PUMP = { NDH1: ['ndh1', 4], NDH1F: ['ndh1', 4], PSII: ['psii', 2], CYTBF: ['cytb6f', 4], CYTOX: ['cytOx', 2], BR: ['br', 1] };
 // A later complex's turnover that met no drawn electron: a hop from its donor carrier, its effect on segment at
 const HOPS = { CYTBF: [['pq', 'cytb6f', 'pc'], 1], CYTOX: [['pc', 'cytOx'], 0], PSI: [['pc', 'psi', 'fd'], 1], FNR: [['fd', 'fnr'], 0] };
 
@@ -77,7 +81,7 @@ const Win = {
         Membrane.ring = engine.cell.ring || 12;
         this.rng = engine.rng.stream('window');
         this.pumps = []; this.credits = []; this.thin = {}; this.rate = {};
-        for (const k of ['atpOxidative', 'atpHydrolyzed', 'o2Produced', 'o2Consumed', 'protonsLeaked', 'rosProduced', 'rosScavenged']) store[k] = 0;
+        for (const k of ['atpOxidative', 'atpHydrolyzed', 'o2Produced', 'o2Consumed', 'protonsLeaked', 'protonsNnt', 'rosProduced', 'rosScavenged']) store[k] = 0;
         this.read();
     },
 
@@ -133,6 +137,10 @@ const Win = {
                 this._fire(rid, net >= 0, poisson(r, k / w * dt), w);
             }
         }
+        // Where protons are crossing up, wall s⁻¹ per complex: the lumen's shortfall crosses there too (particles.js)
+        const pumping = store.pumping = {};
+        for (const [rid, [key, n]] of Object.entries(PUMP)) if (this.rate[rid] > 0 && pos[key]) pumping[key] = (pumping[key] || 0) + this.rate[rid] * n;
+        if (this.rate.ATPS < 0 && pos.atpSyn) pumping.atpSyn = -this.rate.ATPS * this.hPerAtp;
         // A later complex's turnover that met no electron takes one from its donor's pool
         for (const c of this.credits) c.left -= dt;
         for (const c of this.credits) if (c.left <= 0) this._hop(c.rid);
@@ -189,18 +197,18 @@ const Win = {
                 Renderer.spawnElectronChain(C.keys, C.type, cb, gates);
             } else if (HOPS[rid] && fwd) this.credits.push({ rid, left: CREDIT_WAIT });
             else if (rid === 'BR' && fwd) { Renderer.spawnPhoton('br'); this._queue(1, 'br'); }
-            else if (rid === 'NNT' && fwd) { Renderer.poolEvent('nadh', -1, 'nnt'); Renderer.poolEvent('nadph', 1, 'nnt'); }
+            // NNT takes one proton out of the lumen per hydride it moves (store.protonsNnt, particles.js)
+            else if (rid === 'NNT' && fwd) { store.protonsNnt += w; Renderer.poolEvent('nadh', -1, 'nnt'); Renderer.poolEvent('nadph', 1, 'nnt'); }
         }
     },
 
     /** What one turnover of a chain's complex does where it is drawn (per electron pair). */
     _effect(rid) {
-        if (rid === 'NDH1') { this._queue(4, 'ndh1'); Renderer.poolEvent('nadh', -1, 'ndh1'); }
-        else if (rid === 'NDH1F') this._queue(4, 'ndh1');
-        else if (rid === 'PSII') { Renderer.spawnPhoton('psii'); Renderer.spawnPhoton('psii'); this._queue(2, 'psii'); store.o2Produced += 0.5; }
+        if (PUMP[rid]) this._queue(PUMP[rid][1], PUMP[rid][0]);
+        if (rid === 'NDH1') Renderer.poolEvent('nadh', -1, 'ndh1');
+        else if (rid === 'PSII') { Renderer.spawnPhoton('psii'); Renderer.spawnPhoton('psii'); store.o2Produced += 0.5; }
         else if (rid === 'PSI') { Renderer.spawnPhoton('psi'); Renderer.spawnPhoton('psi'); }
-        else if (rid === 'CYTBF') this._queue(4, 'cytb6f');
-        else if (rid === 'CYTOX') { this._queue(2, 'cytOx'); store.o2Consumed += 0.5; }
+        else if (rid === 'CYTOX') store.o2Consumed += 0.5;
         else if (rid === 'FNR') Renderer.poolEvent('nadph', 1, 'fnr');
     },
     /** A waiting electron meets a later complex's turnover, if one is waiting. */
@@ -225,8 +233,11 @@ const Win = {
 
     /**
      * Coupling events: each map reaction that makes or spends a drawn pool in
-     * the slab's compartment changes molecules at its one-way rates there (a
+     * the slab's compartment touches molecules at its one-way rates there (a
      * reaction at equilibrium still turns them over), and a thread runs to it.
+     * Forward and backward pair up: an event in the net direction changes a
+     * molecule with the chance (v₊ − v₋)/v₊, and the rest are exchange, a
+     * thread only (d ±0.5), so the drawn forms move at the net rate.
      */
     _pools(dt) {
         const e = this.engine, r = this.rng, comp = this.comp;
@@ -235,13 +246,15 @@ const Win = {
             if (R.membrane || R.exchange || R.transport) continue;
             const vf = e.state.vf[j], vb = e.state.vb[j];
             if (!vf && !vb) continue;
+            const net = Math.abs(vf - vb) / Math.max(vf, vb);
             for (const [i, nu] of R.stoich) {
                 const sp = e.species[i];
                 if (sp.comp !== comp || !(sp.id in POOLS)) continue;
                 // forward makes ν of the charged form; backward the reverse
                 for (const [rate, sgn] of [[vf, 1], [vb, -1]]) {
                     const n = poisson(r, Math.abs(rate * nu) * this.perMM / this.slow * dt * this._volFactor(R));
-                    for (let k = 0; k < n; k++) Renderer.mapEvent(sp.id, Math.sign(nu) * sgn, R.id);
+                    const major = (sgn > 0) === (vf >= vb);
+                    for (let k = 0; k < n; k++) Renderer.mapEvent(sp.id, Math.sign(nu) * sgn * (major && r() < net ? 1 : 0.5), R.id);
                 }
             }
         }

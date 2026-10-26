@@ -6,7 +6,10 @@
 // the molecule nearest that place: a membrane complex pulls one in to dock
 // (ATP synthase, FNR, NDH-1, NNT) and lets it go changed; an enzyme on the
 // map changes one and a thread runs from it to that enzyme, down, across and
-// down. What remains to match the cell's ratio changes at random.
+// down. Forward and backward events pair up in time, so the drawn count
+// wanders about the cell's and only what stays off is reconciled, a little at a
+// time and at random among free molecules; a docked molecule's fate is fixed.
+// No molecule changes back within a second while another could change instead.
 import { store } from './state.js';
 import { Membrane } from './membrane.js';
 import * as K from './complexes.js';
@@ -14,20 +17,26 @@ import * as K from './complexes.js';
 const TAU = Math.PI * 2;
 const PAIRS = [['atp', 'totalAtpAdp'], ['nadh', 'totalNad'], ['nadph', 'totalNadp'], ['fadh2', 'totalFad']];
 const THREAD_GROW = 0.3, THREAD_LIFE = 1.2;   // s
+const FORM_FADE = 0.15;     // s a molecule's glyph crossfades when it changes form
+const REFRACT = 1;          // s after a change before the same molecule is picked again, if another can be
+const RECONCILE = 1.5;      // s, the time constant of reconciling the drawn forms with the cell's ratio
+const REACH = 16;           // nm a complex reaches for a molecule to dock, before it takes a farther one
+const DOCK_V = 40, DOCK_V0 = 8;   // nm/s: a docking molecule's speed, at most and at least
 
 const Stroma = {
-    mols: [],       // { pool, on, x, y, vx, vy, rot, vr, dock }
+    mols: [],       // { pool, on, was, ft, x, y, vx, vy, rot, vr, dock }
     queue: [],      // changes with a place since the last update: { pool, d, site?: [x, y], to?: [x, y] }
-    threads: [],    // { m, to: [x, y], col, t }
+    threads: [],    // { m, to: [x, y], key, col, t }: one live thread per enzyme
+    focus: null,    // a map point [x, y]: threads ending there draw at full strength, the rest fainter
     radicals: [],   // superoxide, one per unit of active ROS: { x, y, vx, vy, rot, a, gone }
     gapY: 0,        // where a thread runs across, between the registers
-    _rnd: mulberry(7), _spr: null, _sprKey: '',
+    _rnd: mulberry(7), _spr: null, _sprKey: '', _acc: {},
 
     /** Molecules for the current pools, scattered through the band. */
     fill() {
-        this.mols = []; this.queue = []; this.threads = []; this.radicals = [];
+        this.mols = []; this.queue = []; this.threads = []; this.radicals = []; this._acc = {};
         for (const [k, tot] of PAIRS) for (let i = 0; i < store[tot]; i++) {
-            const m = { pool: k, on: i < store[k], x: 0, y: 0, vx: 0, vy: 0, rot: this._rnd() * TAU, vr: 0, dock: null };
+            const m = { pool: k, on: i < store[k], was: i < store[k], ft: 9, x: 0, y: 0, vx: 0, vy: 0, rot: this._rnd() * TAU, vr: 0, dock: null };
             this._place(m); this.mols.push(m);
         }
     },
@@ -35,27 +44,36 @@ const Stroma = {
     /** The band moved (a new layout or specimen): scatter the molecules again, keeping their forms. */
     relayout() {
         if (this.mols.length !== PAIRS.reduce((a, [, t]) => a + store[t], 0)) { this.fill(); return; }
-        for (const m of this.mols) { m.dock = null; this._place(m); }
+        for (const m of this.mols) { if (m.dock) form(m, m.dock.to); m.dock = null; this._place(m); }
         this.threads = []; this.queue = [];
     },
 
-    /** Queue a change with a place: site = where it docks, to = the map enzyme a thread runs to. */
+    /**
+     * Queue a change with a place: site = where it docks, to = the map enzyme a thread runs to.
+     * d is ±1 for a molecule changed, ±0.5 for an exchange (the enzyme's forward and backward
+     * events paired: a thread from a molecule it would take, which stays as it was).
+     */
     event(pool, d, site, to) {
-        if (d && (site || to)) this.queue.push({ pool, d: Math.sign(d), site: site || null, to: to || null });
+        if (d && (site || to)) this.queue.push({ pool, d: Math.sign(d), swap: Math.abs(d) < 1, site: site || null, to: to || null });
     },
 
     update(dt) {
         const B = Membrane.band, s = Membrane.s, r = this._rnd;
         if (!B) return;
         for (const m of this.mols) {
+            m.ft += dt;
             if (m.dock) {
-                const D = m.dock, dx = D.x - m.x, dy = D.y - m.y, d = Math.hypot(dx, dy), v = Math.max(30 * s, d * 4) * dt;
+                // drawn in to the site at a capped speed, then let go changed
+                const D = m.dock, dx = D.x - m.x, dy = D.y - m.y, d = Math.hypot(dx, dy), v = Math.min(DOCK_V * s, Math.max(DOCK_V0 * s, d * 4)) * dt;
                 if (D.phase === 0) { if (d <= v) { m.x = D.x; m.y = D.y; D.phase = 1; D.t = 0; } else { m.x += dx / d * v; m.y += dy / d * v; } }
-                else if ((D.t += dt) > 0.18) { m.on = D.to; m.vx = D.ex * 6 * s; m.vy = D.ey * 6 * s; m.dock = null; }
+                else if ((D.t += dt) > 0.18) { form(m, D.to); m.vx = D.ex * 6 * s; m.vy = D.ey * 6 * s; m.dock = null; }
                 continue;
             }
-            m.vx += (r() - 0.5) * 60 * s * dt; m.vy += (r() - 0.5) * 60 * s * dt; m.vx *= 0.92; m.vy *= 0.92;
             m.vr += (r() - 0.5) * 2.5 * dt; m.vr *= 0.95; m.rot += m.vr * dt;
+            // let go outside the band (the crista's ATP synthase heads): back into it at a bounded speed
+            const bx = Math.max(B.x0, Math.min(B.x1, m.x)), by = Math.max(B.y0, Math.min(B.y1, m.y)), bd = Math.hypot(bx - m.x, by - m.y);
+            if (bd > 0.5 * s) { const v = Math.min(bd, DOCK_V * s * dt); m.x += (bx - m.x) / bd * v; m.y += (by - m.y) / bd * v; m.vx = m.vy = 0; continue; }
+            m.vx += (r() - 0.5) * 60 * s * dt; m.vy += (r() - 0.5) * 60 * s * dt; m.vx *= 0.92; m.vy *= 0.92;
             // A molecule just let go inside a complex's footprint drifts out of it; elsewhere it bounces off
             const inside = this._blocked(m.x, m.y, 0);
             if (inside) {
@@ -72,30 +90,35 @@ const Stroma = {
             if (m.x < B.x0) { m.x = B.x0; m.vx = Math.abs(m.vx); } else if (m.x > B.x1) { m.x = B.x1; m.vx = -Math.abs(m.vx); }
             if (m.y < B.y0) { m.y = B.y0; m.vy = Math.abs(m.vy); } else if (m.y > B.y1) { m.y = B.y1; m.vy = -Math.abs(m.vy); }
         }
-        // Each queued change, in order, moves the molecule nearest its place (a molecule
-        // docking counts as what it will leave as); then whatever the store changed
-        // without a place is reconciled at random
+        // Each queued change, in order, moves the free molecule nearest its place that
+        // didn't just change (a docking one, the nearest within reach first)
+        const reach = (REACH * s) ** 2, far = 1e12;
         for (const ev of this.queue.splice(0)) {
             const near = ev.site || ev.to, d = ev.d;
             let best = null, bd = Infinity;
             for (const m of this.mols) {
                 if (m.pool !== ev.pool || m.dock || m.on === (d > 0)) continue;
-                const dd = near ? (m.x - near[0]) ** 2 + (m.y - (ev.site ? near[1] : B.y1)) ** 2 * (ev.site ? 1 : 0.2) : r();
+                let dd = (m.x - near[0]) ** 2 + (m.y - (ev.site ? near[1] : B.y1)) ** 2 * (ev.site ? 1 : 0.2);
+                if (ev.site && dd > reach) dd += far;
+                if (m.ft < REFRACT) dd += 2 * far;
                 if (dd < bd) { bd = dd; best = m; }
             }
             if (best) this._change(best, d, ev);
         }
+        // What the events leave off the cell's ratio is reconciled at a rate in proportion to
+        // it (a docking molecule counts as what it will leave as), so a forward event is
+        // usually met by a backward one before anything is reconciled
         for (const [k] of PAIRS) {
-            let on = 0;
-            for (const m of this.mols) if (m.pool === k && (m.dock ? m.dock.to : m.on)) on++;
-            let diff = store[k] - on;
-            for (const m of this.mols) {
-                if (!diff) break;
-                if (m.pool !== k) continue;
-                const now = m.dock ? m.dock.to : m.on;
-                if (now === (diff > 0)) continue;
-                if (m.dock) m.dock.to = !m.dock.to; else m.on = diff > 0;
-                diff += diff > 0 ? -1 : 1;
+            let on = 0, n = 0;
+            for (const m of this.mols) if (m.pool === k) { n++; if (m.dock ? m.dock.to : m.on) on++; }
+            const diff = store[k] - on;
+            if (!diff || !n) { this._acc[k] = 0; continue; }
+            this._acc[k] = (this._acc[k] || 0) + Math.abs(diff) * dt / RECONCILE;
+            while (this._acc[k] >= 1) {
+                this._acc[k] -= 1;
+                const m = this._pickFree(k, diff < 0);
+                if (!m) { this._acc[k] = 0; break; }
+                form(m, diff > 0);
             }
         }
         for (const t of this.threads) t.t += dt;
@@ -140,11 +163,13 @@ const Stroma = {
 
     /** The molecules, from sprites rendered at the drawn resolution (px per nm on screen). */
     draw(c, res) {
-        const s = Membrane.s, spr = this._sprites(res), w = 3.4 * s, h = 2.2 * s;
+        const s = Membrane.s, spr = this._sprites(res), w = 3.4 * s, h = 2.2 * s, F = K.POOL_FORMS;
         for (const m of this.mols) {
-            const kind = K.POOL_FORMS[m.pool][m.on ? 0 : 1], im = spr[kind];
             c.save(); c.translate(m.x, m.y); c.rotate(m.rot);
-            c.drawImage(im, -1.7 * s, -1.1 * s, w, h);
+            // a molecule that just changed form crossfades from its old glyph to its new one
+            const f = m.was === m.on ? 1 : Math.min(1, m.ft / FORM_FADE);
+            if (f < 1) { c.globalAlpha = 1 - f; c.drawImage(spr[F[m.pool][m.was ? 0 : 1]], -1.7 * s, -1.1 * s, w, h); c.globalAlpha = f; }
+            c.drawImage(spr[F[m.pool][m.on ? 0 : 1]], -1.7 * s, -1.1 * s, w, h);
             c.restore();
         }
     },
@@ -153,10 +178,13 @@ const Stroma = {
     drawThreads(c) {
         if (!this.threads.length) return;
         c.save(); c.lineWidth = 1; c.setLineDash([1.6, 2.8]); c.lineCap = 'round';   // a 4.4 px period
+        const F = this.focus;
         for (const t of this.threads) {
             const grow = Math.min(1, t.t / THREAD_GROW), fade = 1 - Math.max(0, (t.t - THREAD_GROW) / (THREAD_LIFE - THREAD_GROW));
             const pts = sPath(t.m.x, t.m.y, t.to[0], t.to[1], this.gapY);
-            c.globalAlpha = 0.85 * fade; c.strokeStyle = t.col;
+            // with an enzyme in focus, its threads at full strength and the others fainter
+            const dim = F && Math.abs(t.to[0] - F[0]) + Math.abs(t.to[1] - F[1]) > 0.5 ? 0.45 : 1;
+            c.globalAlpha = 0.85 * fade * dim; c.strokeStyle = t.col;
             strokePartial(c, pts, grow);
         }
         c.restore();
@@ -168,9 +196,25 @@ const Stroma = {
             const a = this._rnd() * TAU;
             m.dock = { x: ev.site[0], y: ev.site[1], to: d > 0, phase: 0, t: 0, ex: Math.cos(a) * 0.5, ey: 0.5 + 0.5 * Math.abs(Math.sin(a)) };
         } else {
-            m.on = d > 0;
-            if (ev.to) this.threads.push({ m, to: ev.to, col: K.ink(K.MOL[m.pool].ink), t: 0 });
+            if (!ev.swap) form(m, d > 0);
+            if (!ev.to) return;
+            // one live thread per enzyme: a new event there restarts it from the new molecule,
+            // once the last has reached the enzyme (a busy enzyme's thread grows, then moves on)
+            const key = ev.to[0].toFixed(1) + ',' + ev.to[1].toFixed(1), col = K.ink(K.MOL[m.pool].ink);
+            const t = this.threads.find(q => q.key === key);
+            if (!t) this.threads.push({ m, to: ev.to, key, col, t: 0 });
+            else if (t.t >= THREAD_GROW) { t.m = m; t.col = col; t.t = 0; }
         }
+    },
+
+    /** A free molecule of a pool in a form, at random; one that changed within REFRACT only if no other is. */
+    _pickFree(pool, on) {
+        let a = null, na = 0, b = null, nb = 0;
+        for (const m of this.mols) {
+            if (m.pool !== pool || m.dock || m.on !== on) continue;
+            if (m.ft >= REFRACT) { if (this._rnd() * ++na < 1) a = m; } else if (this._rnd() * ++nb < 1) b = m;
+        }
+        return a || b;
     },
 
     /** The molecule under a world point, if any (within r px). */
@@ -207,6 +251,9 @@ const Stroma = {
         return this._spr;
     },
 };
+
+/** Set a molecule's form, starting its crossfade if it changes. */
+function form(m, on) { if (m.on !== on) { m.was = m.on; m.on = on; m.ft = 0; } }
 
 /** Vertical, horizontal at y, vertical; corners rounded. Returns dense points. */
 function sPath(x0, y0, x1, y1, y) {

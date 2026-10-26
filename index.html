@@ -231,14 +231,14 @@
       {"@type": "HowToStep", "position": 2, "name": "Set the environment", "text": "Dial light, oxygen, ATP demand and growth, switch pathways or uncoupling, and add glucose or fatty acid to the medium."},
       {"@type": "HowToStep", "position": 3, "name": "Pulse an enzyme", "text": "Click an enzyme on the map or a complex in the membrane to pulse its activity, right-click to inhibit it, and watch where the push spreads and where it dies."},
       {"@type": "HowToStep", "position": 4, "name": "Hold an enzyme", "text": "Hold an enzyme to raise its activity by 10% against an unchanged copy of the cell; at the steady state Lumen reports its flux control coefficients."},
-      {"@type": "HowToStep", "position": 5, "name": "Inspect a rate", "text": "In the Stats tab, choose any enzyme to see its rate and why: its ΔG and the thermodynamic, saturation and regulation factors whose product sets it."}
+      {"@type": "HowToStep", "position": 5, "name": "Inspect a rate", "text": "Click any enzyme and the legend's card shows its rate and why: its ΔG and the thermodynamic, saturation and regulation factors whose product sets it."}
     ]
   }
   </script>
 </head>
 
 <body class="sim-body app-ready lu-body">
-  <a href="#dashboard" class="skip-link">Skip to controls</a>
+  <a href="#legend" class="skip-link">Skip to the legend</a>
   <a href="#sim-canvas" class="skip-link">Skip to simulation</a>
 
   <header class="colophon">
@@ -255,10 +255,12 @@
     <figure class="lu-figure">
       <div id="sim-container" class="lu-scene">
         <canvas id="sim-canvas" role="img" aria-label="A membrane in cross-section above the cell's carbon network drawn as a transit map. Protons gather on one side of the membrane and turn ATP synthase; the busiest lines thicken and carry moving trains."></canvas>
-        <button id="menu-btn" class="lu-open" type="button" aria-controls="dashboard" aria-expanded="true" title="Controls (S)">Controls</button>
+        <button id="menu-btn" class="lu-open" type="button" aria-controls="legend" aria-expanded="true" title="Legend (S)">Legend</button>
       </div>
+      <div id="map-container" class="lu-scene lu-scene-map"><canvas id="map-canvas" role="img" aria-label="The cell's carbon network, drawn as an upright transit map."></canvas></div>
       <figcaption class="lu-capbar">
         <p class="caption" aria-live="off"><span class="caption-n">Fig. 1</span><span id="lu-caption">Cyanobacterial thylakoid in the light.</span></p>
+        <button id="mode-btn" class="lu-btn lu-mode" type="button" aria-pressed="false" title="Taps pulse (X)" aria-label="Taps pulse">taps pulse</button>
         <div class="lu-zoom" role="group" aria-label="Zoom">
           <button id="zoom-out-btn" class="lu-btn" type="button" title="Zoom out (−)" aria-label="Zoom out">−</button>
           <span id="zoom-indicator" class="lu-zoom-level">100%</span>
@@ -268,181 +270,78 @@
       </figcaption>
     </figure>
 
-    <aside id="dashboard" class="lu-margin" aria-label="Lumen controls">
-      <div class="lu-margin-head">
-        <div class="lu-tabs" role="tablist" aria-label="Margin tabs">
-          <button class="tab-btn active" data-tab="controls" role="tab" aria-selected="true">Controls</button>
-          <button class="tab-btn" data-tab="stats" role="tab" aria-selected="false">Stats</button>
-          <button class="tab-btn" data-tab="reference" role="tab" aria-selected="false">Reference</button>
-        </div>
-        <button id="close-stats" class="lu-btn lu-close" type="button" title="Close (Esc)" aria-label="Close controls">×</button>
-      </div>
-
-      <div class="lu-panels">
-        <section class="tab-panel active" id="tab-controls" role="tabpanel">
-          <div class="lu-group">
-            <h2 class="lu-label">Specimen</h2>
-            <div class="lu-specimens" role="radiogroup" aria-label="Organism preset" id="organism-group">
-              <button type="button" role="radio" data-org="cyanobacterium" aria-checked="true"><canvas class="lu-spec-icon" aria-hidden="true"></canvas><span>Cyanobacterium</span></button>
-              <button type="button" role="radio" data-org="animalCell" aria-checked="false"><canvas class="lu-spec-icon" aria-hidden="true"></canvas><span>Animal cell</span></button>
-              <button type="button" role="radio" data-org="obligateAnaerobe" aria-checked="false"><canvas class="lu-spec-icon" aria-hidden="true"></canvas><span>Obligate anaerobe</span></button>
-              <button type="button" role="radio" data-org="plantChloroplast" aria-checked="false"><canvas class="lu-spec-icon" aria-hidden="true"></canvas><span>Plant chloroplast</span></button>
-              <button type="button" role="radio" data-org="archaeon" aria-checked="false"><canvas class="lu-spec-icon" aria-hidden="true"></canvas><span>Archaeon</span></button>
-              <button type="button" role="radio" data-org="custom" aria-checked="false"><canvas class="lu-spec-icon" aria-hidden="true"></canvas><span>Custom</span></button>
-            </div>
-            <p class="lu-desc" id="organism-desc">Photosynthetic prokaryote — all pathways available</p>
+    <aside id="legend" class="lu-legend" aria-label="The figure's legend: specimen, conditions, the enzyme, and Fig. 2">
+      <button id="close-legend" class="lu-btn lu-close" type="button" title="Close the legend (S)" aria-label="Close the legend">×</button>
+      <div class="lu-legend-body">
+        <section class="lu-sec lu-sec-spec" aria-labelledby="spec-name">
+          <div class="lu-specimens" role="radiogroup" aria-label="Specimen" id="organism-group">
+            <button type="button" role="radio" data-org="cyanobacterium" aria-checked="true" title="Cyanobacterium"><canvas class="lu-spec-icon" aria-hidden="true"></canvas><span class="sr-only">Cyanobacterium</span></button>
+            <button type="button" role="radio" data-org="animalCell" aria-checked="false" title="Animal cell"><canvas class="lu-spec-icon" aria-hidden="true"></canvas><span class="sr-only">Animal cell</span></button>
+            <button type="button" role="radio" data-org="obligateAnaerobe" aria-checked="false" title="Obligate anaerobe"><canvas class="lu-spec-icon" aria-hidden="true"></canvas><span class="sr-only">Obligate anaerobe</span></button>
+            <button type="button" role="radio" data-org="plantChloroplast" aria-checked="false" title="Plant chloroplast"><canvas class="lu-spec-icon" aria-hidden="true"></canvas><span class="sr-only">Plant chloroplast</span></button>
+            <button type="button" role="radio" data-org="archaeon" aria-checked="false" title="Archaeon"><canvas class="lu-spec-icon" aria-hidden="true"></canvas><span class="sr-only">Archaeon</span></button>
+            <button type="button" role="radio" data-org="custom" aria-checked="false" title="Custom: every pathway and every complex"><canvas class="lu-spec-icon" aria-hidden="true"></canvas><span class="sr-only">Custom</span></button>
           </div>
-
-          <div class="lu-group">
-            <h2 class="lu-label">Lines</h2>
-            <label class="lu-row lu-line" style="--line: var(--ink-sienna)"><input type="checkbox" id="glyc-toggle" checked><span class="lu-swatch"></span><span class="lu-name">Glycolysis</span><button class="info-trigger" type="button" data-info="glycolysis" aria-label="Glycolysis info">?</button><kbd>1</kbd></label>
-            <label class="lu-row lu-line" style="--line: var(--ink-madder)"><input type="checkbox" id="ppp-toggle" checked><span class="lu-swatch"></span><span class="lu-name">Pentose phosphate</span><button class="info-trigger" type="button" data-info="ppp" aria-label="Pentose phosphate info">?</button><kbd>2</kbd></label>
-            <label class="lu-row lu-line" style="--line: var(--ink-viridian)"><input type="checkbox" id="calvin-toggle" checked><span class="lu-swatch"></span><span class="lu-name">Calvin cycle</span><button class="info-trigger" type="button" data-info="calvin" aria-label="Calvin cycle info">?</button><kbd>3</kbd></label>
-            <label class="lu-row lu-line" style="--line: var(--ink-prussian)"><input type="checkbox" id="krebs-toggle" checked><span class="lu-swatch"></span><span class="lu-name">Krebs cycle</span><button class="info-trigger" type="button" data-info="krebs" aria-label="Krebs cycle info">?</button><kbd>4</kbd></label>
-            <label class="lu-row lu-line" style="--line: var(--ink-ochre)"><input type="checkbox" id="betaox-toggle" checked><span class="lu-swatch"></span><span class="lu-name">β-oxidation</span><button class="info-trigger" type="button" data-info="betaox" aria-label="Beta oxidation info">?</button><kbd>5</kbd></label>
-          </div>
-
-          <div class="lu-group">
-            <h2 class="lu-label">Conditions</h2>
-            <label class="lu-row"><input type="checkbox" id="light-toggle" checked><span class="lu-name">Sunlight</span><button class="info-trigger" type="button" data-info="sunlight" aria-label="Sunlight info">?</button><kbd>L</kbd></label>
-            <label class="lu-dial"><input type="range" id="light-dial" min="0" max="1" step="0.05" value="1" aria-label="Light intensity"><output id="light-val" for="light-dial">100%</output></label>
-            <label class="lu-row"><input type="checkbox" id="oxygen-toggle" checked><span class="lu-name">Ambient O₂</span><button class="info-trigger" type="button" data-info="oxygen" aria-label="Oxygen info">?</button><kbd>O</kbd></label>
-            <label class="lu-dial"><input type="range" id="o2-dial" min="0" max="1" step="0.05" value="1" aria-label="Oxygen, a share of air"><output id="o2-val" for="o2-dial">100% air</output></label>
-            <label class="lu-row"><input type="checkbox" id="uncoupling-toggle"><span class="lu-name">Uncoupling</span><button class="info-trigger" type="button" data-info="uncoupling" aria-label="Uncoupling info">?</button><kbd>U</kbd></label>
-          </div>
-
-          <div class="lu-group">
-            <h2 class="lu-label">Demand <button class="info-trigger" type="button" data-info="demand" aria-label="Demand info">?</button></h2>
-            <label class="lu-dial lu-dial-named"><span class="lu-name">ATP demand</span><input type="range" id="atp-dial" min="0" max="3" step="0.1" value="0.6" aria-label="ATP demand"><output id="atp-val" for="atp-dial">0.6 mM/s</output></label>
-            <label class="lu-dial lu-dial-named"><span class="lu-name" id="growth-name">Growth</span><input type="range" id="growth-dial" min="0" max="0.3" step="0.01" value="0.07" aria-label="Growth"><output id="growth-val" for="growth-dial">0.07 /h</output></label>
-          </div>
-
-          <div class="lu-group">
-            <h2 class="lu-label">Feed and run</h2>
-            <div class="lu-actions">
-              <button id="add-glucose-btn" class="lu-btn" type="button" title="Add glucose (G)">+ Glucose</button>
-              <button id="add-fatty-acid-btn" class="lu-btn" type="button" title="Add fatty acid (F)">+ Fatty acid</button>
-              <button id="reset-btn" class="lu-btn" type="button" title="Reset (R)">Reset</button>
-            </div>
-            <div class="lu-row lu-seg" role="group" aria-label="What taps do">
-              <span class="lu-name">Taps</span>
-              <button id="mode-btn" class="lu-btn" type="button" aria-pressed="false" title="Taps pulse (X)" aria-label="Taps pulse">pulse</button>
-            </div>
-            <div class="lu-row lu-seg" role="group" aria-label="How much slower than life the chemistry runs">
-              <span class="lu-name">Chemistry slowed <button class="info-trigger" type="button" data-info="engine" aria-label="Model info">?</button></span>
-              <button id="speed-down" class="lu-btn" type="button" title="Slower (,)" aria-label="Slower">−</button>
-              <span id="speed-val" class="lu-val">30×</span>
-              <button id="speed-up" class="lu-btn" type="button" title="Faster (.)" aria-label="Faster">+</button>
-            </div>
-          </div>
-
-          <p class="panel-hint">Click an enzyme on the map or a complex in the membrane to pulse it, or right-click to inhibit it. Holding it sustains a 10% change, and Stats compares it with the unchanged cell. Click a loop's name to pulse the whole line.</p>
+          <p class="lu-spec-name"><span id="spec-name">Cyanobacterium</span> <i id="spec-cut">· a thylakoid, cut through</i></p>
+          <p class="lu-desc" id="organism-desc"></p>
         </section>
 
-        <section class="tab-panel" id="tab-stats" role="tabpanel">
-          <div class="lu-group">
-            <h2 class="lu-label">Electrons, by redox potential <button class="info-trigger" type="button" data-info="ladder" aria-label="Redox ladder info">?</button></h2>
+        <section class="lu-sec lu-sec-cond" aria-labelledby="h-conditions">
+          <h2 class="lu-label" id="h-conditions">Conditions <button class="info-trigger" type="button" data-info="conditions" aria-label="Conditions info">?</button></h2>
+          <p class="lu-sentence" id="lu-sentence"></p>
+          <div class="lu-dialbox" id="lu-dialbox" hidden>
+            <label class="lu-dial"><span class="lu-name" id="lu-dial-name"></span><input type="range" id="lu-dial" aria-labelledby="lu-dial-name"><output id="lu-dial-val" for="lu-dial"></output></label>
+          </div>
+          <p class="lu-hint" id="lu-sentence-hint">Drag a dotted value, or click it for a dial.</p>
+          <p class="lu-acts">
+            <span class="lu-act-group" id="lu-feed">Feed <button id="add-glucose-btn" class="lu-word" type="button" title="Add glucose to the medium (G)">glucose</button><span class="lu-sep"> · </span><button id="add-fatty-acid-btn" class="lu-word" type="button" title="Add fatty acid to the medium (F)">fatty acid</button></span>
+            <button id="reset-btn" class="lu-word" type="button" title="Start this cell over (R)">Reset</button>
+          </p>
+          <fieldset class="sr-only lu-knockouts" id="lu-knockouts">
+            <legend>Lines (knockouts)</legend>
+            <label><input type="checkbox" id="glyc-toggle" checked> Glycolysis</label>
+            <label><input type="checkbox" id="ppp-toggle" checked> Pentose phosphate</label>
+            <label><input type="checkbox" id="calvin-toggle" checked> Calvin cycle</label>
+            <label><input type="checkbox" id="krebs-toggle" checked> Krebs cycle</label>
+            <label><input type="checkbox" id="betaox-toggle" checked> β-oxidation</label>
+          </fieldset>
+        </section>
+
+        <section class="lu-sec lu-sec-enz" aria-labelledby="h-enzyme">
+          <h2 class="lu-label lu-label-row" id="h-enzyme"><span>The enzyme <button class="info-trigger" type="button" data-info="inspector" aria-label="Enzyme card info">?</button></span><select id="lu-enzyme" class="lu-select" aria-label="Choose an enzyme"></select></h2>
+          <div class="lu-card" id="lu-card" aria-live="polite"></div>
+          <div class="lu-acts lu-card-acts">
+            <button id="lu-enzyme-pulse" class="lu-word" type="button" title="Raise its activity ×5 for a moment">Pulse</button>
+            <button id="lu-enzyme-inhibit" class="lu-word" type="button" title="Cut its activity to a tenth for a moment">Inhibit</button>
+            <button id="lu-enzyme-hold" class="lu-word" type="button" aria-pressed="false" title="Hold it 10% up and compare with an unchanged copy of the cell">Hold</button>
+          </div>
+          <p class="lu-desc lu-control" id="lu-enzyme-control" aria-live="polite" hidden></p>
+          <p class="lu-hint" id="lu-verb-hint">Click an enzyme on the plate to pulse it and bring it here.</p>
+        </section>
+
+        <section class="lu-sec lu-fig2" aria-labelledby="h-fig2">
+          <h2 class="lu-label lu-label-row" id="h-fig2"><span><b class="lu-fig-n">Fig. 2</b> <span id="fig2-title">The last two minutes</span> <button class="info-trigger" type="button" data-info="trace" aria-label="Fig. 2 info">?</button></span>
+            <span class="lu-views" role="group" aria-label="Fig. 2 shows"><button type="button" class="lu-word" data-view="trace" aria-pressed="true">trace</button> · <button type="button" class="lu-word" data-view="ladder" aria-pressed="false">ladder</button></span></h2>
+          <div class="lu-view" data-view="trace">
+            <canvas class="lu-trace" id="lu-trace" role="img" aria-label="The last two minutes: Δp, the ATP and reduced-carrier shares, and the cell's main flux, with arrows where you changed something."></canvas>
+          </div>
+          <div class="lu-view" data-view="ladder" hidden>
             <canvas class="lu-ladder" id="lu-ladder" role="img" aria-label="The electron transport chain's carriers at their midpoint potentials, with each electron now in flight as a bead on its carrier."></canvas>
             <p class="lu-desc" id="lu-ladder-note" hidden></p>
             <p class="lu-desc" id="lu-yield"></p>
           </div>
-
-          <div class="lu-group">
-            <h2 class="lu-label">Inspect an enzyme <button class="info-trigger" type="button" data-info="inspector" aria-label="Inspector info">?</button></h2>
-            <select id="lu-enzyme" class="lu-select" aria-label="Enzyme"></select>
-            <p class="lu-desc lu-factors" id="lu-enzyme-factors" aria-live="polite">—</p>
-            <div class="lu-actions">
-              <button id="lu-enzyme-pulse" class="lu-btn" type="button">Pulse</button>
-              <button id="lu-enzyme-inhibit" class="lu-btn" type="button">Inhibit</button>
-              <button id="lu-enzyme-hold" class="lu-btn" type="button" aria-pressed="false">Hold</button>
-            </div>
-            <p class="lu-desc lu-factors" id="lu-enzyme-control" aria-live="polite" hidden></p>
-          </div>
-
-          <div class="lu-group">
-            <h2 class="lu-label">Cofactor pools</h2>
-            <p class="lu-desc" id="pools-where"></p>
-            <div class="lu-pool" style="--line: var(--co-atp)"><span class="lu-name">ATP of the adenylates</span><span class="lu-val" id="atp-ratio">0%</span><span class="lu-bar"><span id="atp-bar"></span></span><canvas class="lu-spark" id="spark-atp"></canvas></div>
-            <div class="lu-pool" style="--line: var(--co-nadh)"><span class="lu-name">NADH of NAD⁺ + NADH</span><span class="lu-val" id="nadh-ratio">0%</span><span class="lu-bar"><span id="nadh-bar"></span></span><canvas class="lu-spark" id="spark-nadh"></canvas></div>
-            <div class="lu-pool" style="--line: var(--co-nadph)"><span class="lu-name">NADPH of NADP⁺ + NADPH</span><span class="lu-val" id="nadph-ratio">0%</span><span class="lu-bar"><span id="nadph-bar"></span></span><canvas class="lu-spark" id="spark-nadph"></canvas></div>
-          </div>
-
-          <div class="lu-group">
-            <h2 class="lu-label">Proton-motive force <button class="info-trigger" type="button" data-info="protons" aria-label="Proton-motive force info">?</button></h2>
-            <div class="lu-stat"><span class="lu-name">Δp</span><span class="lu-val" id="proton-mv">0 mV</span></div>
-            <div class="lu-stat"><span class="lu-name">of it, Δψ (charge)</span><span class="lu-val" id="psi-mv">0 mV</span></div>
-            <div class="lu-stat"><span class="lu-name">and ΔpH (protons)</span><span class="lu-val" id="ph-mv">0 mV</span></div>
-            <div class="lu-stat"><span class="lu-name">Needed to make ATP</span><span class="lu-val" id="atp-mv">0 mV</span></div>
-            <div class="lu-stat"><span class="lu-name">Leaking back</span><span class="lu-val" id="protons-leaked">0</span></div>
-            <canvas class="lu-spark lu-spark-red" id="spark-gradient"></canvas>
-          </div>
-
-          <div class="lu-group">
-            <h2 class="lu-label">Oxidative stress <button class="info-trigger" type="button" data-info="oxStress" aria-label="Oxidative stress info">?</button></h2>
-            <div class="lu-stat"><span class="lu-name">Membrane intact</span><span class="lu-val" id="health-ratio">100%</span></div>
-            <span class="lu-bar lu-health"><span id="health-bar"></span></span>
-            <div class="lu-stat"><span class="lu-name">Superoxide made</span><span class="lu-val" id="ros-made">0</span></div>
-            <div class="lu-stat"><span class="lu-name">Superoxide</span><span class="lu-val" id="superoxide">0</span></div>
-            <div class="lu-stat"><span class="lu-name">Hydrogen peroxide</span><span class="lu-val" id="peroxide">0</span></div>
-          </div>
-
-          <div class="lu-group">
-            <h2 class="lu-label">ATP source</h2>
-            <div class="lu-stat"><span class="lu-name">Substrate-level</span><span class="lu-val" id="atp-substrate">0</span></div>
-            <div class="lu-stat"><span class="lu-name">ATP synthase</span><span class="lu-val" id="atp-oxidative">0</span></div>
-            <div id="atp-source-bar" class="lu-split"><span id="atp-source-sub"></span><span id="atp-source-ox"></span></div>
-          </div>
-
-          <div class="lu-group">
-            <h2 class="lu-label">Exchange with the medium</h2>
-            <div class="lu-stat"><span class="lu-name">O₂ taken in</span><span class="lu-val" id="o2-net">0</span></div>
-            <div class="lu-stat"><span class="lu-name">CO₂ taken in</span><span class="lu-val" id="co2-net">0</span></div>
-            <div class="lu-stat"><span class="lu-name">Glucose taken in</span><span class="lu-val" id="glc-net">0</span></div>
-            <div class="lu-stat"><span class="lu-name">Growing at</span><span class="lu-val" id="growth-net">0</span></div>
-          </div>
+          <div class="lu-readings" id="lu-readings"></div>
         </section>
 
-        <section class="tab-panel" id="tab-reference" role="tabpanel">
-          <div class="lu-group">
-            <h2 class="lu-label">Net equations</h2>
-            <dl class="lu-eqs">
-              <dt style="--line: var(--ink-sienna)">Glycolysis</dt><dd>Glc → 2 Pyr + 2 ATP + 2 NADH</dd>
-              <dt style="--line: var(--ink-viridian)">Calvin cycle ×6</dt><dd>6 CO₂ + 18 ATP + 12 NADPH → 2 G3P</dd>
-              <dt style="--line: var(--ink-prussian)">Krebs cycle ×2</dt><dd>2 AcCoA → 4 CO₂ + 6 NADH + 2 FADH₂ + 2 ATP</dd>
-              <dt style="--line: var(--ink-madder)">Pentose phosphate ×6</dt><dd>G6P → 12 NADPH + 6 CO₂</dd>
-              <dt style="--line: var(--ink-umber)">Fermentation</dt><dd>2 Pyr + 2 NADH → 2 EtOH + 2 CO₂</dd>
-              <dt style="--line: var(--ink-ochre)">β-oxidation ×7</dt><dd>Palmitoyl-CoA → 8 AcCoA + 7 FADH₂ + 7 NADH</dd>
-              <dt style="--line: var(--ink-ochre)">Fatty-acid synthesis ×7</dt><dd>8 AcCoA + 14 NADPH + 14 ATP → Palmitoyl-CoA</dd>
-              <dt>Oxidative phosphorylation</dt><dd>NADH + ½O₂ → H₂O (≈2.5 ATP); FADH₂ + ½O₂ → H₂O (≈1.5 ATP)</dd>
-              <dt>Linear light reactions</dt><dd>H₂O → ½O₂ + NADPH (≈1.5 ATP)</dd>
-              <dt>Cyclic light reactions</dt><dd>4 H⁺ ≈ 1 ATP</dd>
-            </dl>
-          </div>
-          <div class="lu-group">
-            <h2 class="lu-label">Reading the figure</h2>
-            <dl class="lu-legend">
-              <dt><span class="lg lg-proton"></span></dt><dd>A proton. Their number on the far side of the membrane is the stored gradient.</dd>
-              <dt><span class="lg lg-electron"></span></dt><dd>An electron in transit, stepping between a complex's cofactors, alone or on a carrier (darkened while it carries one).</dd>
-              <dt><span class="lg lg-photon"></span></dt><dd>A photon arriving at a photosystem or bacteriorhodopsin; its wiggle is shorter for shorter light.</dd>
-              <dt><svg class="lg" viewBox="0 0 26 12" aria-hidden="true"><circle cx="7" cy="6" r="3.6" fill="var(--bg-panel-solid)" stroke="var(--ink-ochre)"/><circle cx="12.5" cy="5.4" r="1.9" fill="var(--ink-ochre)"/><circle cx="16" cy="6" r="1.9" fill="var(--ink-ochre)"/><circle cx="19.5" cy="6.6" r="1.9" fill="var(--ink-ochre)"/></svg></dt><dd>A molecule of a cofactor pool, one for each unit of it: ATP has three phosphates, ADP two. They fill the space under the membrane.</dd>
-              <dt><svg class="lg" viewBox="0 0 26 12" aria-hidden="true"><circle cx="7" cy="6" r="3.2" fill="var(--ink-prussian)" stroke="var(--ink-prussian)"/><circle cx="12.5" cy="6" r="1.6" fill="var(--bg-panel-solid)" stroke="var(--ink-prussian)"/><circle cx="18" cy="6" r="3.2" fill="var(--bg-panel-solid)" stroke="var(--ink-prussian)"/></svg></dt><dd>A reduced carrier (NADH, NADPH, FADH₂) has a dark ring, an oxidised one a pale ring. NADP carries one more phosphate than NAD.</dd>
-              <dt><svg class="lg" viewBox="0 0 26 12" aria-hidden="true"><path d="M3 1v5q0 2 2 2h16q2 0 2 2v1" fill="none" stroke="var(--ink-ochre)" stroke-dasharray="1.5 2.5" stroke-linecap="round"/></svg></dt><dd>An enzyme on the map just made or spent the molecule the thread starts from.</dd>
-              <dt><span class="lg lg-line"></span></dt><dd>A line whose weight and trains read flux; chevrons point the way carbon runs. Glyphs after an enzyme's name are the pools it makes (+) or spends (−).</dd>
-              <dt><span class="lg lg-off"></span></dt><dd>A line switched off, or one that needs oxygen it lacks.</dd>
-              <dt><span class="lg lg-hub"></span></dt><dd>An interchange: an intermediate several lines share.</dd>
-              <dt><svg class="lg" viewBox="0 0 26 12" aria-hidden="true"><path d="M4 6h14M18 2v8" stroke="var(--text)" stroke-width="1.4" fill="none"/></svg></dt><dd>A pool gating an enzyme: ⊣ inhibits, → is needed, ⊕ activates; dashed while the enzyme is only slowed, with a bar across the line once it stops.</dd>
-              <dt><svg class="lg" viewBox="0 0 26 12" aria-hidden="true"><circle cx="10" cy="7" r="2.6" fill="none" stroke="var(--text)"/><circle cx="15" cy="7" r="2.6" fill="none" stroke="var(--text)"/><circle cx="12.5" cy="2.2" r="1" fill="var(--text)"/></svg></dt><dd>Superoxide, one for each active ROS, near where electrons leaked.</dd>
-              <dt><svg class="lg" viewBox="0 0 26 12" aria-hidden="true"><path d="M8 1v10M13 1l3 4-3 6" stroke="var(--ink-sienna)" stroke-width="1.3" fill="none" stroke-linejoin="round"/></svg></dt><dd>A peroxidised lipid. Their share is the cell health lost.</dd>
-            </dl>
-            <p class="lu-desc">ATP synthase turns a third of a turn, passing four protons, for each ATP.</p>
-          </div>
+        <section class="lu-sec lu-refs" aria-label="Reference">
+          <p class="lu-desc">Read more on <button class="lu-word" type="button" data-ref="engine">the model</button> · <button class="lu-word" type="button" data-ref="protons">Δp</button> · <button class="lu-word" type="button" data-ref="sunlight">light</button> · <button class="lu-word" type="button" data-ref="oxygen">oxygen</button> · <button class="lu-word" type="button" data-ref="uncoupling">uncoupling</button> · <button class="lu-word" type="button" data-ref="oxStress">oxidative stress</button> · <button class="lu-word" type="button" data-ref="ladder">the ladder</button> · <button class="lu-word" type="button" data-ref="glycolysis">glycolysis</button> · <button class="lu-word" type="button" data-ref="ppp">the pentose phosphate pathway</button> · <button class="lu-word" type="button" data-ref="calvin">the Calvin cycle</button> · <button class="lu-word" type="button" data-ref="krebs">the Krebs cycle</button> · <button class="lu-word" type="button" data-ref="betaox">fatty acids</button> · <button class="lu-word" type="button" data-ref="equations">the net equations</button></p>
         </section>
       </div>
     </aside>
 
     <div id="reference-overlay" class="sim-overlay" hidden>
       <div class="sim-overlay-panel">
-        <div class="lu-margin-head">
+        <div class="lu-ref-head">
           <h2 id="reference-title" class="lu-ref-title">Reference</h2>
           <button id="reference-close" class="lu-btn lu-close" type="button" aria-label="Close reference">×</button>
         </div>
@@ -469,7 +368,7 @@
     <h3>Organism presets</h3>
     <p>Five organisms each have their own reactions, compartments, pools and membrane: a cyanobacterium, an animal cell with its mitochondrial matrix, an obligate anaerobe, a plant chloroplast and a halophilic archaeon.</p>
     <h3>Accessibility</h3>
-    <p>Lumen provides keyboard shortcuts, labeled controls, light, dark and sunlight-following themes, and numerical readouts; the inspector reaches every enzyme from the keyboard. With reduced motion requested, Lumen opens on a still frame, and the model clock can be paused.</p>
+    <p>Lumen provides keyboard shortcuts, labeled controls, light, dark and sunlight-following themes, and numerical readouts; the enzyme card reaches every enzyme from the keyboard, and the conditions sentence's values are sliders. With reduced motion requested, Lumen opens on a still frame, and the model clock can be paused.</p>
     <p><em>See also: <a href="/worldline">Worldline</a> for particle physics, <a href="/shoals">Shoals</a> for options trading, <a href="/miasma">Miasma</a> for epidemics.</em></p>
 <h3>Learning outcomes</h3>
 <p>After using Lumen, students should be able to: trace simulated carbon flow through glycolysis, pyruvate processing, the Krebs cycle, and linked biosynthetic routes; explain how the proton-motive force couples electron transfer to ATP synthesis and limits it (respiratory control); read an enzyme's rate as thermodynamics, saturation and regulation; interpret a flux control coefficient; compare respiratory, photosynthetic, and fermentative network states; and describe how electron leaks, scavenging, and NADPH availability affect ROS and cell health.</p>
@@ -480,7 +379,6 @@
     </article>
   </details>
 
-  <script defer src="/shared/tabs.js"></script>
   <link rel="modulepreload" href="main.js">
   <script type="module" src="main.js"></script>
 </body>

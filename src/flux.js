@@ -62,6 +62,14 @@ export const cellHas = (rid) => !!engine && rid in engine.rIndex;
 // An effector's glyph: a drawn pool where it is one (or its ratio's numerator), else a word
 const POOL_OF = { atp: 'atp', adp: 'atp', amp: 'atp', nadh: 'nadh', nad: 'nadh', nadph: 'nadph', nadp: 'nadph' };
 const WORD = { light: 'light', dark: 'dark', dp: 'Δp', fdp: 'F1,6BP', '3pg': '3-PGA', g6p: 'G6P', accoa: 'AcCoA', coa: 'CoA', cit: 'citrate', malcoa: 'malonyl-CoA', mal__L: 'malate', pmtcoa: 'palmitoyl-CoA', succoa: 'Suc-CoA' };
+const NAME = { atp: 'ATP', adp: 'ADP', amp: 'AMP', nadh: 'NADH', nad: 'NAD⁺', nadph: 'NADPH', nadp: 'NADP⁺' };
+
+/** An effector as the enzyme card names it, with how it acts: 'ATP/ADP ⊣', 'AMP →', 'light ⊣'. */
+export function effectorName(eff) {
+    const one = (k) => NAME[k] || WORD[k] || k;
+    const w = Array.isArray(eff.what) ? eff.what.map(one).join('/') : eff.what === 'dark' ? 'light' : one(eff.what);
+    return `${w} ${eff.how === 'inh' ? '⊣' : '→'}`;
+}
 
 /**
  * The regulation acting on a segment's main enzyme, as the map draws it:

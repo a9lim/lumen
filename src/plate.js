@@ -1,37 +1,11 @@
 // Plate furniture — what makes the figure read as a plate, shared with the
-// siblings: the reference cartouche in a double hairline, a scale bar, the
-// registers' titles, and callouts with hairline leaders. All draw in world
-// pixels with the scene's palette (complexes.js P).
+// siblings: a scale bar, the registers' titles, a hairline between them, and
+// callouts with hairline leaders (the key's cartouche is mapdraw.js's). All
+// draw in world pixels with the scene's palette (complexes.js P).
 import * as K from './complexes.js';
 
 const TAU = Math.PI * 2;
 const rule = () => K.rgba(K.P.text, K.P.dark ? 0.13 : 0.12);
-
-/**
- * The cartouche: a double hairline, an italic title, and rows of
- * [swatch(c, x, y), text, value?, shortText?]. Returns its height.
- */
-export function cartouche(c, x, y, w, rows, fs, title = 'Reference') {
-    const P = K.P, rh = fs * 1.55, h = fs * 2.2 + rows.length * rh + 8;
-    c.save();
-    c.fillStyle = P.canvas; c.fillRect(x, y, w, h);
-    c.strokeStyle = K.rgba(P.text, P.dark ? 0.45 : 0.5); c.lineWidth = 1;
-    c.strokeRect(Math.round(x) + 0.5, Math.round(y) + 0.5, Math.round(w) - 1, Math.round(h) - 1);
-    c.strokeRect(Math.round(x) + 3.5, Math.round(y) + 3.5, Math.round(w) - 7, Math.round(h) - 7);
-    c.font = `italic ${fs}px ${_FONT.text}`; c.fillStyle = P.muted; c.textAlign = 'center'; c.textBaseline = 'alphabetic';
-    c.fillText(title, x + w / 2, y + fs * 1.55);
-    c.textBaseline = 'middle';
-    rows.forEach(([sw, text, val, short], i) => {
-        const ry = y + fs * 2.2 + rh * (i + 0.5) + 2;
-        c.save(); sw(c, x + 22, ry); c.restore();
-        c.font = `${fs}px ${_FONT.text}`; c.textAlign = 'left';
-        const vw = val !== undefined ? c.measureText(val).width + 10 : 0;
-        c.fillStyle = P.text; c.fillText(short && c.measureText(text).width > w - 52 - vw ? short : text, x + 40, ry);
-        if (val !== undefined) { c.textAlign = 'right'; c.fillStyle = P.text2; c.fillText(val, x + w - 12, ry); }
-    });
-    c.restore();
-    return h;
-}
 
 /** A scale bar of `nm` nanometres at s px per nm, the alternate half filled, as Miasma's. Returns its width with the label. */
 export function scaleBar(c, x, y, s, nm, fs) {
@@ -40,7 +14,8 @@ export function scaleBar(c, x, y, s, nm, fs) {
     c.fillStyle = P.text; c.fillRect(x, y, half * s, 4);
     c.strokeStyle = P.text; c.lineWidth = 1; c.strokeRect(Math.round(x) + 0.5, Math.round(y) + 0.5, Math.round(w) - 1, 3);
     c.font = `${fs}px ${_FONT.text}`; c.fillStyle = P.text; c.textAlign = 'center'; c.textBaseline = 'alphabetic';
-    c.fillText('0', x, y - 4); c.fillText(String(half), x + half * s, y - 4);
+    // short bars (phones) keep only their ends' figures
+    c.fillText('0', x, y - 4); if (w >= 56) c.fillText(String(half), x + half * s, y - 4);
     const lw = c.measureText(String(nm)).width;
     c.textAlign = 'left'; c.fillText(nm + ' nm', x + w - lw / 2, y - 4);
     const total = w + c.measureText(' nm').width + lw / 2;
@@ -69,7 +44,7 @@ export function hairline(c, x0, x1, y) {
  * Callouts: labels in rows with hairline leaders down (or up) to their targets.
  * items: [{ key, x, y (target), text, row, ly (label baseline) }], laid out by the caller.
  */
-export function drawCallouts(c, items, fs, hoverKey) {
+export function drawCallouts(c, items, fs, hoverKey, markOf) {
     const P = K.P;
     c.save();
     c.font = `italic ${fs}px ${_FONT.text}`; c.textAlign = 'center'; c.textBaseline = 'alphabetic';
@@ -83,6 +58,13 @@ export function drawCallouts(c, items, fs, hoverKey) {
     for (const it of items) {
         c.strokeText(it.text, it.x, it.ly);
         c.fillStyle = it.key === hoverKey ? P.text : P.text2; c.fillText(it.text, it.x, it.ly);
+        // a pulsed or held complex: its activity multiplier now, after its name
+        const m = markOf && markOf(it.key);
+        if (m) {
+            c.save(); c.textAlign = 'left'; c.font = `italic ${fs * 0.9}px ${_FONT.text}`; c.globalAlpha = m.a; c.fillStyle = P.text;
+            c.strokeText(m.text, it.x + it.w / 2 + 4, it.ly); c.fillText(m.text, it.x + it.w / 2 + 4, it.ly);
+            c.restore();
+        }
     }
     c.restore();
 }

@@ -227,11 +227,12 @@ export function atpHead(c, s, step, f) {
 // ─── Small molecules and carriers ───
 /** Plastoquinone (or ubiquinone, menaquinone): a ring head and an isoprenoid tail; the ring dark while it carries electrons. */
 export function quinone(c, s, reduced) {
-    const t = tones(ink('ochre'));
-    c.strokeStyle = t.line; c.lineWidth = Math.max(0.8, 0.2 * s); c.lineJoin = 'round';
+    // on the dark ground the line tone sinks into the bilayer: the ink's darker tone draws it, the ink fills it reduced
+    const t = tones(ink('ochre')), ln = P.dark ? t.dark : t.line;
+    c.strokeStyle = ln; c.lineWidth = Math.max(0.8, 0.2 * s); c.lineJoin = 'round';
     c.beginPath(); c.moveTo(0.6 * s, 0); for (let k = 1; k <= 6; k++) c.lineTo((0.6 + k * 0.55) * s, (k % 2 ? 0.32 : -0.32) * s); c.stroke();
     c.beginPath(); for (let k = 0; k < 6; k++) { const a = k / 6 * TAU + Math.PI / 6; c.lineTo(Math.cos(a) * 0.62 * s, Math.sin(a) * 0.62 * s); }
-    c.closePath(); c.fillStyle = reduced ? t.line : P.canvas; c.fill(); c.lineWidth = Math.max(0.8, 0.16 * s); c.stroke();
+    c.closePath(); c.fillStyle = reduced ? (P.dark ? ink('ochre') : t.line) : P.canvas; c.fill(); c.lineWidth = Math.max(0.8, 0.16 * s); c.stroke();
 }
 
 /** A small carrier protein (plastocyanin, ferredoxin), darker while loaded. */

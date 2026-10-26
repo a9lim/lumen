@@ -15,7 +15,7 @@ window.__t = {
   org(k) { document.querySelector('[data-org="' + k + '"]').click(); },
   tog(id, on) { const e = document.getElementById(id); if (e.checked !== on) e.click(); },
   click(id) { document.getElementById(id).click(); },
-  margin(open) { if (document.body.classList.contains('lu-closed') === open) (open ? document.getElementById('menu-btn') : document.getElementById('close-stats')).click(); },
+  margin(open) { if (document.body.classList.contains('lu-closed') === open) (open ? document.getElementById('menu-btn') : document.getElementById('close-legend')).click(); },
   tab(n) { document.querySelector('.tab-btn[data-tab="' + n + '"]').click(); },
   async mods() {
     const b = '/lumen/src/';

@@ -1,8 +1,8 @@
 // Locator — where the cut comes from. A small line drawing of the cell or
 // organelle each specimen's cross-section is cut from, with the cut boxed, as
 // a map carries an inset of its region. The plate draws it in the map's top
-// right; the margin's specimen list uses the same drawings, without the box,
-// as its icons (mono: one colour throughout).
+// right (or its left column); the legend's row of specimens uses the same
+// drawings, without the box, as its icons (mono: one colour throughout).
 import * as K from './complexes.js';
 
 const TAU = Math.PI * 2;

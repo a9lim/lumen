@@ -1,7 +1,7 @@
 // Map — builds the transit map in world pixels from maplayout.js, decides
 // what each segment shows (hidden, switched off, idle, running), hit-tests
 // clicks, and advances the trains. Drawing is in mapdraw.js.
-import { STATIONS, TRACKS, LOOPS, LINES, GRID, GRID_NARROW, KC, KR, NARROW_LABEL, NARROW_SIDE, PAIR, offsetPts, rounded, withLengths } from './maplayout.js';
+import { STATIONS, TRACKS, LOOPS, LINES, GRID, GRID_NARROW, KEY_BOX, LOC_BOX, KC, KR, NARROW_LABEL, NARROW_SIDE, PAIR, offsetPts, rounded, withLengths } from './maplayout.js';
 import { flux, segmentState } from './flux.js';
 import { segmentLabels, stationLabel, synthesisOnly, cofactorGlyphs } from './mapbind.js';
 import { REACTIONS } from './engine/network.js';
@@ -36,17 +36,31 @@ export const MapView = {
     cof: {},            // segment id → [glyphs running the drawn way, backward], from its main reaction
     cell: null,         // { seg, has, plastid }: the cell the map is drawn for
     bounds: null,
+    keyBox: KEY_BOX,    // where the key and the locator sit, grid units
+    locBox: LOC_BOX,
+    keyRows: [],        // the key's line rows as drawn: [{ line, toggle, box }] (world px), its switches
+    keyScreen: null,    // phones: the key under the map instead, { x, y, w } (px)
+    pulseOf: null,      // segment id → its enzymes' pulse factor now (main.js), for the pulse marks
 
     T(x, y) { const G = this.G, R = this.grid; return G.rot ? [G.ox + (y - R.y0) * G.U, G.oy + (x - R.x0) * G.U] : [G.ox + (x - R.x0) * G.U, G.oy + (y - R.y0) * G.U]; },
     Tdir(dx, dy) { return this.G.rot ? [dy, dx] : [dx, dy]; },
 
-    /** Lay the map out in the box (x, y, w, h); rot turns it upright. Returns its height. */
+    /**
+     * Lay the map out in the box (x, y, w, h); rot turns it upright. On wide
+     * screens the map fits the cell's own network: a sparse cell (the
+     * halophile's) moves the key and the locator into a column at its left
+     * when that draws it larger. Returns its height.
+     */
     build(x, y, w, h, rot) {
-        const GR = this.grid = rot ? GRID_NARROW : GRID;
+        this._box = [x, y, w, h, rot];
+        let GR = rot ? GRID_NARROW : GRID;
+        this.keyBox = KEY_BOX; this.locBox = LOC_BOX;
+        if (!rot && this.cell) { const f = this._fit(w, h); if (f) { GR = f.grid; this.keyBox = f.key; this.locBox = f.loc; } }
+        this.grid = GR;
         const gw = GR.x1 - GR.x0, gh = GR.y1 - GR.y0;
         const U = rot ? w / gh : Math.min(w / gw, h / gh);
-        const ox = rot ? x : x + (w - U * gw) / 2;
-        this.G = { ox, oy: y, U, rot, us: Math.max(0.55, Math.min(1.25, U / 46)), gap: Math.max(3.5, Math.min(8, U * 0.16)) };
+        const ox = rot ? x : x + (w - U * gw) / 2, oy = rot ? y : y + Math.max(0, h - U * gh) / 2;
+        this.G = { ox, oy, U, rot, us: Math.max(0.55, Math.min(1.25, U / 46)), gap: Math.max(3.5, Math.min(8, U * 0.16)) };
         this.segs = {}; this.tracks = {}; this.st = {};
         for (const [id, def] of Object.entries(TRACKS)) this._track(id, def);
         for (const [id, v] of Object.entries(STATIONS)) {
@@ -66,6 +80,40 @@ export const MapView = {
         this.bounds = { x0: Math.min(c0[0], c1[0]), y0: Math.min(c0[1], c1[1]), x1: Math.max(c0[0], c1[0]), y1: Math.max(c0[1], c1[1]) };
         if (this.cell) this.applyCell(this.cell);
         return this.bounds.y1 - y;
+    },
+
+    /** Rebuild in the same box (a new cell: what it has decides the fit). */
+    rebuild() { if (this._box) return this.build(...this._box); return 0; },
+
+    /**
+     * The fit: the cell's network's extent in grid units (stations with room
+     * for their names, loops' names), and the larger of two compositions: the
+     * full grid with the key in its lower left and the locator top right, or
+     * the network alone with the key and locator in a column at its left.
+     */
+    _fit(w, h) {
+        const has = (id) => (this.cell.seg[id] || []).length > 0;
+        let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+        const add = (gx, gy, px, py) => { x0 = Math.min(x0, gx - px); x1 = Math.max(x1, gx + px); y0 = Math.min(y0, gy - py); y1 = Math.max(y1, gy + py); };
+        let all = true;
+        for (const [tid, def] of Object.entries(TRACKS)) for (const [sid, a, b] of def.segs) {
+            if (!has(sid)) { all = false; continue; }
+            for (const st of [a, b]) add(STATIONS[st][0], STATIONS[st][1], 1.7, 0.8);
+            if (def.circle) add(KC[0], KC[1], KR + 1.2, KR + 0.85);
+            for (const L of LOOPS) {
+                if (L.line !== def.line) continue;
+                if (L.span) { add(L.span[0], L.at[1], 0, 0.6); add(L.span[1], L.at[1], 0, 0.6); } else add(L.at[0], L.at[1], 1.1, 0.6);
+            }
+        }
+        if (all || !Number.isFinite(x0)) return null;
+        const [kx0, ky0, kx1, ky1] = KEY_BOX, kw = kx1 - kx0, kh = ky1 - ky0;
+        const [lx0, ly0, lx1, ly1] = LOC_BOX, lw = lx1 - lx0, lh = ly1 - ly0, gap = 0.6;
+        const fullU = Math.min(w / (GRID.x1 - GRID.x0), h / (GRID.y1 - GRID.y0));
+        const nw = x1 - x0, nh = Math.max(y1 - y0, kh + lh + gap);
+        const colU = Math.min(w / (nw + kw + gap), h / nh);
+        if (colU < fullU * 1.08) return null;
+        const gx0 = x0 - kw - gap, gy1 = y0 + nh;
+        return { grid: { x0: gx0, x1, y0, y1: gy1 }, key: [gx0, gy1 - kh, gx0 + kw, gy1], loc: [gx0 + (kw - lw) / 2, y0, gx0 + (kw + lw) / 2, y0 + lh] };
     },
 
     /**
@@ -167,6 +215,9 @@ export const MapView = {
 
     /** The segment, loop or station under world point (x, y); tol in world px. */
     hitTest(x, y, tol) {
+        for (const r of this.keyRows) {
+            const b = r.box; if (r.toggle && x > b[0] && x < b[2] && y > b[1] && y < b[3]) return { kind: 'key', row: r };
+        }
         for (const L of this.loops) {
             if (L.hidden) continue;
             if (Math.abs(x - L.pos[0]) < L.hw + 4 && Math.abs(y - L.pos[1]) < 11) return { kind: 'loop', loop: L };

@@ -1,25 +1,23 @@
 # Lumen
 
-An interactive cellular-metabolism simulator. Step through glycolysis, the Krebs and Calvin cycles, the pentose phosphate pathway, fermentation, beta-oxidation, and a membrane electron transport chain one enzyme at a time, and watch the shared cofactor pools, the proton gradient, and reactive oxygen species respond.
+An interactive model of how cells make and spend energy. A membrane is drawn in cross-section above the cell's carbon network, drawn as a transit map, and both run on one kinetic model of the cell's chemistry, slowed so you can watch it. Pulse an enzyme and see where the push spreads and where it dies.
 
 **[Open it](https://a9l.im/lumen)** · part of [a9l.im](https://a9l.im)
 
 ## What's in it
 
-- Connected carbon pathways drawn as one transit map, with shared intermediates as interchanges and line weight and train speed showing flux: glycolysis and gluconeogenesis, the pentose phosphate pathway, the Calvin and Krebs cycles, pyruvate dehydrogenase, ethanol fermentation and aerobic ethanol salvage (PDC, ADH, ALDH, ACS), beta-oxidation, and a simplified fatty-acid synthesis. Reversible steps run backwards with their own cofactors.
-- A 14-component membrane carrying respiratory, linear photosynthetic, and cyclic electron flow: PSII, NDH-1 (Complex I), SDH (Complex II), plastoquinone, cytochrome b6f, plastocyanin, cytochrome c oxidase, PSI, ferredoxin, FNR, ATP synthase, bacteriorhodopsin, NNT, and an uncoupling protein, drawn in cross-section at roughly true relative size, with electrons riding the carriers, one red proton per unit of gradient, and photons.
-- Four conserved cofactor pools (ATP/ADP, NAD⁺/NADH, NADP⁺/NADPH, FAD/FADH₂) and a single proton gradient. ATP synthase spends four gradient units per ATP, and the gradient leaks faster with uncoupling on.
-- Allosteric control at PFK, PK/PEPCK, citrate synthase, isocitrate dehydrogenase, PDH, G6PDH, RuBisCO activase, ACAD, and fatty-acid synthesis. A blocked enzyme carries a bar across its line, and a blocked click says why.
-- Reactive oxygen species from electron leak at Complex I and the Q-cycle, cleared by SOD and catalase or by NADPH-consuming glutathione peroxidase. Uncleared ROS lowers cell health.
-- Five stylized presets (cyanobacterium, animal cell, obligate anaerobe, plant chloroplast, archaeon) that set and lock pathways, set light and oxygen, reset the starting cofactor ratios, and put the organism's own membrane under the microscope: a thylakoid, a granum, a mitochondrial crista, a bare plasma membrane, a purple membrane. Custom unlocks everything on a composite membrane.
-- Autoplay that runs the whole network under regulation; a margin with cofactor bars, 60-second sparklines, gas and water balances, ATP by source, ROS, and cell health; hover tooltips for enzymes and metabolites; and reference pages with the net equations.
+- A kinetic model per organism: BiGG-identified species in compartments, every reaction one enzyme's and balanced in elements and charge, rates set by thermodynamics (eQuilibrator ΔG'°), saturation and regulation, the proton-motive force split into Δψ and ΔpH, integrated by an implicit Rosenbrock method.
+- The plate. Panel a is the organism's membrane cut through, at roughly true relative size in David Goodsell's manner: a cyanobacterial thylakoid, a chloroplast thylakoid by its granum, a mitochondrial crista, an anaerobe's plasma membrane, a halophile's purple membrane, or a composite. Its cofactor pools are drawn as molecules under it, one for each in a fixed slab of the cell. Panel b is the carbon network as a transit map, with line weight and trains showing carbon flux, gates where regulation holds an enzyme back, and threads from the molecules an enzyme changes to the enzyme.
+- The legend. The conditions are a sentence whose values you drag (light, oxygen, ATP demand, growth, the uncoupler, the slowdown). Under it, a card shows the rate of the enzyme you last clicked as a budget of its factors, and the flux control coefficients after you hold one. Fig. 2 traces the last two minutes with an arrow at each change, or shows the electron transport chain as a live Z-scheme.
+- Reference pages for each pathway and for the model, with its sources.
 
 ## Controls
 
-- Click an enzyme on the map, or a complex in the membrane, to run it the way its line runs; right-click runs it backward. Click a loop's name for a whole turn. On touch, tap, and pick the direction with the forward/backward button (X).
-- Space autoplay · `,` / `.` particle speed · R reset · G / F add glucose / fatty acid
-- L light · O oxygen · U uncoupling · 1–5 glycolysis, PPP, Calvin, Krebs, beta-oxidation
-- T theme (light / dark / follows sunlight) · S margin · `[` / `]` margin tabs · `=` / `-` / `0` zoom; drag to pan, scroll to zoom
+- Click an enzyme on the map or a complex in the membrane to pulse it; right-click inhibits; press and hold holds it 10% up against an unchanged copy of the cell. Click a loop's name for a whole line. On touch, tap and long-press, and switch taps to inhibit under the plate (X).
+- Drag a value in the legend's sentence, or focus it and use the arrow keys; click it for a dial.
+- Click a line in the plate's key to knock it out (or 1–5).
+- Space play · `,` / `.` faster / slower chemistry · R reset · G / F add glucose / fatty acid · L light · O oxygen · U uncoupler
+- T theme (light / dark / follows sunlight) · S legend · V Fig. 2's view · `=` / `-` / `0` zoom; drag to pan, scroll to zoom
 - Shift+click (or long-press) an info button for its reference page.
 
 ## Running locally
@@ -33,7 +31,7 @@ the parent site by absolute path. From a checkout of
 
 ## How it's built
 
-Vanilla JavaScript ES modules drawing on a Canvas 2D context, with no dependencies of its own; KaTeX renders the math on the reference pages. Every reaction mutates one shared store and passes through a single dispatcher that applies allosteric regulation first. A layout module places the membrane complexes and the metabolite grid, and the renderer redraws pathways, hitboxes, and particles each frame. [AGENTS.md](AGENTS.md) has the file map and the mechanics.
+Vanilla JavaScript ES modules drawing on Canvas 2D, with no dependencies of its own; KaTeX renders the math on the reference pages. The engine (`src/engine/`) is headless and has its own tests (`node --test tests/*.test.mjs`); the window samples it into the picture, and nothing on screen feeds back into the model. [AGENTS.md](AGENTS.md) has the file map and the mechanics.
 
 ## License
 
