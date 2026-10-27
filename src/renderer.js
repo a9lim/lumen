@@ -25,7 +25,7 @@ import { drawDetail, drawCarrierSites } from './detail.js';
 const TAU = Math.PI * 2;
 const _ETC_INFO = { psii: 'PSII', ndh1: 'NDH1', sdh: 'SDH', pq: 'PQ', cytb6f: 'Cytb6f', pc: 'PC', cytOx: 'CytOx', psi: 'PSI', fd: 'Fd', fnr: 'FNR', atpSyn: 'ATPSyn', br: 'BR', nnt: 'NNT', ucp: 'UCP' };
 const _SEG_INFO = { g0: 'HK', g1: 'PGI', g2: 'PFK', g3: 'ALDO', g5: 'GAPDH', g6: 'PGK', g7: 'PGM', g8: 'ENO', g9: 'PK', c7: 'PRK', c0: 'RuBisCO',
-    c6: 'PGK', c5: 'GAPDH', c3: 'ALDO', c2: 'FBPase', c10: 'TKT', p0: 'G6PDH', p2: '6PGDH', p10: 'TKT', pdh: 'PDH', pdc: 'PDC', adh: 'ADH', ldh: 'LDH',
+    c6: 'PGK', c5: 'GAPDH', c3: 'ALDO', c2: 'FBPase', c10: 'TKT', p0: 'G6PDH', p2: '6PGDH', p10: 'TKT', p11: 'PGI', pdh: 'PDH', pdc: 'PDC', adh: 'ADH', ldh: 'LDH',
     aldh: 'ALDH', acs: 'ACS', kin: 'CS', k0: 'CS', k1: 'ACO', k2: 'IDH', k3: 'KGDH', k4: 'SCS', k5: 'SDH', k6: 'FUM', k7: 'MDH',
     b0: 'ACAD', b1: 'ECH', b2: 'HACD', b3: 'ACAT', bspur: 'ACAT' };
 const _REV_INFO = { g0: 'G6Pase', g2: 'FBPase' };

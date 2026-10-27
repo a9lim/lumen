@@ -11,15 +11,19 @@ const B = [16, 14, 12, 10, 8, 6, 4];
 /**
  * Segment → its parts: [reaction, carbon per turnover along the drawn way
  * (negative where the reaction runs against it), which part of its flux the
- * segment takes: 'both', 'pos' or 'neg']. In a cell with the Calvin cycle the
- * corridor's reversible steps hand their backward flux to the Calvin track.
+ * segment takes: 'both', 'pos' or 'neg', and for 'neg' a cap: a reaction
+ * whose forward rate bounds the backward flux taken]. In a cell with the
+ * Calvin cycle the corridor's reversible steps hand their backward flux to
+ * the Calvin track. PGI's backward flux closes the pentose phosphate loop
+ * only as far as G6PDH takes the G6P around again (the cyclic, oxidative
+ * mode); the rest, storage or gluconeogenesis, stays on the corridor.
  */
 export function segments(cellHas) {
-    const calvin = cellHas('RBPC');
+    const calvin = cellHas('RBPC'), cyclic = cellHas('G6PDH');
     const back = calvin ? 'pos' : 'both';
     const S = {
         g0: [['HEX1', 6], ['G6PP', -6], ['GLGP', 6], ['GLGS', -6]],
-        g1: [['PGI', 6]],
+        g1: [['PGI', 6], ...(cyclic ? [['PGI', -6, 'neg', 'G6PDH']] : [])],
         g2: calvin ? [['PFK', 6]] : [['PFK', 6], ['FBP', -6]],
         g3: [['FBA', 6, back]],
         g5: [['GAPD', 3, back], ...(calvin ? [] : [['GAPDP', 3]])],
@@ -35,6 +39,7 @@ export function segments(cellHas) {
         c10: calvin ? [['TKT2', -6, 'neg']] : [],
         p0: [['G6PDH', 6]], p1: [['PGL', 6]], p2: [['GND', 5]],
         p10: [['TKT2', 6, calvin ? 'pos' : 'both'], ['TALA', 6, calvin ? 'pos' : 'both']],
+        p11: cyclic ? [['PGI', -6, 'neg', 'G6PDH']] : [],
         pdh: [['PDH', 2]], pdc: [['PDC', 2]], adh: [['ADH', 2]], ldh: [['LDH', 3]], aldh: [['ALDH', 2]], acs: [['ACS', 2]],
         kin: [['CS', 2]], k0: [['CS', 4]], k1: [['ACONT', 6]], k2: [['ICDH', 5]], k3: [['AKGDH', 4]],
         k4: [['SUCOAS', 4]], k5: [['SDH', 4]], k6: [['FUM', 4]], k7: [['MDH', 4]],
@@ -45,7 +50,7 @@ export function segments(cellHas) {
         b3: [...B.map(n => ['KAT' + n, n]), ...B.map(n => ['FAS' + n, -n])],
         bspur: [...B.map(n => ['KAT' + n, n === 4 ? 4 : 2]), ...B.map(n => ['FAS' + n, n === 4 ? -4 : -2])],
     };
-    for (const id in S) S[id] = S[id].filter(([r]) => cellHas(r)).map(([r, w, mode]) => [r, w, mode || 'both']);
+    for (const id in S) S[id] = S[id].filter(([r]) => cellHas(r)).map(([r, w, mode = 'both', cap]) => cap ? [r, w, mode, cap] : [r, w, mode]);
     return S;
 }
 

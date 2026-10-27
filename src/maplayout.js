@@ -5,26 +5,33 @@
 // intermediates are interchanges: capsules across the glycolysis/Calvin
 // corridor, rings elsewhere. On phones the whole grid is transposed upright.
 
-export const KC = [16.46, 7.54], KR = 2.6;   // the Krebs circle line
-const kp = (a) => [KC[0] + KR * Math.cos(a * Math.PI / 180), KC[1] + KR * Math.sin(a * Math.PI / 180)];
+// The Krebs cycle: a rounded square about KC (a little wider, KW, than tall,
+// KH, so its names below clear the matrix's edge), its corners rounded by KRC.
+// Four stations sit on its sides' midpoints and four on its corners' curves,
+// citrate's taking acetyl-CoA on the diagonal. Citrate, isocitrate, succinyl-CoA
+// and fumarate are named inside; the rest outside, OAA by acetyl-CoA's arrival.
+export const KC = [16.05, 7.75], KW = 2.15, KH = 1.95, KRC = 0.9;
+const KQ = KRC / 4;   // how far inside its corner a rounded corner's curve passes, along each axis
+const ks = (sx, sy) => [KC[0] + sx * KW, KC[1] + sy * KH];
+const kc = (sx, sy) => [KC[0] + sx * (KW - KQ), KC[1] + sy * (KH - KQ)];
 
 /** id → [x, y, label, label side, kind]. kind: tick | hub | corr. Side 'in' faces the Krebs centre. */
 export const STATIONS = {
-    glucose: [1, 3, 'Glucose', 'b'], g6p: [3, 3, 'G6P', 'b', 'hub'], f6p: [5, 3, 'F6P', 'b', 'corr'],
+    glucose: [1, 3, 'Glucose', 'b'], g6p: [3, 3, 'G6P', 'b', 'corr'], f6p: [5, 3, 'F6P', 'b', 'corr'],
     f16bp: [7, 3, 'F1,6BP', 'b', 'corr'], g3p: [9, 3, 'G3P', 'b', 'corr'], bpg: [11, 3, '1,3-BPG', 'b', 'corr'],
     pga3: [13, 3, '3-PGA', 'b', 'corr'], pga2: [15, 3, '2-PGA', 'b'], pep: [17, 3, 'PEP', 'b'], pyruvate: [19, 3, 'Pyruvate', 'bl', 'hub'],
     pgl6: [3, 1.5, '6-PGL', 'l'], pga6: [4.5, 0, '6-PGA', 't'], r5p: [7, 1, 'R5P', 'tr', 'hub'], rubp: [13, 1, 'RuBP', 't'],
     lactate: [19, 1.6, 'Lactate', 'l'], acetaldehyde: [21, 3, 'Acetaldehyde', 'tr', 'hub'], ethanol: [23, 3, 'Ethanol', 'r'], aceticAcid: [21, 5, 'Acetic acid', 'r'],
     acetylCoA: [19, 5, 'Acetyl-CoA', 'tl', 'hub'],
     fattyAcid: [21, 7, 'Fatty acid', 'l', 'hub'], enoylCoA: [23, 7, 'Enoyl-CoA', 'r'], hydroxyCoA: [23, 9, 'OH-CoA', 'r'], ketoCoA: [21, 9, 'Keto-CoA', 'b'],
-    citrate: [...kp(-45), 'Citrate', 'in', 'hub'], isocitrate: [...kp(0), 'Isocitrate', 'in'], akg: [...kp(45), 'α-KG', 'in'],
-    succoa: [...kp(90), 'Suc-CoA', 'in'], succinate: [...kp(135), 'Succinate', 'in'], fumarate: [...kp(180), 'Fumarate', 'in'],
-    malate: [...kp(225), 'Malate', 'in'], oaa: [...kp(270), 'OAA', 'in'],
+    citrate: [...kc(1, -1), 'Citrate', 'in', 'hub'], isocitrate: [...ks(1, 0), 'Isocitrate', 'in'], akg: [...kc(1, 1), 'α-KG', 'br'],
+    succoa: [...ks(0, 1), 'Suc-CoA', 'in'], succinate: [...kc(-1, 1), 'Succinate', 'bl'], fumarate: [...ks(-1, 0), 'Fumarate', 'in'],
+    malate: [...kc(-1, -1), 'Malate', 'tl'], oaa: [...ks(0, -1), 'OAA', 'tr'],
 };
 
 /** Phone overrides: shorter names, other sides. */
-export const NARROW_LABEL = { isocitrate: 'Isocit.', succinate: 'Succ.', fumarate: 'Fum.', malate: 'Mal.', acetaldehyde: 'Acetald.', aceticAcid: 'Acetate', enoylCoA: 'Enoyl', hydroxyCoA: 'OH-acyl', ketoCoA: 'Keto' };
-export const NARROW_SIDE = { acetylCoA: 'tl', aceticAcid: 'b', fattyAcid: 'bl', ketoCoA: 'b', pga6: 'l', pgl6: 'r', pyruvate: 'r', lactate: 't' };
+export const NARROW_LABEL = { citrate: 'Cit.', isocitrate: 'Isocit.', succinate: 'Succ.', fumarate: 'Fum.', malate: 'Mal.', acetaldehyde: 'Acetald.', aceticAcid: 'Acetate', enoylCoA: 'Enoyl', hydroxyCoA: 'OH-acyl', ketoCoA: 'Keto' };
+export const NARROW_SIDE = { isocitrate: 'bl', acetylCoA: 'tl', aceticAcid: 'b', fattyAcid: 'bl', ketoCoA: 'b', pga6: 'l', pgl6: 'r', pyruvate: 'r', lactate: 't' };
 
 /** The lines: ink, the name in the key, and the name when trains run backward. */
 export const LINES = {
@@ -39,8 +46,11 @@ export const LINES = {
 
 /**
  * Tracks: line, the stations (or bare grid points) in running order, whether
- * it closes, whether it runs offset to its right (parallel corridors), and
- * its segments: [id, from, to, dispatch key, step, label, reversed label].
+ * it closes, whether it runs offset to its right (parallel corridors), its
+ * corners' radius (grid units, 0.42 unless round says), whether it is the
+ * ring about KC (its names outside), and its segments: [id, from, to,
+ * dispatch key, step, label, reversed label]. A station on a rounded corner
+ * sits on the curve, and the track lists the corner.
  */
 export const TRACKS = {
     glyc: { line: 'glyc', pts: ['glucose', 'g6p', 'f6p', 'f16bp', 'g3p', 'bpg', 'pga3', 'pga2', 'pep', 'pyruvate'], off: true, segs: [
@@ -54,9 +64,10 @@ export const TRACKS = {
         ['c6', 'pga3', 'bpg', 'glycolysis', 6, ''], ['c5', 'bpg', 'g3p', 'glycolysis', 5, ''],
         ['c3', 'g3p', 'f16bp', 'glycolysis', 3, ''], ['c2', 'f16bp', 'f6p', 'glycolysis', 2, ''],
         ['c10', 'f6p', 'r5p', 'glycolysis', 10, '']] },
-    ppp: { line: 'ppp', pts: ['g6p', [3, 0], [6, 0], 'r5p', 'f6p'], off: true, segs: [
+    ppp: { line: 'ppp', pts: ['g6p', [3, 0], [6, 0], 'r5p', 'f6p', 'g6p'], off: true, closed: true, segs: [
         ['p0', 'g6p', 'pgl6', 'ppp', 0, 'G6PDH'], ['p1', 'pgl6', 'pga6', 'ppp', 1, '6PGL'],
-        ['p2', 'pga6', 'r5p', 'ppp', 2, '6PGDH'], ['p10', 'r5p', 'f6p', 'glycolysis', 10, 'TKT + TAL', 'TK + SBPase']] },
+        ['p2', 'pga6', 'r5p', 'ppp', 2, '6PGDH'], ['p10', 'r5p', 'f6p', 'glycolysis', 10, 'TKT + TAL', 'TK + SBPase'],
+        ['p11', 'f6p', 'g6p', 'glycolysis', 1, '']] },
     pdh: { line: 'pdh', pts: ['pyruvate', 'acetylCoA'], segs: [['pdh', 'pyruvate', 'acetylCoA', 'pdh', 0, 'PDH']] },
     ferm: { line: 'ferm', pts: ['pyruvate', 'acetaldehyde', 'ethanol'], segs: [
         ['pdc', 'pyruvate', 'acetaldehyde', 'pdc', 0, 'PDC'], ['adh', 'acetaldehyde', 'ethanol', 'adh', 0, 'ADH']] },
@@ -64,7 +75,7 @@ export const TRACKS = {
     acet: { line: 'ferm', pts: ['acetaldehyde', 'aceticAcid', 'acetylCoA'], segs: [
         ['aldh', 'acetaldehyde', 'aceticAcid', 'aldh', 0, 'ALDH'], ['acs', 'aceticAcid', 'acetylCoA', 'acs', 0, 'ACS']] },
     kin: { line: 'krebs', pts: ['acetylCoA', 'citrate'], segs: [['kin', 'acetylCoA', 'citrate', 'krebs', 0, 'CS']] },
-    krebs: { line: 'krebs', circle: true, segs: [
+    krebs: { line: 'krebs', pts: ['oaa', ks(1, -1), 'isocitrate', ks(1, 1), 'succoa', ks(-1, 1), 'fumarate', ks(-1, -1), 'oaa'], closed: true, round: KRC, ring: true, segs: [
         ['k0', 'oaa', 'citrate', 'krebs', 0, ''], ['k1', 'citrate', 'isocitrate', 'krebs', 1, 'ACO'],
         ['k2', 'isocitrate', 'akg', 'krebs', 2, 'IDH'], ['k3', 'akg', 'succoa', 'krebs', 3, 'KGDH'],
         ['k4', 'succoa', 'succinate', 'krebs', 4, 'SCS'], ['k5', 'succinate', 'fumarate', 'krebs', 5, 'SDH'],
@@ -76,7 +87,7 @@ export const TRACKS = {
 };
 
 /** Corridor enzymes that serve two tracks: the glycolysis segment and its Calvin or PPP twin. */
-export const PAIR = { g2: 'c2', g3: 'c3', g5: 'c5', g6: 'c6', p10: 'c10' };
+export const PAIR = { g1: 'p11', g2: 'c2', g3: 'c3', g5: 'c5', g6: 'c6', p10: 'c10' };
 
 /**
  * Connections, as Beck marks a line meeting another service: the pools a
@@ -99,7 +110,7 @@ export const parseCof = (t) => { const m = /^([a-z0-9]+?)([+-])(\d*)$/.exec(t); 
 export const LOOPS = [
     { key: 'run_calvin', line: 'calvin', toggle: 'calvin', at: [10, 1.85], narrowAt: [11, 1.9], name: 'Calvin cycle', short: 'Calvin', info: 'run_calvin' },
     { key: 'run_ppp', line: 'ppp', toggle: 'ppp', at: [4.75, 1.45], narrowAt: [5.2, 1.75], name: 'Pentose P', short: 'PPP', info: 'run_ppp' },
-    { key: 'run_krebs', line: 'krebs', toggle: 'krebs', at: [KC[0], KC[1] + 0.1], alt: [[0, -0.95], [0, 0.72], [0, -0.55]], name: 'Krebs cycle', short: 'Krebs', info: 'run_krebs' },
+    { key: 'run_krebs', line: 'krebs', toggle: 'krebs', at: [KC[0], KC[1] + 0.1], narrowAt: [KC[0], KC[1] - 0.8], alt: [[0, -0.95], [0, 0.72], [0, -0.55]], name: 'Krebs cycle', short: 'Krebs', info: 'run_krebs' },
     { key: 'run_betaox', line: 'box', toggle: 'betaox', at: [22, 8], fit: 1.5, name: 'β-oxidation', short: 'β-ox', revName: 'FA synthesis', revShort: 'FAS', info: 'run_betaox' },
     { key: 'run_glycolysis_upper', line: 'glyc', toggle: 'glycolysis', segs: ['g0', 'g1', 'g2', 'g3'], at: [5, 4.2], narrowAt: [12.15, 6.3], span: [1, 9], name: 'Glucose ⇌ G3P', short: 'Glc ⇌ G3P', info: 'run_glyc_upper' },
     { key: 'run_glycolysis_lower', line: 'glyc', toggle: 'glycolysis', segs: ['g5', 'g6', 'g7', 'g8', 'g9'], at: [14, 4.2], narrowAt: [12.15, 8.9], span: [9, 19], name: 'G3P ⇌ pyruvate', short: 'G3P ⇌ Pyr', info: 'run_glyc_lower' },
@@ -112,7 +123,7 @@ export const CO2 = [
 ];   // optional 4th and 5th entries: where the spur goes on phones
 
 /** Where the key sits on the grid, and the empty field it owns; where the locator sits. */
-export const KEY_BOX = [1, 5.2, 12.6, 10.4];
+export const KEY_BOX = [0.6, 5.2, 12.2, 10.4];
 export const LOC_BOX = [20.3, -0.55, 24.55, 2.25];
 export const GRID = { x0: 0, x1: 24.6, y0: -0.75, y1: 10.5 };
 /** On phones the grid turns upright and keeps a little more room across, for the Krebs labels. */

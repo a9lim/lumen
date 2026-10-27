@@ -2,7 +2,7 @@
 name: Lumen
 title: Lumen — Interactive Cellular Metabolism Simulator
 description: Pulse the enzymes of a kinetic model of cellular energy metabolism (glycolysis, the Krebs and Calvin cycles, electron transport, ATP synthase) and watch flux, cofactor pools and the proton gradient answer, in five organisms.
-updated: 2026-10-26
+updated: 2026-10-27
 ---
 
 # Lumen — Interactive Cellular Metabolism Simulator
@@ -45,7 +45,7 @@ Custom shows a composite membrane with all fourteen complexes on a composite cel
 
 Panel a shows a fixed slab of the cell: the drawn length of membrane, 16.5 nm of the space under it, 20 nm deep. The cofactor molecules drawn there are the slab's mean counts at the cell's concentrations, so the animal cell's matrix holds a few free NADH among many NAD⁺. FAD stays bound to its enzymes and is not drawn. The lumen's protons are drawn one per 2 mV of Δp, not counted, because almost all translocated protons are bound to buffers.
 
-Each complex drawn is a representative centre turning over at its turnover number times the share of its capacity in use, slowed. Its turnovers are what moves: an electron (standing for a pair) entering at NDH-1, SDH or PSII waits on its carrier at each later complex until that complex turns over, which pumps that complex's protons, uses its oxygen or makes its NADPH. ATP synthase's rotor turns a third of a turn per ATP and its head shows the binding change. Above eight turnovers a second a centre is drawn one turnover in several, and the caption says so. When an enzyme on the map makes or spends a drawn cofactor, a dotted thread runs from the molecule it changed to the enzyme. Superoxide radicals appear where the chain leaks them and are cleared at the model's own rate. At 2.5× zoom each complex shows its cofactors, the sites electrons step between.
+Each complex drawn is a representative centre turning over at its turnover number times the share of its capacity in use, slowed. Its turnovers are what moves: an electron (standing for a pair) entering at NDH-1, SDH or PSII waits on its carrier at each later complex until that complex turns over, which pumps that complex's protons, uses its oxygen or makes its NADPH. ATP synthase's rotor turns a third of a turn per ATP and its head shows the binding change. Above eight turnovers a second a centre is drawn one turnover in several, and the caption says so. A complex that makes or spends a cofactor (ATP synthase, FNR, NDH-1, NNT) draws a molecule in, changes it and lets it go back out into the pool, which stays well mixed. When an enzyme on the map makes or spends a drawn cofactor, a dotted thread runs from the molecule it changed to the enzyme. Superoxide radicals appear where the chain leaks them and are cleared at the model's own rate. At 2.5× zoom each complex shows its cofactors, the sites electrons step between.
 
 ## The Verb
 
@@ -53,7 +53,7 @@ Clicking an enzyme on the map or a complex in the membrane pulses it: its activi
 
 ## The Map
 
-The carbon network is drawn as a transit map: glycolysis runs the corridor, the Calvin cycle runs back along it, the pentose phosphate pathway loops above, the Krebs cycle is a circle line and β-oxidation a loop. Line weight and train speed read each segment's carbon flux in mM of carbon per second, and the chevron trains point the way carbon runs. Each enzyme carries the cofactors it makes (+) or spends (−) as glyphs after its name. An enzyme held back by a regulator, or by the dark, shows the effector across the track: ⊣ inhibits, → is needed, dashed while it only slows the enzyme.
+The carbon network is drawn as a transit map: glycolysis runs the corridor, the Calvin cycle runs back along it, the pentose phosphate pathway loops above it and closes through PGI (carrying the F6P that goes round the oxidative branch again), the Krebs cycle is a ring line and β-oxidation a loop. Line weight and train speed read each segment's carbon flux in mM of carbon per second, and the chevron trains point the way carbon runs. Each enzyme carries the cofactors it makes (+) or spends (−) as glyphs after its name. An enzyme held back by a regulator, or by the dark, shows the effector across the track: ⊣ inhibits, → is needed, dashed while it only slows the enzyme.
 
 ## Reactive Oxygen and Damage
 

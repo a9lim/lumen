@@ -1,13 +1,13 @@
 // Map — builds the transit map in world pixels from maplayout.js, decides
 // what each segment shows (hidden, switched off, idle, running), hit-tests
 // clicks, and advances the trains. Drawing is in mapdraw.js.
-import { STATIONS, TRACKS, LOOPS, LINES, GRID, GRID_NARROW, KEY_BOX, LOC_BOX, KC, KR, NARROW_LABEL, NARROW_SIDE, PAIR, offsetPts, rounded, withLengths } from './maplayout.js';
+import { STATIONS, TRACKS, LOOPS, LINES, GRID, GRID_NARROW, KEY_BOX, LOC_BOX, KC, KW, KH, NARROW_LABEL, NARROW_SIDE, PAIR, offsetPts, rounded, withLengths } from './maplayout.js';
 import { flux, segmentState } from './flux.js';
 import { segmentLabels, stationLabel, synthesisOnly, cofactorGlyphs } from './mapbind.js';
 import { REACTIONS } from './engine/network.js';
 
 /** Segments whose running direction is the engine's reverse (left click runs the line's way). */
-export const FLIP = new Set(['adh', 'c6', 'c5', 'c3', 'c2', 'c10']);
+export const FLIP = new Set(['adh', 'c6', 'c5', 'c3', 'c2', 'c10', 'p11']);
 
 /** Label anchor offsets from a segment's grid midpoint, or absolute grid points (abs). */
 const LABEL_AT = {
@@ -16,11 +16,12 @@ const LABEL_AT = {
     p0: [-0.25, -0.3], p1: { abs: [2.75, 0.5] }, p2: { abs: [5.35, 0.42] },
     pdh: [0.2, -0.15], pdc: [0, -0.42], adh: [0, 0.42], ldh: [0.25, 0.1], aldh: [0.2, 0], acs: [0, -0.4], kin: [0.3, 0.12],
     b0: [0, -0.4], b1: [0.22, 0], b2: [0.55, 0.42], b3: [-0.22, 0],
+    k1: [0, -0.45],   // on the ring, a nudge along its side: aconitase's name clears the fatty acid's
 };
 /** Phone overrides, in the same grid (it is transposed after). */
 const NARROW_LABEL_AT = {
     p0: { abs: [2.6, 2.1] }, p1: { abs: [4.3, 1.1] }, b1: [-0.22, 0], b3: [0.22, 0],
-    p10: { abs: [6.75, 2.35] }, c7: [0, -0.6], ldh: [-0.4, -0.15],
+    p10: { abs: [6.75, 2.35] }, c7: [0, -0.6], ldh: [-0.4, -0.15], kin: [-0.35, -0.3],
 };
 
 export const MapView = {
@@ -99,7 +100,7 @@ export const MapView = {
         for (const [tid, def] of Object.entries(TRACKS)) for (const [sid, a, b] of def.segs) {
             if (!has(sid)) { all = false; continue; }
             for (const st of [a, b]) add(STATIONS[st][0], STATIONS[st][1], 1.7, 0.8);
-            if (def.circle) add(KC[0], KC[1], KR + 1.2, KR + 0.85);
+            if (def.ring) add(KC[0], KC[1], KW + 1.2, KH + 0.85);
             for (const L of LOOPS) {
                 if (L.line !== def.line) continue;
                 if (L.span) { add(L.span[0], L.at[1], 0, 0.6); add(L.span[1], L.at[1], 0, 0.6); } else add(L.at[0], L.at[1], 1.1, 0.6);
@@ -139,43 +140,36 @@ export const MapView = {
     _track(id, def) {
         const G = this.G, line = LINES[def.line];
         const tr = this.tracks[id] = { line: def.line, segs: [] };
-        let pts;
-        if (def.circle) {
-            pts = [];
-            for (let a = -90; a <= 270.01; a += 2) pts.push(this.T(KC[0] + KR * Math.cos(a * Math.PI / 180), KC[1] + KR * Math.sin(a * Math.PI / 180)));
-        } else {
-            let raw = def.pts.map(q => typeof q === 'string' ? this.T(STATIONS[q][0], STATIONS[q][1]) : this.T(q[0], q[1]));
-            if (def.off) {
-                if (def.closed) { const u = offsetPts(raw.slice(0, -1), G.gap / 2, true); raw = [...u, u[0]]; }
-                else raw = offsetPts(raw, G.gap / 2, false);
-            }
-            pts = rounded(raw, G.U * 0.42);
+        let raw = def.pts.map(q => typeof q === 'string' ? this.T(STATIONS[q][0], STATIONS[q][1]) : this.T(q[0], q[1]));
+        if (def.off) {
+            if (def.closed) { const u = offsetPts(raw.slice(0, -1), G.gap / 2, true); raw = [...u, u[0]]; }
+            else raw = offsetPts(raw, G.gap / 2, false);
         }
-        const L = withLengths(pts);
+        const pts = rounded(raw, G.U * (def.round ?? 0.42));
         // Segment boundaries: the dense point nearest each end station, searched in order
         let from = 0;
         def.segs.forEach(([sid, a, b, key, step, label, rev], i) => {
-            let i0 = from, i1;
-            if (def.circle) { i0 = Math.round((angleOf(a) + 90) / 2); i1 = Math.round((angleOf(b) + 90 + (angleOf(b) < angleOf(a) ? 360 : 0)) / 2); }
-            else {
-                const target = this.T(STATIONS[b][0], STATIONS[b][1]);
-                if (i === def.segs.length - 1) i1 = pts.length - 1;
-                else { let best = from, bd = 1e9; for (let k = from + 1; k < pts.length; k++) { const d = Math.hypot(pts[k][0] - target[0], pts[k][1] - target[1]); if (d < bd) { bd = d; best = k; } } i1 = best; }
-            }
+            const i0 = from, target = this.T(STATIONS[b][0], STATIONS[b][1]);
+            let i1;
+            if (i === def.segs.length - 1) i1 = pts.length - 1;
+            else { let best = from, bd = 1e9; for (let k = from + 1; k < pts.length; k++) { const d = Math.hypot(pts[k][0] - target[0], pts[k][1] - target[1]); if (d < bd) { bd = d; best = k; } } i1 = best; }
             from = i1;
             const sp = pts.slice(i0, i1 + 1), sl = withLengths(sp);
             const seg = { id: sid, track: id, line: def.line, ink: line.ink, key, step, label, rev, from: a, to: b, pts: sp, L: sl, len: sl[sl.length - 1] };
-            seg.lab = this._labelAt(seg, def.circle);
+            seg.lab = this._labelAt(seg, def.ring);
             this.segs[sid] = seg; tr.segs.push(sid);
         });
     },
 
-    _labelAt(seg, circle) {
+    _labelAt(seg, ring) {
         if (!seg.label) return null;
         let gx, gy;
-        if (circle) {
-            const a0 = angleOf(seg.from), a1 = angleOf(seg.to) + (angleOf(seg.to) < a0 ? 360 : 0), m = (a0 + a1) / 2 * Math.PI / 180, r = KR + 0.42;
-            gx = KC[0] + r * Math.cos(m); gy = KC[1] + r * Math.sin(m);
+        if (ring) {
+            // outside the side the segment runs along, beside its stretch of it
+            const A = STATIONS[seg.from], B = STATIONS[seg.to], mx = (A[0] + B[0]) / 2 - KC[0], my = (A[1] + B[1]) / 2 - KC[1];
+            if (Math.abs(mx) / KW > Math.abs(my) / KH) { gx = KC[0] + Math.sign(mx) * (KW + 0.42); gy = KC[1] + my; } else { gx = KC[0] + mx; gy = KC[1] + Math.sign(my) * (KH + 0.42); }
+            const o = LABEL_AT[seg.id];
+            if (o) { gx += o[0]; gy += o[1]; }
         } else {
             const o = (this.G.rot && NARROW_LABEL_AT[seg.id]) || LABEL_AT[seg.id] || [0, -0.4];
             if (o.abs) [gx, gy] = o.abs;
@@ -243,8 +237,6 @@ export const MapView = {
         return null;
     },
 };
-
-function angleOf(id) { const v = STATIONS[id]; let a = Math.atan2(v[1] - KC[1], v[0] - KC[0]) * 180 / Math.PI; if (a < -90.5) a += 360; return a; }
 
 function distToPolyline(x, y, pts) {
     let best = 1e9;

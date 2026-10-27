@@ -20,15 +20,19 @@ export function bindFlux(e, seg) {
 export function segmentFlux(id) {
     const parts = SEG[id];
     if (!parts || !engine) return 0;
-    const v = engine.state.v, comps = engine.model.comps;
     let f = 0;
-    for (const [rid, w, mode] of parts) {
-        const j = engine.rIndex[rid];
-        let x = v[j] * (comps[engine.reactions[j].comp] || 1);
+    for (const [rid, w, mode, cap] of parts) {
+        let x = rate(rid);
         if (mode === 'pos') x = Math.max(0, x); else if (mode === 'neg') x = Math.min(0, x);
+        if (cap) x = Math.max(x, -Math.max(0, rate(cap)));
         f += w * x;
     }
     return f;
+}
+/** A reaction's rate, scaled to the cytosol's volume (0 where the cell lacks it). */
+function rate(rid) {
+    const j = engine.rIndex[rid];
+    return j == null ? 0 : engine.state.v[j] * (engine.model.comps[engine.reactions[j].comp] || 1);
 }
 
 /** Ease the drawn values toward the engine's (dt in wall seconds); the rates are already evaluated. */
@@ -37,11 +41,12 @@ export function updateFlux(dt) {
     for (const id in SEG) { const f = flux[id] || 0; flux[id] = f + (segmentFlux(id) - f) * k; }
 }
 
-/** Whether a segment's enzymes exist in this cell, and whether any is switched on. */
+/** Whether a segment's enzymes exist in this cell, and whether any is switched on (with its cap's, where it has one). */
 export function segmentState(id) {
     const parts = SEG[id];
     if (!parts || !parts.length || !engine) return { present: false, on: false };
-    return { present: true, on: parts.some(([rid]) => engine.state.activity[engine.rIndex[rid]] > 0) };
+    const on = (rid) => engine.state.activity[engine.rIndex[rid]] > 0;
+    return { present: true, on: parts.some(([rid, , , cap]) => on(rid) && (!cap || on(cap))) };
 }
 
 export function resetFlux() { for (const id in flux) flux[id] = 0; }

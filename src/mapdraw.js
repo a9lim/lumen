@@ -123,7 +123,8 @@ export function drawMapText(c, hover) {
  * acetate enter. Its name sits on the boundary.
  */
 function drawZones(c, us) {
-    const M = MapView, P = K.P, a = M.T(13.25, 4.5), b = M.T(24.5, 10.45);
+    // the matrix holds the Krebs cycle's names; on phones its edge stays clear of the corridor's loop names
+    const M = MapView, P = K.P, rot = M.G.rot, a = M.T(rot ? 13.25 : 12.5, 4.5), b = M.T(24.5, rot ? 10.75 : 10.45);
     const x0 = Math.min(a[0], b[0]), y0 = Math.min(a[1], b[1]), x1 = Math.max(a[0], b[0]), y1 = Math.max(a[1], b[1]), r = M.G.U * 0.6;
     const u = K.ink('umber'), band = K.mix(u, P.canvas, P.dark ? 0.8 : 0.86), head = K.mix(u, P.canvas, P.dark ? 0.42 : 0.58), gap = 2.4;
     c.save();
@@ -134,8 +135,8 @@ function drawZones(c, us) {
     c.setLineDash([]);
     const fs = Math.max(10.5, 13 * us), name = 'mitochondrial matrix';
     c.font = `italic ${fs}px ${_FONT.text}`; c.textAlign = 'left'; c.textBaseline = 'middle';
-    // on the boundary's quiet stretch: the top right, past acetate's crossing (on phones the right edge, near the bottom)
-    const w = c.measureText(name).width, [lx, ly] = M.G.rot ? [x1 - w - 12, y1 - r - fs] : [x1 - r - w - 14, y0];
+    // on the boundary's quiet stretch: the top right, past acetate's crossing (on phones the bottom edge, at its right)
+    const w = c.measureText(name).width, lx = x1 - r - w - 14, ly = rot ? y1 : y0;
     c.fillStyle = P.canvas; c.fillRect(lx, ly - fs * 0.7, w + 12, fs * 1.4);
     c.fillStyle = P.muted; c.fillText(name, lx + 6, ly);
     _fixed.push([lx, ly - fs * 0.7, lx + w + 12, ly + fs * 0.7]);

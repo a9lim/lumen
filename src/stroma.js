@@ -10,6 +10,10 @@
 // wanders about the cell's and only what stays off is reconciled, a little at a
 // time and at random among free molecules; a docked molecule's fate is fixed.
 // No molecule changes back within a second while another could change instead.
+// A complex lets its molecule go back out into the pool, as far from the site
+// as it came in from, so busy complexes don't gather the pool around them: the
+// pools are well mixed (a nucleotide crosses the slab in microseconds), and the
+// drawn drift is far too slow to say so on its own.
 import { store } from './state.js';
 import { Membrane } from './membrane.js';
 import * as K from './complexes.js';
@@ -21,7 +25,11 @@ const FORM_FADE = 0.15;     // s a molecule's glyph crossfades when it changes f
 const REFRACT = 1;          // s after a change before the same molecule is picked again, if another can be
 const RECONCILE = 1.5;      // s, the time constant of reconciling the drawn forms with the cell's ratio
 const REACH = 16;           // nm a complex reaches for a molecule to dock, before it takes a farther one
-const DOCK_V = 40, DOCK_V0 = 8;   // nm/s: a docking molecule's speed, at most and at least
+const DOCK_V = 40, DOCK_V0 = 8;   // nm/s: a docking or departing molecule's speed, at most and at least
+const HOLD = 0.18;          // s a docked molecule stays at its site
+const AWAY_MIN = 5;         // nm at least a let-go molecule is carried from its site, clear of the complex
+const DRIFT = 3, DRIFT_TAU = 0.6;   // a free molecule's drift: speed (nm/s, rms per axis) and how long it keeps a heading (s)
+const SPIN = 0.3;           // rad/s, rms, its tumbling
 
 const Stroma = {
     mols: [],       // { pool, on, was, ft, x, y, vx, vy, rot, vr, dock }
@@ -60,21 +68,22 @@ const Stroma = {
     update(dt) {
         const B = Membrane.band, s = Membrane.s, r = this._rnd;
         if (!B) return;
+        const k = Math.exp(-dt / DRIFT_TAU), kick = Math.sqrt(12 * (1 - k * k));   // a uniform draw scaled to unit variance
         for (const m of this.mols) {
             m.ft += dt;
+            m.vr = m.vr * k + SPIN * kick * (r() - 0.5); m.rot += m.vr * dt;
             if (m.dock) {
-                // drawn in to the site at a capped speed, then let go changed
-                const D = m.dock, dx = D.x - m.x, dy = D.y - m.y, d = Math.hypot(dx, dy), v = Math.min(DOCK_V * s, Math.max(DOCK_V0 * s, d * 4)) * dt;
-                if (D.phase === 0) { if (d <= v) { m.x = D.x; m.y = D.y; D.phase = 1; D.t = 0; } else { m.x += dx / d * v; m.y += dy / d * v; } }
-                else if ((D.t += dt) > 0.18) { form(m, D.to); m.vx = D.ex * 6 * s; m.vy = D.ey * 6 * s; m.dock = null; }
+                // drawn in to the site at a capped speed, held, let go changed, and carried back out into the pool
+                const D = m.dock;
+                if (D.phase === 1) { if ((D.t += dt) > HOLD) { form(m, D.to); [D.x, D.y] = this._away(D); D.phase = 2; } continue; }
+                const dx = D.x - m.x, dy = D.y - m.y, d = Math.hypot(dx, dy), v = Math.min(DOCK_V * s, Math.max(DOCK_V0 * s, d * 4)) * dt;
+                if (d > v) { m.x += dx / d * v; m.y += dy / d * v; continue; }
+                m.x = D.x; m.y = D.y;
+                if (D.phase === 0) { D.phase = 1; D.t = 0; } else { m.dock = null; m.vx = m.vy = 0; }
                 continue;
             }
-            m.vr += (r() - 0.5) * 2.5 * dt; m.vr *= 0.95; m.rot += m.vr * dt;
-            // let go outside the band (the crista's ATP synthase heads): back into it at a bounded speed
-            const bx = Math.max(B.x0, Math.min(B.x1, m.x)), by = Math.max(B.y0, Math.min(B.y1, m.y)), bd = Math.hypot(bx - m.x, by - m.y);
-            if (bd > 0.5 * s) { const v = Math.min(bd, DOCK_V * s * dt); m.x += (bx - m.x) / bd * v; m.y += (by - m.y) / bd * v; m.vx = m.vy = 0; continue; }
-            m.vx += (r() - 0.5) * 60 * s * dt; m.vy += (r() - 0.5) * 60 * s * dt; m.vx *= 0.92; m.vy *= 0.92;
-            // A molecule just let go inside a complex's footprint drifts out of it; elsewhere it bounces off
+            m.vx = m.vx * k + DRIFT * s * kick * (r() - 0.5); m.vy = m.vy * k + DRIFT * s * kick * (r() - 0.5);
+            // A molecule inside a complex's footprint (a new layout's) drifts out of it; elsewhere it bounces off
             const inside = this._blocked(m.x, m.y, 0);
             if (inside) {
                 // straight out from the middle of the footprint it is in
@@ -192,10 +201,8 @@ const Stroma = {
 
     /** Change a molecule's form for a change with a place: dock at the site, or change it and run a thread. */
     _change(m, d, ev) {
-        if (ev.site) {
-            const a = this._rnd() * TAU;
-            m.dock = { x: ev.site[0], y: ev.site[1], to: d > 0, phase: 0, t: 0, ex: Math.cos(a) * 0.5, ey: 0.5 + 0.5 * Math.abs(Math.sin(a)) };
-        } else {
+        if (ev.site) m.dock = { x: ev.site[0], y: ev.site[1], sx: ev.site[0], sy: ev.site[1], fx: m.x, fy: m.y, to: d > 0, phase: 0, t: 0 };
+        else {
             if (!ev.swap) form(m, d > 0);
             if (!ev.to) return;
             // one live thread per enzyme: a new event there restarts it from the new molecule,
@@ -205,6 +212,21 @@ const Stroma = {
             if (!t) this.threads.push({ m, to: ev.to, key, col, t: 0 });
             else if (t.t >= THREAD_GROW) { t.m = m; t.col = col; t.t = 0; }
         }
+    },
+
+    /**
+     * Where a let-go molecule goes: a free place in the band as far from the
+     * site as it was picked up from (at least AWAY_MIN), in a direction at
+     * random, else back where it came from. Each docking then takes a molecule
+     * from near the site and returns one as near, so the pool stays spread.
+     */
+    _away(D) {
+        const B = Membrane.band, s = Membrane.s, dist = Math.max(AWAY_MIN * s, Math.hypot(D.fx - D.sx, D.fy - D.sy));
+        for (let t = 0; t < 16; t++) {
+            const a = this._rnd() * TAU, x = D.sx + Math.cos(a) * dist, y = D.sy + Math.sin(a) * dist;
+            if (x > B.x0 && x < B.x1 && y > B.y0 && y < B.y1 && !this._blocked(x, y, 0.8 * s)) return [x, y];
+        }
+        return [D.fx, D.fy];
     },
 
     /** A free molecule of a pool in a form, at random; one that changed within REFRACT only if no other is. */

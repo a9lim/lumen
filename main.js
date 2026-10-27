@@ -104,7 +104,8 @@ let last = performance.now(), traceT = 0, dashT = 0, ready = false;
 Promise.race([_loadTextFonts(), new Promise(r => setTimeout(r, 1500))]).then(() => { ready = true; Renderer.themeChanged(); drawSpecimenIcons(); Trace.draw(dom.trace); });
 
 function frame(now) {
-    const dt = Math.min((now - last) / 1000, 0.1);
+    // the first frame's timestamp can precede the clock read above it
+    const dt = Math.max(0, Math.min((now - last) / 1000, 0.1));
     last = now;
     if (!frozen) {
         simState.time += dt;
