@@ -13,10 +13,10 @@ export const FLIP = new Set(['adh', 'c6', 'c5', 'c3', 'c2', 'c10', 'p11']);
 const LABEL_AT = {
     g0: [0, -0.45], g1: [0, -0.45], g2: [0, -0.45], g3: [0, -0.45], g5: [0, -0.45], g6: [0, -0.45], g7: [0, -0.45], g8: [0, -0.45], g9: [0, -0.45],
     c7: [0, -0.42], c0: [-0.2, 0], p10: { abs: [6.35, 1.62], align: 'left' },
-    p0: [-0.25, -0.3], p1: { abs: [2.75, 0.5] }, p2: { abs: [5.35, 0.42] },
-    pdh: [0.2, -0.15], pdc: [0, -0.42], adh: [0, 0.42], ldh: [0.25, 0.1], aldh: [0.2, 0], acs: [0, -0.4], kin: [0.3, 0.12],
+    p0: { abs: [2.75, 1.95], align: 'right' }, p1: { abs: [2.75, 0.5] }, p2: { abs: [5.35, 0.42] },
+    pdh: [0.2, -0.15], pdc: [0, -0.42], adh: [0, 0.42], ldh: [0.25, 0.1], aldh: [0.2, 0], acs: [0, -0.4], kin: [0.05, 0.55],
     b0: [0, -0.4], b1: [0.22, 0], b2: [0.55, 0.42], b3: [-0.22, 0],
-    k1: [0, -0.45],   // on the ring, a nudge along its side: aconitase's name clears the fatty acid's
+    k1: [0, -0.25],   // on the ring, a nudge along its side: aconitase's name between citrate synthase's and the fatty acid's
 };
 /** Phone overrides, in the same grid (it is transposed after). */
 const NARROW_LABEL_AT = {
@@ -145,7 +145,9 @@ export const MapView = {
             if (def.closed) { const u = offsetPts(raw.slice(0, -1), G.gap / 2, true); raw = [...u, u[0]]; }
             else raw = offsetPts(raw, G.gap / 2, false);
         }
-        const pts = rounded(raw, G.U * (def.round ?? 0.42));
+        // a line that isn't offset turns inside the ring of an interchange at its corner
+        const sharp = def.off ? null : new Set(def.pts.flatMap((q, i) => typeof q === 'string' && STATIONS[q][4] === 'hub' ? [i] : []));
+        const pts = rounded(raw, G.U * (def.round ?? 0.42), def.closed, sharp);
         // Segment boundaries: the dense point nearest each end station, searched in order
         let from = 0;
         def.segs.forEach(([sid, a, b, key, step, label, rev], i) => {

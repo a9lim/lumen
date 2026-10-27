@@ -111,7 +111,7 @@ export function drawMapText(c, hover) {
     for (const s of _live) {
         if (!s.label || M.vis[s.id].a < 0.5) continue;
         const g = segmentGate(s.id);
-        if (g) { drawGate(c, s, g, us, boxes); M.gates++; }
+        if (g && drawGate(c, s, g, us, boxes)) M.gates++;
     }
     drawKey(c, us, hover);
 }
@@ -159,8 +159,7 @@ function drawGate(c, s, g, us, boxes) {
         if (!overlaps(box, boxes)) { geo = { mx, my, nx, ny, ux, uy, box }; break; }
     }
     // Nowhere clear by the track (a crowded junction): the gate follows the enzyme's name on its line instead
-    if (!geo && s.lab.box) { drawGateInline(c, s, g, fs, boxes); return; }
-    if (!geo) return;
+    if (!geo) return !!s.lab.box && drawGateInline(c, s, g, fs, boxes);
     boxes.push(geo.box);
     const { mx, my, nx, ny, ux, uy } = geo;
     const ax = mx + ux * d0, ay = my + uy * d0, bx = mx + ux * d1, by = my + uy * d1, px = -uy, py = ux;
@@ -186,21 +185,32 @@ function drawGate(c, s, g, us, boxes) {
         c.strokeStyle = P.text; c.lineWidth = 1.6;
         c.beginPath(); c.moveTo(mx + nx * h, my + ny * h); c.lineTo(mx - nx * h, my - ny * h); c.stroke();
     }
+    return true;
 }
 
-/** A gate set after its enzyme's name and connections: the mark, then the effector. */
+/**
+ * A gate set after its enzyme's name and connections: the mark, then the
+ * effector. Left out where even that would cover a name or a station (the
+ * enzyme's card still gives its regulation). Returns whether it was drawn.
+ */
 function drawGateInline(c, s, g, fs, boxes) {
     const P = K.P, b = s.lab.box, x = b[2] + 4, y = (b[1] + b[3]) / 2, gs = fs * 0.46;
+    c.save();
+    c.font = `${fs}px ${_FONT.text}`;
+    const wHow = c.measureText(g.how).width + 3;
+    c.font = `italic ${fs * 0.86}px ${_FONT.text}`;
+    const box = [x - 2, b[1], x + wHow + (g.eff ? gs * 2.8 : c.measureText(g.word).width) + 2, b[3]];
+    if (overlaps(box, boxes)) { c.restore(); return false; }
     const strength = g.factor === 0 ? 1 : g.how === '⊕' ? 0.8 : 1 - g.factor;
-    c.save(); c.globalAlpha = 0.45 + 0.55 * strength;
+    c.globalAlpha = 0.45 + 0.55 * strength;
     c.font = `${fs}px ${_FONT.text}`; c.textAlign = 'left'; c.textBaseline = 'middle'; c.fillStyle = P.text;
     c.lineJoin = 'round'; c.lineWidth = 3; c.strokeStyle = P.canvas;
     c.strokeText(g.how, x, y); c.fillText(g.how, x, y);
-    let w = c.measureText(g.how).width + 3;
-    if (g.eff) { K.molGlyph(c, x + w + gs * 1.3, y, gs, g.eff); w += gs * 2.8; }
-    else { c.font = `italic ${fs * 0.86}px ${_FONT.text}`; c.fillStyle = P.text2; c.strokeText(g.word, x + w, y); c.fillText(g.word, x + w, y); w += c.measureText(g.word).width; }
+    if (g.eff) K.molGlyph(c, x + wHow + gs * 1.3, y, gs, g.eff);
+    else { c.font = `italic ${fs * 0.86}px ${_FONT.text}`; c.fillStyle = P.text2; c.strokeText(g.word, x + wHow, y); c.fillText(g.word, x + wHow, y); }
     c.restore();
-    boxes.push([x - 2, b[1], x + w + 2, b[3]]);
+    boxes.push(box);
+    return true;
 }
 
 /** Whether box [x0, y0, x1, y1] overlaps any in the list. */

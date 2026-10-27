@@ -7,9 +7,10 @@
 
 // The Krebs cycle: a rounded square about KC (a little wider, KW, than tall,
 // KH, so its names below clear the matrix's edge), its corners rounded by KRC.
-// Four stations sit on its sides' midpoints and four on its corners' curves,
-// citrate's taking acetyl-CoA on the diagonal. Citrate, isocitrate, succinyl-CoA
-// and fumarate are named inside; the rest outside, OAA by acetyl-CoA's arrival.
+// Four stations sit on its sides' midpoints and four on its corners: citrate, the
+// interchange where acetyl-CoA joins on the diagonal, at its corner, the rest on
+// their corners' curves. Citrate, isocitrate, succinyl-CoA and fumarate are named
+// inside; the rest outside, OAA by acetyl-CoA's arrival.
 export const KC = [16.05, 7.75], KW = 2.15, KH = 1.95, KRC = 0.9;
 const KQ = KRC / 4;   // how far inside its corner a rounded corner's curve passes, along each axis
 const ks = (sx, sy) => [KC[0] + sx * KW, KC[1] + sy * KH];
@@ -24,7 +25,7 @@ export const STATIONS = {
     lactate: [19, 1.6, 'Lactate', 'l'], acetaldehyde: [21, 3, 'Acetaldehyde', 'tr', 'hub'], ethanol: [23, 3, 'Ethanol', 'r'], aceticAcid: [21, 5, 'Acetic acid', 'r'],
     acetylCoA: [19, 5, 'Acetyl-CoA', 'tl', 'hub'],
     fattyAcid: [21, 7, 'Fatty acid', 'l', 'hub'], enoylCoA: [23, 7, 'Enoyl-CoA', 'r'], hydroxyCoA: [23, 9, 'OH-CoA', 'r'], ketoCoA: [21, 9, 'Keto-CoA', 'b'],
-    citrate: [...kc(1, -1), 'Citrate', 'in', 'hub'], isocitrate: [...ks(1, 0), 'Isocitrate', 'in'], akg: [...kc(1, 1), 'α-KG', 'br'],
+    citrate: [...ks(1, -1), 'Citrate', 'in', 'hub'], isocitrate: [...ks(1, 0), 'Isocitrate', 'in'], akg: [...kc(1, 1), 'α-KG', 'br'],
     succoa: [...ks(0, 1), 'Suc-CoA', 'in'], succinate: [...kc(-1, 1), 'Succinate', 'bl'], fumarate: [...ks(-1, 0), 'Fumarate', 'in'],
     malate: [...kc(-1, -1), 'Malate', 'tl'], oaa: [...ks(0, -1), 'OAA', 'tr'],
 };
@@ -49,8 +50,11 @@ export const LINES = {
  * it closes, whether it runs offset to its right (parallel corridors), its
  * corners' radius (grid units, 0.42 unless round says), whether it is the
  * ring about KC (its names outside), and its segments: [id, from, to,
- * dispatch key, step, label, reversed label]. A station on a rounded corner
- * sits on the curve, and the track lists the corner.
+ * dispatch key, step, label, reversed label]. Every turn is a curve but where
+ * a line that isn't offset turns at an interchange's ring, where another line
+ * joins it: there it turns inside the ring, so the lines meet at its centre
+ * (fatty acid, citrate). A station on a rounded corner sits on the curve, and
+ * the track lists the corner.
  */
 export const TRACKS = {
     glyc: { line: 'glyc', pts: ['glucose', 'g6p', 'f6p', 'f16bp', 'g3p', 'bpg', 'pga3', 'pga2', 'pep', 'pyruvate'], off: true, segs: [
@@ -75,7 +79,7 @@ export const TRACKS = {
     acet: { line: 'ferm', pts: ['acetaldehyde', 'aceticAcid', 'acetylCoA'], segs: [
         ['aldh', 'acetaldehyde', 'aceticAcid', 'aldh', 0, 'ALDH'], ['acs', 'aceticAcid', 'acetylCoA', 'acs', 0, 'ACS']] },
     kin: { line: 'krebs', pts: ['acetylCoA', 'citrate'], segs: [['kin', 'acetylCoA', 'citrate', 'krebs', 0, 'CS']] },
-    krebs: { line: 'krebs', pts: ['oaa', ks(1, -1), 'isocitrate', ks(1, 1), 'succoa', ks(-1, 1), 'fumarate', ks(-1, -1), 'oaa'], closed: true, round: KRC, ring: true, segs: [
+    krebs: { line: 'krebs', pts: ['oaa', 'citrate', 'isocitrate', ks(1, 1), 'succoa', ks(-1, 1), 'fumarate', ks(-1, -1), 'oaa'], closed: true, round: KRC, ring: true, segs: [
         ['k0', 'oaa', 'citrate', 'krebs', 0, ''], ['k1', 'citrate', 'isocitrate', 'krebs', 1, 'ACO'],
         ['k2', 'isocitrate', 'akg', 'krebs', 2, 'IDH'], ['k3', 'akg', 'succoa', 'krebs', 3, 'KGDH'],
         ['k4', 'succoa', 'succinate', 'krebs', 4, 'SCS'], ['k5', 'succinate', 'fumarate', 'krebs', 5, 'SDH'],
@@ -145,23 +149,31 @@ export function offsetPts(pts, d, closed) {
     return out;
 }
 
-/** Round each interior corner with radius r; returns dense points. */
-export function rounded(pts, r) {
-    const n = pts.length, out = [pts[0]];
+/**
+ * Round each corner with radius r, but those whose indices are in sharp,
+ * where the line turns inside an interchange's ring. A closed path (its last
+ * point its first) rounds its closing corner too, starting and ending on the
+ * middle of that curve. Returns dense points.
+ */
+export function rounded(pts, r, closed = false, sharp = null) {
+    const n = pts.length, out = [];
     const line = (a, b) => { const L = Math.hypot(b[0] - a[0], b[1] - a[1]), k = Math.max(1, Math.ceil(L / 3)); for (let j = 1; j <= k; j++) out.push([a[0] + (b[0] - a[0]) * j / k, a[1] + (b[1] - a[1]) * j / k]); };
-    let cur = pts[0];
-    for (let i = 1; i < n - 1; i++) {
-        const A = pts[i - 1], Bp = pts[i], C = pts[i + 1];
+    const corner = (A, Bp, C) => {
         const l1 = Math.hypot(Bp[0] - A[0], Bp[1] - A[1]) || 1, l2 = Math.hypot(C[0] - Bp[0], C[1] - Bp[1]) || 1, rr = Math.min(r, l1 / 2, l2 / 2);
-        const p1 = [Bp[0] + (A[0] - Bp[0]) * rr / l1, Bp[1] + (A[1] - Bp[1]) * rr / l1], p2 = [Bp[0] + (C[0] - Bp[0]) * rr / l2, Bp[1] + (C[1] - Bp[1]) * rr / l2];
-        line(cur, p1);
-        for (let j = 1; j <= 10; j++) {
-            const t = j / 10, v = 1 - t;
-            out.push([v * v * p1[0] + 2 * v * t * Bp[0] + t * t * p2[0], v * v * p1[1] + 2 * v * t * Bp[1] + t * t * p2[1]]);
-        }
-        cur = p2;
+        return [[Bp[0] + (A[0] - Bp[0]) * rr / l1, Bp[1] + (A[1] - Bp[1]) * rr / l1], Bp, [Bp[0] + (C[0] - Bp[0]) * rr / l2, Bp[1] + (C[1] - Bp[1]) * rr / l2]];
+    };
+    const bez = ([p1, Bp, p2], t) => { const v = 1 - t; return [v * v * p1[0] + 2 * v * t * Bp[0] + t * t * p2[0], v * v * p1[1] + 2 * v * t * Bp[1] + t * t * p2[1]]; };
+    const curve = (q, t0, t1) => { for (let j = 1; j <= 10; j++) out.push(bez(q, t0 + (t1 - t0) * j / 10)); };
+    const close = closed && !(sharp && sharp.has(0)) ? corner(pts[n - 2], pts[0], pts[1]) : null;
+    let cur = close ? bez(close, 0.5) : pts[0];
+    out.push(cur);
+    if (close) { curve(close, 0.5, 1); cur = close[2]; }
+    for (let i = 1; i < n - 1; i++) {
+        if (sharp && sharp.has(i)) { line(cur, pts[i]); cur = pts[i]; continue; }
+        const q = corner(pts[i - 1], pts[i], pts[i + 1]);
+        line(cur, q[0]); curve(q, 0, 1); cur = q[2];
     }
-    line(cur, pts[n - 1]);
+    if (close) { line(cur, close[0]); curve(close, 0, 0.5); } else line(cur, pts[n - 1]);
     return out;
 }
 
