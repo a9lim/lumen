@@ -1,6 +1,6 @@
 # Lumen: where it could go
 
-Three ideation rounds so far. Round 1 (2026-10-24, against `c09cca0`) found the model's faults and set the north star. Round 2 (2026-10-25, against `69658c2`) designed the engine. Round 3 (2026-10-27, against `e30d90d`) audits what was built and reorients the roadmap; its proposals wait on a9's decisions, recorded at the end with rounds 1 and 2's. Each round had two independent reads: Claude's, and Codex's, briefed without Claude's ideas. In round 3 Codex also reviewed the synthesis adversarially (gaslamp thread `lumen-roadmap-round3-codex`: jobs `cx-20261027-133835-8b57` and `cx-20261027-135312-6ee7`), and its corrections are folded in. Where the reads agree, that is noted. Every reference below was checked against Crossref on the day it was added. Tags: **[standard]** is textbook or published science, **[synthesis]** is our combination of it, **[speculative]** is a bet.
+Three ideation rounds so far. Round 1 (2026-10-24, against `c09cca0`) found the model's faults and set the north star. Round 2 (2026-10-25, against `69658c2`) designed the engine. Round 3 (2026-10-27, against `e30d90d`) audited what was built and proposed a record-centred bench; a9 declined the record the same day and returned the cells to archetypes, and the roadmap below is the one decided. All three rounds' decisions are at the end. Each round had two independent reads: Claude's, and Codex's, briefed without Claude's ideas. In round 3 Codex also reviewed the synthesis adversarially (gaslamp thread `lumen-roadmap-round3-codex`: jobs `cx-20261027-133835-8b57` and `cx-20261027-135312-6ee7`), and its corrections are folded in. Where the reads agree, that is noted. Every reference below was checked against Crossref on the day it was added. Tags: **[standard]** is textbook or published science, **[synthesis]** is our combination of it, **[speculative]** is a bet.
 
 The faults rounds 1 and 2 listed are fixed, and the engine they designed is built, except where round 3 says otherwise below. AGENTS.md describes the result; this file's history keeps the old lists.
 
@@ -13,7 +13,7 @@ The faults rounds 1 and 2 listed are fixed, and the engine they designed is buil
 
 ## What round 3 found
 
-Ranked by how much each misteaches. Every number is a headless probe at `e30d90d`.
+Ranked by how much each misteaches. Every number is a headless probe at `e30d90d`. a9's decisions (13–14) set aside finding 4 (identities, kept as simplifications) and the experimental half of findings 7 and 8; the step cap and `HMAX` still matter to the day.
 
 1. **The flagship's first dial misbehaves.** Light is the first condition and the cyanobacterium the first specimen. Each case below is read 60 s after the change:
    - At 30% sun, with full O₂, its ATP falls from 2.6 to 0.58 mM (19% of the adenylates) and it exports lactate at 0.12 mM/s.
@@ -46,130 +46,99 @@ What holds up is the core. Respiratory control, the Pasteur effect in the animal
 - **A mitochondrial stress test** (Brand & Nicholls 2011) on the animal cell. Basal O₂ use is 0.226 mM/s. Oligomycin (ATP synthase off) brings it to 0.016, and glycolysis takes over (lactate 0.95 mM/s). The uncoupler stands in for FCCP: at UCP ×1 it raises O₂ use to 0.69, three times basal, and at ×4 lowers it to 0.61, so the highest tested rate isn't necessarily the maximum. Rotenone and antimycin bring it to 0.
 - **Anoxia and reoxygenation** (after Chouchani et al. 2014). Two minutes of anoxia run SDH backward, and succinate climbs from 0.008 to 3.0 mM. A fifth of a second after oxygen returns, complex I is running backward (reverse electron transport), SDH races at 4.4 mM/s and Δp overshoots to 207 mV. Superoxide barely rises (57 nM against 41), since complex I's superoxide is written as an NADH-to-oxygen reaction with no tie to the reverse electron transport or the cofactor state. Anoxia in one cell is also narrower than ischemia in a tissue.
 
-## The thesis, round 3
+## The thesis, as decided
 
-Round 1 found the drawing truer than the model. The model is now a mechanism, not a schedule, but it lives in the instant. Lumen shows *now* well. It can't hold a moment, compare two histories, run long enough for the classic experiments, or say where the carbon went. The next era makes **time, comparison and destinations** tangible (Codex's framing; Claude's reached the first two independently). The flagship's misbehaviour at its first dial is the first thing those tools should be pointed at.
+Round 3 proposed time, comparison and destinations, with a record at their centre: model-time traces, checkpoints, paired controls and provenance, so the classic experiments could be run and shared. a9 declined the record (decision 13). Lumen is a live, spontaneous model of a form of life: a causal, observational sandbox, where you change something and watch the organism answer. Its rigour is in the chemistry, not in bookkeeping about the chemistry. Three principles follow:
 
-Two principles, proposed with it **[synthesis]**:
-
-- **One model, two observers.** The plate and the instruments read the same model, each through an explicit measurement function, and never each other. The plate samples a small slab, rounds counts and thins turnovers, so an instrument must never count glyphs. The oxygen electrode reads dissolved O₂ in a chamber of stated volume, and consumption is inferred from its time course. 340 nm absorbance sums NADH and NADPH with their absorptivities and path. pH is an activity, through the buffers, and fluorescence needs excitation, yields and a detector. Where the plate can draw what an instrument measures, it should: the O₂ crossing the boundary, the photons PSII sends back out. That's an aspiration for the drawing, not a gate on the bench (Codex's correction of Claude's "instruments read what the plate draws").
-- **Run fast, look slow.** The record runs ahead at bench speed: minutes to hours of model time, in a worker. The plate looks at any moment of it, slowed. Scrubbing moves an observation cursor; it never edits the past. Changing a condition at an earlier moment makes an explicit branch beside the recorded future, not a replacement for it. The plate's picture at a past moment is rebuilt by replaying from the nearest checkpoint through the logged events, or is marked as freshly sampled. This resolves the tension between a plate that has to be slowed 30× to be watched and experiments that last minutes.
+- **Watch it happen.** Everything happens live, on the plate, while you watch. There's no record to replay and no control run beside an environmental change: the light, the oxygen and the day are the organism's life, not treatments. A poison is the one exception. It is a treatment, so a ghost of the unpoisoned cell may run beside it (a9).
+- **Archetypes, not species.** Each cell is an abstract model of a form of life, "a cyanobacterium" or "an animal cell", as the earliest Lumen had it (a9). Identities simplify freely for legibility: the textbook Krebs ring in the cyanobacterium, and L-lactate. The behaviours that define the form of life don't: a cyanobacterium respires its glycogen at night and concentrates CO₂ by day. Parameters measured in a representative species (*Synechocystis*'s c-ring and pools, *Halobacterium*'s potentials) serve the archetype **[the line between identity and behaviour is Claude's, for a9 to confirm]**.
+- **The clock spans the cell's own time.** It runs from 300× slower, where turnovers are visible, to a thousand or more times faster, where a day or a doubling fits in a few minutes. The plate already thins its turnovers as the clock speeds up, and at 1,000× Fig. 2's two minutes of wall time hold more than a day **[Claude's; it follows from the day and from growth]**.
 
 ## North star
 
-Unchanged: *Synechocystis* sp. PCC 6803 turning light and CO₂ into more of itself, drawn molecule by molecule and checkable against the experiments that discovered how it works, with the other specimens as comparative cuts on the shared engine (decision 1). Round 3 sets a nearer star on the way: **a bench where the classic figures can be redrawn, compared and shared**. Every later milestone is easier to check, and more fun to use, once it exists.
+Reframed by decision 14: **a cyanobacterium living through its day**, turning light and CO₂ into more of itself, drawn molecule by molecule and live, with the other archetypes as comparative cuts on the shared engine. It is no longer a named strain on a bench. The classic behaviours stay as headless tests that hold the model honest, but they aren't setups for a visitor.
 
 ## Roadmap
 
-Proposed in round 3, for a9's decision. Milestone 2 was "the bench". Both reads keep the bench next but split it, because bundled it would be another engine rewrite (Codex). The record's core comes first, and the flagship's day and night are diagnosed *on* it, not before it, because the record is what makes that diagnosis inspectable. Preparations come forward from old milestone 3. Each famous experiment becomes its own extension.
+As decided in round 3 (decisions 13–16). The focus is the day and night, the flagship made whole, transport, then growth. Poisons are a side track: instructive, but not the main line.
 
-**2. Identities** (small; can land any time).
-- The TCA bypass in place of α-ketoglutarate dehydrogenase in *Synechocystis*; D-lactate.
-- The legend says "biosynthetic demand", as round 2 decided.
-- Stale numbers in AGENTS.md and here corrected.
+**2. A clock for a day** (the prerequisite; small to medium).
+- The slowdown dial runs on past life into speed-ups, to about 1,000× faster. At 30× a day takes 48 wall hours; at 1,000×, under a minute and a half.
+- The engine keeps up. `advance` completes, or says it didn't; today a call silently stops after 5,000 steps. `HMAX` rises where the state is slow, with convergence checks. The engine moves into a worker if the main thread can't hold the speed: one core runs 175–370 model seconds a second today, with steps capped at 0.05 s.
+- Fig. 2's axis says how much model time its span holds.
+- *What you see:* turn the dial past 1× and the cell's slow life (storage, depletion, damage and repair) plays out while you watch.
 
-**3. The record** (the bench's core; both reads' first pick).
-- The clock: events at exact model times (steps stop at event boundaries); `advance` completes or says it didn't; complete checkpoints (held pulses, events, RNG); long runs in a worker in bounded, cancellable chunks. The slowdown dial runs past life, up to 100× faster, with the plate thinning as it already does. Raising `HMAX` takes convergence and event-resolution checks, not only frame independence.
-- Fig. 2 in model time, with observables defined by their measurement functions (net O₂ exchange, gross PSII, Δp and its parts, the pools), and additions marked as arrows at model times.
-- One paired control: mark a moment, change one thing, run the unchanged copy beside it, overlay the two traces.
-- The hold reports a steady state only when the internal state is stationary, or names what is accumulating.
-- CSV export, stamped with the model's version.
-- *What you see:* a record in model time with its additions marked, and two outcomes of one cell side by side.
+**3. Day and night.**
+- The night first, against qualitative targets for each archetype. The cyanobacterium respires its glycogen at night, mostly through the oxidative pentose phosphate pathway into NDH-1; it survives the night; it ferments only without oxygen. Dimming slows it without starving it. The chloroplast turns RuBisCO off at night and exports from starch. Where the cell misses a target, find which route, demand or capacity is wrong, and test that first (round 3, findings 1 and 5; Codex's caution).
+- Then the day itself: light as a function of time (the sun's arc, then a cloud passing), glycogen and starch filling and draining, photoprotection at noon (the orange carotenoid protein on the cyanobacterium's phycobilisome; NPQ on the chloroplast's lumen pH), and fluorescence drawn as photons leaving PSII. The theme's "follows sunlight" already points here.
+- *What you see:* a day: the morning's ATP and Δp rising, the noon's quenching, glycogen swelling in the map's station, the night's respiration on it, and a cell that is still alive at dawn.
 
-**3b. The record, extended.**
-- Scrubbing, with the plate rebuilt at the cursor by replay, and branches as explicit forks.
-- **Where the carbon went**: integrated ledgers of carbon and ATP, so fermentation, storage and growth's products read as destinations. It brings the "to the cell" spurs and the biomass ledger round 2 promised.
-- Setups in the URL (preset, conditions, protocol, seed, and the pinned model and parameter version), so a link replays a run exactly; the notebook.
+**4. The flagship made whole.**
+- The CCM. Bicarbonate transporters, and the CO₂-uptake NDH-1 complexes (NDH-1₃ and NDH-1₄: Ohkawa et al. 2000), which share a core with the respiratory NDH-1 but are separate complexes, drawn and modelled on their own. Then the carboxysome: carbonic anhydrase and RuBisCO behind a protein shell, much larger than the window, so the cut shows part of it **[standard; the drawing is synthesis]**.
+- Photorespiration, which matters where the CCM fails and is why the O₂ dial means something to a plant.
+- Carbon and nitrogen allocation made explicit, so growth isn't starved at α-KG: its production and its consumption (GS–GOGAT *spends* 2-oxoglutarate) each qualified, with nitrogen moved out of the biomass row's folded costs (Forchhammer & Selim 2020; Codex).
+- *What you see:* part of a carboxysome under the thylakoid, CO₂ no longer drawn down to 2 µM at full sun, and a growth dial the cell can meet.
 
-**4. The flagship's day and night, diagnosed on the record.**
-- Targets first: measured dark respiration, dark survival and fermentation products for *Synechocystis*, each with its conditions (reserves, acclimation, nitrogen). Exhaustion and recovery are allowed; an ATP floor alone doesn't establish viability.
-- Then the routes and demands that miss them: where dark carbon and NADH go (the OPPP, Entner–Doudoroff, NNT, NDH-2, LDH), demands that a night can carry, the chloroplast's poise and its RuBisCO at night, and the phosphorylase that runs backward.
-- *What you see:* dimming the light and night read as the organism's, with the record and the ledger as evidence.
+**5. Transport.** Fare zones and out-of-station interchanges on the map: ANT (exporting ATP spends Δψ), the phosphate carrier, MPC, the malate–aspartate shuttle, and the chloroplast's triose-phosphate translocator. NADH stops crossing membranes for free.
 
-**5. Preparations and the poison cabinet** (old milestone 3's preparations, brought forward).
-- One named preparation and one complete assay first: isolated mitochondria (the animal cell's matrix with the cytosol replaced by a cuvette of stated volume), substrates and ADP as additions, the oxygen electrode as a chamber model. Chance & Williams' states 3 and 4, the respiratory control ratio and the P/O ratio, measured as they were. Then the stress test on intact cells.
-- Named poisons with their mechanism, drawn bound at their sites in the zoom layer: cyanide at a₃, rotenone at complex I's Q site, antimycin at Qᵢ, oligomycin in F₀, DCMU at Q_B; FCCP and DNP as protonophores that carry protons across the bilayer, not a generic leak. A generic activity cut stays labelled "inhibition".
-- A candidate extension: superoxide tied to reverse electron transport and complex I's cofactor state, tested against reoxygenation observations.
-- *What you see:* the classic O₂-electrode figure redrawn from the model, with its arrows where the additions went and the poisons in their pockets.
+**6. Growth.** Biosynthesis that accumulates: the "to the cell" spurs round 2 promised, a live budget of where the carbon is going, allocation between the cell's demands, and a cell that grows and divides (in the cyanobacterium first). The locator could become the whole cell that does it.
 
-**6. The flagship made whole.**
-- The CCM. Bicarbonate transporters, and the CO₂-uptake NDH-1 complexes (NDH-1₃ and NDH-1₄: Ohkawa et al. 2000), which share a core with the respiratory NDH-1 but are separate complexes, so they're drawn and modelled on their own, not added to `NDH1F`. Then the carboxysome: carbonic anhydrase and RuBisCO behind a protein shell. The shell is much larger than the window's 16.5 × 20 nm slab, so the cut shows part of it, by choice of where the cut falls **[standard; the drawing is synthesis]**.
-- Photorespiration, which matters most where the CCM fails, and is the reason the O₂ dial means something to a plant.
-- Carbon and nitrogen allocation made explicit: α-KG's production and its consumption (GS–GOGAT *spends* 2-oxoglutarate) qualified separately, with nitrogen moved out of the biomass row's folded costs, not charged twice (Forchhammer & Selim 2020; Codex).
-- *What you see:* part of a carboxysome under the thylakoid, and growth that meets its dial or shows which precursor holds it back.
+**Side track: poisons** (any time; secondary). Named poisons with their mechanisms, drawn bound at their sites in the zoom layer: cyanide at a₃, rotenone at complex I's Q site, antimycin at Qᵢ, oligomycin in F₀, DCMU at Q_B, and FCCP or DNP carrying protons across the bilayer. The ionophores nigericin and valinomycin split Δp's parts. Each has a ghost of the unpoisoned cell on Fig. 2, the one paired control. Superoxide tied to reverse electron transport would complete the reoxygenation story (Chouchani et al. 2014), tested against its observations.
 
-**7. Light's instruments.** Each is its own extension, and none needs the others.
-- PSII's centre states: Q_A open or closed, the Mn cluster's S-states as populations.
-- Chlorophyll fluorescence, drawn as photons PSII sends back out; Kautsky's induction and PAM's saturating pulses (Schreiber et al. 1986).
-- Kok's flashes.
-- Light with colour: the phycobilisome's orange, chlorophyll's red and far-red; Emerson's enhancement.
-- Photoprotection: the orange carotenoid protein, photoactivated, docking on the phycobilisome and released by FRP (Kirilovsky & Kerfeld 2016); state transitions.
-- **A day**: light as a function of time, glycogen by day and night, then a cloud passing.
+A whole cell predicted from its genome is still a research programme (Codex, round 1). A live, honest model of how a form of life runs its day is achievable, and is the point.
 
-**8. Transport anatomy and named cells.** Fare zones and out-of-station interchanges (ANT, the phosphate carrier, MPC, the malate–aspartate shuttle, the triose-phosphate translocator). Isolated thylakoids and the Racker–Stoeckenius vesicle as preparations. The halophile's night, on arginine it is given (Hartmann et al. 1980), with its products accounted for. Named animal cells where a story needs one.
+### Behaviours the archetypes should show
 
-**9. Growth.** Enzyme allocation, a cell that grows, and division, in *Synechocystis* first; on the bench, a culture's optical density.
+The classic behaviours, kept as headless tests rather than visitor setups. Each lands with the milestone that gives it its parts.
 
-A whole cell predicted from its genome is still a research programme with large parameter uncertainty (Codex, round 1). A disciplined central-metabolism model with an honest bench is achievable, and Lumen becomes exceptional well before the far edge.
-
-### The experiments
-
-The classic figures, as setups a visitor can run and as regression tests that hold the model honest. Each lands with the milestone that gives it its parts.
-
-| Experiment | What the model must reproduce | Needs |
+| Behaviour | What the model must do | When |
 |---|---|---|
-| A mitochondrial stress test (Brand & Nicholls 2011; Divakaruni et al. 2014) | oligomycin → FCCP → rotenone + antimycin, read as basal, ATP-linked, the highest tested and spare respiration | runs today with generic inhibition; 3 for the record, 5 for named poisons |
-| Chance & Williams' oxygen-electrode trace (1955) | adding ADP speeds O₂ uptake (state 3); running out of it slows it (state 4); an uncoupler releases it; cyanide stops it | 5: isolated mitochondria |
-| Anoxia and reoxygenation (after Chouchani et al. 2014) | succinate accumulates in anoxia; reoxygenation drives reverse electron transport at complex I, and a superoxide burst | half runs today; 5 for a tested RET superoxide |
-| The dim-light paradox [synthesis] | gross fixation rises while net CO₂ uptake falls, as the cell refixes its own CO₂ | runs today; 3b for the ledger; 6 for the CCM comparison |
-| Jagendorf's acid bath (Jagendorf & Uribe 1966) | thylakoids at pH 4, moved to pH 8 with ADP, make ATP in the dark | 8: isolated thylakoids |
-| Racker & Stoeckenius' vesicle (1974) | bacteriorhodopsin and an ATP synthase in a vesicle make ATP in light | 8: a restricted preparation |
-| Kautsky's induction (Kautsky & Hirsch 1931) | fluorescence rises, peaks and quenches as the chain fills and the Calvin cycle starts | 7: centre states, fluorescence |
-| Kok's flashes (Joliot et al. 1969; Kok et al. 1970) | O₂ per flash oscillates with period four and peaks on the third flash, damped by misses and double hits | 7: S-states |
-| Emerson's enhancement (Emerson et al. 1957) | far-red alone does little, red alone some, both more than the sum | 7: light with colour |
-| Hill's reaction (1937); Ruben et al. (1941) | isolated thylakoids evolve O₂ with an artificial acceptor; the O₂ comes from water | 7–8 |
-| A glycogen-less mutant (Gründel et al. 2012) | ΔglgC lacks glycogen, copes badly with stress and overflows, depending on its nutrients | 4 for the night; gene-to-reaction mapping (finding 6) |
-| Calvin's pulse (Bassham, Benson & Calvin) | label appears in 3-PGA first | a labelled-carbon engine |
-| Peters' lethal synthesis (1952) | fluoroacetate becomes fluorocitrate and stops aconitase | 5 |
-| Warburg (1956) | aerobic glycolysis in a proliferating cell | 8: a named cell |
+| Respiratory control | ADP or demand speeds O₂ use; its lack slows it; an uncoupler releases it | built |
+| The Pasteur effect | anoxia speeds glycolysis and fermentation in the animal cell | built |
+| A stress test (Brand & Nicholls 2011) | oligomycin, an uncoupler, then rotenone and antimycin read as basal, ATP-linked, leak, highest and residual respiration | runs today with generic cuts; named poisons on the side track |
+| The night | the cyanobacterium respires glycogen, survives until dawn, ferments only in anoxia | 3 |
+| The day | storage fills by day and drains by night; noon's excess light is quenched | 3 |
+| The dim-light refixation [synthesis] | with no CCM, gross fixation rises while net CO₂ uptake falls when light dims | runs today; 4 changes it |
+| Carbon concentration | with a CCM, internal CO₂ stays high at full sun | 4 |
+| Reoxygenation (after Chouchani et al. 2014) | succinate accumulates in anoxia, and reoxygenation reverses complex I | half runs today; RET superoxide on the side track |
+| Growth | the cell meets a growth demand it can afford, and its carbon accumulates somewhere | 4, 6 |
+
+Set aside with the bench: Chance & Williams on isolated mitochondria, Jagendorf's acid bath, Racker & Stoeckenius' vesicle, Kok's flashes, Emerson's enhancement, Hill's reaction and Calvin's pulse. Each needs a preparation, an instrument or an isotope rather than a live organism. They stay in the references in case a later round wants them.
 
 ## Creative designs
 
-Ranked roughly by delight per unit of work, each with what it needs from the engine. The first two are milestones 3 and 3b.
+Re-ranked for a live sandbox, by delight per unit of work, each with the milestone that carries it.
 
-1. **Two histories of one cell** (Codex; Claude's "run fast, look slow" is the same idea). Pin a moment, change one condition, and watch the outcomes diverge on paired traces; switch the plate between them at any moment. Needs complete checkpoints and an event log.
-2. **Where the carbon went** (Codex). A patterned ribbon (pattern before hue) splits imported carbon into respiratory loss, storage, products and what went "to the cell". No atom-path claim is needed: element ledgers suffice.
-3. **The poison cabinet, drawn bound** (both rounds). Each inhibitor a small Goodsell molecule in its pocket at the zoom layer, the chain stopping behind it. DNP's history (a 1930s diet pill) belongs in the about panel, not on the plate.
-4. **Every observable drawn** (Claude, narrowed by Codex). Where an instrument's quantity can be drawn, the plate draws it: the photons PSII re-emits leaving it, the O₂ crossing the boundary. The instrument still reads the model, never the glyphs.
-5. **Metabolic fingerprints** (Codex). Save an intervention's response as a small trace specimen; compare an unknown perturbation against your own collection, with an optional reveal and no lesson sequence. Round 1's "diagnose an unknown", made a collection.
-6. **The notebook** (Claude). Fig. 1 is the plate and Fig. 2 the live record; each finished run pins as Fig. 3, Fig. 4, …, small multiples you can overlay (a paired control is two figures overlaid) and share by URL. The figure-and-caption register already in place, extended to a session.
-7. **Same Δp, different consequences** (Codex). Trade Δψ for ΔpH with nigericin or valinomycin and watch ATP export and the carriers respond differently at the same total. The engine has it; it needs the additions and the transporters' connections drawn.
-8. **The smallest working membrane** (both rounds). Custom becomes a kit: complexes knocked out at the complex level and drawn absent. Bacteriorhodopsin and ATP synthase alone is Racker–Stoeckenius; "NADPH without PSII?" the first instructive failure.
-9. **Reoxygenation** (Claude). The engine already accumulates succinate in anoxia and runs complex I backward when oxygen returns. A candidate extension, superoxide tied to reverse electron transport, would be tested against reoxygenation observations (Chouchani et al. 2014).
-10. **Mutants as specimens** (Claude). ΔglgC, Δpgr5, ΔndhD1/D2 as persistent deletions. Not one switch each: the glycogen case shows a deletion needs gene-to-reaction mapping and the right reversibility (finding 6), and its phenotype depends on the nutrients and the cell's history.
-11. **A cloud passing, then a day** (both). Replay one fluctuating light history with different reserves and watch glycogen buy time; then the sun's arc and KaiABC's rhythm **[the clock is speculative here]**.
-12. **Label, chase, recover** (both; Codex's first pick in round 1). Patterned carbon through the map and a chromatogram on the bench. Needs validated atom mappings and isotopomer dynamics: a major, distinctive direction, not a particle effect.
-13. **A whole cell in the locator** **[speculative]**. The locator grows into a Goodsell whole-cell cross-section (thylakoid stacks, carboxysomes, glycogen granules, ribosomes) that elongates and divides with the growth milestone.
-14. **Listening to the membrane** **[speculative]**. One click per drawn turnover of a chosen complex, so a quantity in the model can be heard. It would help low-vision visitors; it is decoration unless it reads a quantity.
+1. **A day** (2, 3). The sun crosses; Δp, ATP and NADPH rise with it; glycogen swells in its station and drains overnight; the plate's photons thin to nothing and come back.
+2. **A cloud passing** (3). A dip in the light that the cell rides out on its reserves, with photoprotection relaxing and re-engaging.
+3. **Every observable drawn** (3). Photons leaving PSII as fluorescence, more of them while its centres are closed; O₂ crossing the boundary.
+4. **The carboxysome's edge** (4). Part of the shell in the cut, RuBisCO packed behind it, bicarbonate arriving.
+5. **Where the carbon went, live** (6). A rolling budget in the legend and spurs on the map: respired, stored, fermented, gone "to the cell". It's a readout of now, not a ledger of a run.
+6. **A whole cell in the locator** **[speculative]** (6). The locator becomes a Goodsell whole-cell section (thylakoids, carboxysomes, glycogen granules, ribosomes) that elongates and divides.
+7. **Fare zones** (5). Carriers as out-of-station interchanges, and NADH paying to cross.
+8. **The poison cabinet, drawn bound** (side track). Each inhibitor a small molecule in its pocket at the zoom layer, the chain stopping behind it, and a ghost of the unpoisoned cell on Fig. 2.
+9. **Same Δp, different consequences** (side track). Nigericin or valinomycin trade Δψ for ΔpH; ATP export and the carriers part ways at the same total.
+10. **The smallest working membrane** (optional). Custom as a kit: complexes knocked out at the complex level and drawn absent. Bacteriorhodopsin and ATP synthase alone make ATP in light.
+11. **Label, chase** **[later]**. Patterned carbon through the map. It needs validated atom mappings: a major direction of its own.
+12. **Listening to the membrane** **[speculative]**. One click per drawn turnover of a chosen complex, so a quantity can be heard.
 
-Round 1's "zoom is time" stays speculative: the slowdown dial's four decades (300× slower to 100× faster) cover most of what it wanted.
+Dropped with the record: two histories of one cell, the notebook, metabolic fingerprints, URL replay. Mutants are knockouts the sandbox already has.
 
 ## Risks
 
-- **Scope creep in the model.** Every milestone tempts a new pathway. A pathway enters with the experiment or the misteaching that needs it, not for completeness (Codex).
-- **The legend's density.** At 280–320 px it already holds conditions, the enzyme card and Fig. 2. The record wants room: an expandable, full-width recording area under the plate, rather than more permanent rows in the legend (Codex). On phones, compare traces together and switch the plate between histories; two plates at once would bury the experiment.
-- **Throughput.** A model day is about four minutes of one core for one trajectory, before new mechanisms. The dense LU will cost more than the reaction count suggests as the network grows. Profile before rewriting the solver (Codex).
-- **Calibration.** "% sun" multiplies illustrative capacities. Light-response curves and named poisons invite quantitative comparison, so their parameters need sources, or a visible "illustrative".
+- **Scope creep in the model.** A pathway enters when a behaviour that defines the archetype needs it, not for completeness. Archetypes make this easier to hold.
+- **Throughput.** A day at 1,000× needs about three times what one core manages today at the step cap. Slow phases can take longer steps; profile before rewriting the dense solver (Codex).
+- **Calibration.** "% sun" multiplies illustrative capacities. That's fine for an archetype's day, but the light curve's shape (where the cell saturates) should be plausible for the form of life.
+- **The legend's density.** A day condition and growth's readouts need room in a 280–320 px column, and they still show rather than tell.
 
 ## What it outright lacks
 
-Round 1's list, less what was built:
+Round 1's list, less what was built and what round 3 set aside:
 
 - **What metabolism is for**: motility on Δp, ion pumping, and biosynthesis that becomes amino acids, nucleotides, lipids and enzymes. The ATP demand dial stands in for all of it.
 - **Compartments and transport** as anatomy: the carriers exist chemically but aren't drawn, and NADH crosses no membrane in the cells without one.
-- **A real environment**: CO₂ as a condition, spectrum, buffered or finite nutrients beyond feeding.
-- **Pathways**: photorespiration, the CCM, nitrogen assimilation, the glyoxylate shunt, real fatty-acid synthesis on ACP, photoprotection, the halophile's arginine fermentation.
-- **Experimental memory**: replay, saved setups, paired controls, export, and provenance on every displayed quantity.
+- **A real environment**: CO₂ as a condition, light that changes through a day, buffered or finite nutrients beyond feeding.
+- **Pathways**: photorespiration, the CCM, nitrogen assimilation, the glyoxylate shunt, real fatty-acid synthesis on ACP, photoprotection, the halophile's arginine fermentation (Hartmann et al. 1980), which would give it a night.
 
 ## Prior art and data
 
@@ -240,9 +209,9 @@ Round 1's list, less what was built:
 
 Round 1, a9, 2026-10-24.
 
-1. **North star: approved.** *Synechocystis* building itself, on a bench, with the other specimens as comparative cuts on a shared engine.
+1. **North star: approved.** *Synechocystis* building itself, on a bench, with the other specimens as comparative cuts on a shared engine. Reframed by 14: a cyanobacterium living through its day.
 2. **Truth beats tidiness.** True relative counts and a stated slow-motion factor, so that every number on the plate is defensible. Counts follow each specimen's organism (round 2).
-3. **Named cells.** The name decides the chemistry. Answered in round 2 by decision 11.
+3. **Named cells.** The name decides the chemistry. Answered in round 2 by decision 11; reversed by 14.
 4. **Mostly a sandbox.** The bench's experiments are things a visitor can set up, not a guided course; puzzles, if any, stay light.
 5. **Milestone 0 first** (built).
 
@@ -253,14 +222,12 @@ Round 2, a9, 2026-10-25. Codex's read came after a9's decisions and refined them
 8. **Biosynthetic demand moves into the engine,** not growth: precursors leave the map on terminal spurs, with an ATP-demand dial and a growth dial. The dials are built; the spurs and the ledger aren't, and the legend says "growing" (round 3, finding 3).
 9. **The window onto the cell** at true proportions, the stated slowdown, one model clock (built, except centre-state populations).
 10. **Energetics belongs to the engine** (built).
-11. **Named preparations**: the specimens are named for the preparations the canonical experiments used; *Synechocystis* is the one intact cell.
+11. **Named preparations**: the specimens are named for the preparations the canonical experiments used; *Synechocystis* is the one intact cell. Reversed by 14: the cells are archetypes.
 12. **Oxygen's rule and minimal compartments** as Codex amended them (built).
 
-Round 3, 2026-10-27: open, for a9.
+Round 3, a9, 2026-10-27, on the proposal page (https://claude.ai/artifact/7dmxwN742JP8d7S6Ubhda8).
 
-13. **The thesis.** Time, comparison and destinations as the next era, with its two principles: one model, two observers; run fast, look slow.
-14. **The order.** Identities, then the record's core, then the flagship's day and night diagnosed on it (Codex's order, recommended); or the flagship's night repaired first, before any record (Claude's first draft)?
-15. **Where the record lives.** An expandable full-width area under the plate (recommended), Fig. 2 growing inside the legend, or a permanent panel c?
-16. **The clock.** One clock whose dial runs past life, with a scrubbed cursor rebuilding the plate by replay (recommended); or a separate bench run beside a live plate?
-17. **The flagship made whole** (the CCM, the carboxysome, carbon and nitrogen) before or after light's instruments?
-18. **Which creative designs** to carry into milestones, and which to drop.
+13. **The record: declined.** Strict provenance, checkpoints and record artifacts distract from what Lumen is: a live, spontaneous model of an organism, a causal and observational sandbox. Environmental changes get no control run beside them; only poisons do.
+14. **Identities: not needed; archetypes return.** The inaccuracies are a toy model's simplifications. The cells go back to being abstract models of a form of life, not species or instances, as the earlier Lumen had them. This reverses decisions 3 and 11 (named cells and named preparations) and reframes 1: the north star is a cyanobacterium living through its day, not *Synechocystis* PCC 6803 on a bench.
+15. **The focus.** The day-and-night diagnosis, the flagship made whole, transport, and then growth. Poisons stay as an instructive tool, not the main focus.
+16. **Proposed after the decisions, for a9 to confirm** (Claude). The clock past life as the day's prerequisite (milestone 2). The line between identities, which simplify freely, and the behaviours that define a form of life, which don't. Light's bench experiments (Kok, Emerson, Kautsky) set aside, with fluorescence and photoprotection kept for the day.

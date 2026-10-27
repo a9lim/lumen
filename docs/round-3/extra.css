@@ -1,3 +1,6 @@
+.decided { max-width: 780px; border-top: 1px solid var(--rule-strong); padding-top: 12px; font-size: 17.5px; line-height: 1.52; color: var(--text2); }
+.decided b { font-weight: 400; font-style: italic; color: var(--accent); }
+
 /* Round three: the record (paired strips in model time), the ledger, the drawings, the layout wires */
 .rec { margin-top: 26px; border-top: 1px solid var(--rule-strong); }
 .rec-head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 6px 20px; padding: 10px 0 4px; font-size: 15.5px; color: var(--muted); }

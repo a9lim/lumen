@@ -4,6 +4,11 @@
 // pools. Volumes are relative to the cytosol; only their ratios matter to
 // the chemistry (the window onto the cell has its own, in window.js).
 //
+// Each cell is an archetype, an abstract model of a form of life rather than
+// a species (VISION.md, decision 14). Measured values come from a
+// representative of it: Synechocystis for the cyanobacterium, Halobacterium
+// for the halophile, E. coli for the composite.
+//
 // Pool sizes are totals of each conserved moiety, mM in its compartment, and
 // tagged with where they come from: 'measured' (with the source), or
 // 'illustrative' where no measurement for that organism was at hand.
@@ -65,7 +70,7 @@ const E_PQ = 0.080, E_UQ = 0.045, E_PC = 0.370, E_CYTC = 0.260, E_FD = -0.428;
 
 export const CELLS = {
     cyanobacterium: {
-        name: 'Synechocystis sp. PCC 6803',
+        name: 'Cyanobacterium',
         // NDH-1 takes ferredoxin here, NDH-2 NADH (network.js). It makes fatty acids but has no β-oxidation:
         // a functional pathway appears to be missing in cyanobacteria (von Berlepsch et al. 2012)
         reactions: uniq(HOUSE, GROW, GLYC, PPP_OX, PPP_NONOX, CALVIN, STORE, KREBS, FAS, ['NDH1F', 'NDH2', 'CYTBF', 'CYTOX'], ROS, PHOTO,
@@ -126,7 +131,7 @@ export const CELLS = {
         pools: { c: { nad: [0.5, 'illustrative'], nadp: [1, 'illustrative'], adenine: [2, 'illustrative'], coa: [0.5, 'illustrative'] } },
     },
     archaeon: {
-        name: 'Halobacterium salinarum',
+        name: 'Halophilic archaeon',
         // Menaquinone and halocyanin. No glycolysis (Todor et al. 2015), so no sugar phosphates for a
         // pentose phosphate pathway to run on; without anaplerosis the Krebs cycle keeps its intermediates
         reactions: uniq(HOUSE, KREBS, BETAOX, RESP, ['PDH', 'FACS', 'EX_fa', 'EX_o2', 'BR']),
