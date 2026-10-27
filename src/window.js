@@ -45,11 +45,15 @@ const CHAINS = {
     PSII: { keys: ['psii', 'pq', 'cytb6f', 'pc', 'psi', 'fd', 'fnr'], type: 'photo', gates: { 2: 'CYTBF', 4: 'PSI', 5: 'FNR' } },
     // cyclic flow's own step is ferredoxin to the quinone pool; PSI's photochemistry is PSI's turnover
     CEF: { keys: ['fd', 'pq', 'cytb6f', 'pc', 'psi'], type: 'cyclic', gates: { 2: 'CYTBF', 3: 'PSI' } },
-    // the cyanobacterium's NDH-1 takes ferredoxin; past plastocyanin its electron goes on to the oxidase
-    // or back to PSI (cyclic flow) as those two take plastocyanin's electrons (_fire)
+    // the cyanobacterium's NDH-1 takes ferredoxin
     NDH1F: { keys: ['fd', 'ndh1', 'pq', 'cytb6f', 'pc', 'cytOx'], type: 'resp', gates: { 3: 'CYTBF', 4: 'CYTOX' } },
 };
-const NDH1F_CYCLIC = { keys: ['fd', 'ndh1', 'pq', 'cytb6f', 'pc', 'psi'], type: 'cyclic', gates: { 3: 'CYTBF', 4: 'PSI' } };
+// Past plastocyanin a ferredoxin-fed chain's electron goes back to PSI (cyclic flow) or on to the oxidase,
+// as those two take plastocyanin's electrons (_fire): in the dark, all of it to the oxidase
+const BRANCH = {
+    CEF: [CHAINS.CEF, { keys: ['fd', 'pq', 'cytb6f', 'pc', 'cytOx'], type: 'resp', gates: { 2: 'CYTBF', 3: 'CYTOX' } }],
+    NDH1F: [{ keys: ['fd', 'ndh1', 'pq', 'cytb6f', 'pc', 'psi'], type: 'cyclic', gates: { 3: 'CYTBF', 4: 'PSI' } }, CHAINS.NDH1F],
+};
 // Electrons per turnover where not two: a drawn turnover is a pair, so PSI's are drawn at half its rate
 const ELECTRONS = { PSI: 1 };
 // Protons each turnover pumps up through a drawn complex (per electron pair; ATP synthase's run backward are its ring's)
@@ -188,14 +192,17 @@ const Win = {
                 Renderer.poolEvent('atp', fwd ? 1 : -1, 'atpSyn');
             } else if (CHAINS[rid] && fwd) {
                 let C = CHAINS[rid];
-                if (rid === 'NDH1F') {
-                    const e = this.engine, v = (r) => r in e.rIndex ? Math.max(0, e.state.v[e.rIndex[r]]) : 0, psi = v('PSI') / 2;
-                    if (psi > 0 && this.rng() < psi / (psi + v('CYTOX'))) C = NDH1F_CYCLIC;
+                if (BRANCH[rid]) {
+                    const e = this.engine, v = (r) => r in e.rIndex ? Math.max(0, e.state.v[e.rIndex[r]]) : 0, psi = v('PSI') / 2, ox = v('CYTOX');
+                    // with neither taking plastocyanin's electrons, it waits at PSI
+                    C = BRANCH[rid][psi + ox > 0 && this.rng() >= psi / (psi + ox) ? 1 : 0];
                 }
                 const cb = { 0: () => this._effect(rid) }, gates = {};
                 for (const [seg, g] of Object.entries(C.gates)) { cb[seg] = () => this._effect(g); gates[seg] = () => this._take(g); }
                 Renderer.spawnElectronChain(C.keys, C.type, cb, gates);
             } else if (HOPS[rid] && fwd) this.credits.push({ rid, left: CREDIT_WAIT });
+            // FNR run backward (the dark): NADPH's electrons onto ferredoxin, the pool NDH-1 takes them from
+            else if (rid === 'FNR') Renderer.spawnElectronChain(['fnr', 'fd'], 'resp', { 0: () => Renderer.poolEvent('nadph', -1, 'fnr') });
             else if (rid === 'BR' && fwd) { Renderer.spawnPhoton('br'); this._queue(1, 'br'); }
             // NNT takes one proton out of the lumen per hydride it moves (store.protonsNnt, particles.js)
             else if (rid === 'NNT' && fwd) { store.protonsNnt += w; Renderer.poolEvent('nadh', -1, 'nnt'); Renderer.poolEvent('nadph', 1, 'nnt'); }

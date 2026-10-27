@@ -106,7 +106,8 @@ export function drawLadder(cv) {
             g.beginPath(); g.moveTo(X(A[0]), Y(A[1])); g.lineTo(X(B[0]), Y(B[1])); g.stroke(); g.setLineDash([]);
         }
         g.font = `italic 10.5px ${_FONT.text}`;
-        const right = new Set(['p680', 'p680x', 'p700', 'p700x', 'h2o', 'nadp', 'o2', 'ndh', 'succ', 'cox']), up = new Set(['pc', 'fes', 'a1', 'fb', 'fnr', 'nadh', 'ciii', 'c', 'civ', 'bc', 'hc', 'ba3', 'mk', 'uq']), left = new Set(['pq', 'qa', 'etf']);
+        // Fd's label above its bar and FNR's below, so the dashed lines plainly leave Fd's
+        const right = new Set(['p680', 'p680x', 'p700', 'p700x', 'h2o', 'nadp', 'o2', 'ndh', 'succ', 'cox']), up = new Set(['pc', 'fes', 'a1', 'fb', 'fd', 'nadh', 'ciii', 'c', 'civ', 'bc', 'hc', 'ba3', 'mk', 'uq']), left = new Set(['pq', 'qa', 'etf']);
         for (const [k, [col, E, name]] of Object.entries(N)) {
             const px = X(col), py = Y(E), r = set.resp.includes(k);
             g.strokeStyle = r ? resp : P.text; g.lineWidth = 2; g.beginPath(); g.moveTo(px - 5, py); g.lineTo(px + 5, py); g.stroke();
@@ -122,7 +123,8 @@ export function drawLadder(cv) {
     // The beads: each electron in flight, at the carrier it has reached
     for (const e of Particles.electrons) {
         const path = [], starts = [];
-        for (const k of e.keys) { starts.push(path.length); path.push(...(set.groups[k] || [])); }
+        // a chain that starts at FNR is FNR run backward: its electron comes from NADPH
+        for (const [i, k] of e.keys.entries()) { starts.push(path.length); const g = set.groups[k] || []; path.push(...(i === 0 && k === 'fnr' ? [...g].reverse() : g)); }
         if (path.length < 2) continue;
         const n = e.keys.length - 1, u = Math.min(0.9999, e.progress) * n, si = Math.floor(u), f = u - si;
         // the last segment runs through the terminal group, unless the chain closes on its start (cyclic flow)
