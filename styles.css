@@ -146,7 +146,11 @@
 .lu-views { font-size: var(--font-sm); color: var(--text-muted); }
 .lu-views .lu-word { font-style: italic; }
 
-.lu-desc { margin: 6px 0 0; font-size: var(--font-sm); line-height: 1.45; color: var(--text-secondary); }
+/* Readouts: label–value pairs, the values in the text colour */
+.lu-read, .lu-readings { font-size: var(--font-sm); line-height: 1.45; color: var(--text-secondary); font-variant-numeric: lining-nums tabular-nums; }
+.lu-read { margin: 6px 0 0; }
+.lu-read b, .lu-readings b { font-weight: 400; color: var(--text); }
+.lu-pair { white-space: nowrap; }
 
 /* Specimens: the six locator drawings in one row, the chosen one in its inks */
 .lu-specimens { display: flex; justify-content: space-between; align-items: center; gap: 2px; margin-right: 18px; }
@@ -164,11 +168,12 @@
 .lu-specimens button[aria-checked="true"] { border-bottom-color: var(--text); }
 .lu-specimens button:focus-visible { outline: 1.5px solid var(--text); outline-offset: 1px; }
 .lu-spec-name { margin: 8px 0 0; font-size: var(--font-lg); color: var(--text); }
-.lu-spec-name i { font-size: var(--font-sm); color: var(--text-muted); }
 
-/* The conditions: a sentence whose values are the controls */
-.lu-sentence { margin: 0; font-size: var(--font-lg); line-height: 1.62; color: var(--text-secondary); }
+/* The conditions: label–value rows whose values are the controls */
+.lu-conds { display: grid; grid-template-columns: max-content 1fr; gap: 2px 16px; align-items: baseline; font-size: var(--font-base); line-height: 1.5; }
+.lu-k { color: var(--text-secondary); }
 .lu-v {
+    font-variant-numeric: lining-nums tabular-nums;
     color: var(--text);
     white-space: nowrap;
     cursor: ew-resize;
@@ -181,7 +186,6 @@
 .lu-v:hover, .lu-v.drag, .lu-v.open { color: var(--accent); border-bottom-color: var(--accent); }
 .lu-v.tog { cursor: pointer; }
 .lu-v:focus-visible { outline: 1.5px solid var(--accent); outline-offset: 2px; }
-.lu-hint { margin: 6px 0 0; font-size: var(--font-sm); font-style: italic; color: var(--text-muted); }
 .lu-dialbox { margin: 8px 0 2px; }
 .lu-acts { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 16px; margin: 9px 0 0; font-size: var(--font-base); color: var(--text-muted); }
 .lu-act-group { white-space: nowrap; }
@@ -207,7 +211,6 @@
 .lu-select:focus-visible { outline: 1.5px solid var(--text); outline-offset: 2px; }
 .lu-card { min-height: 8.6em; }
 .lu-card-name { margin: 0; font-size: var(--font-lg); line-height: 1.3; color: var(--text); }
-.lu-card-name i { font-size: var(--font-sm); color: var(--text-muted); }
 .lu-card-rate { margin: 2px 0 8px; font-size: var(--font-sm); line-height: 1.4; color: var(--text-secondary); font-variant-numeric: lining-nums tabular-nums; }
 .lu-budget { display: grid; grid-template-columns: 8.4em 1fr 3em; gap: 1px 8px; align-items: center; font-size: var(--font-sm); font-variant-numeric: lining-nums tabular-nums; }
 .lu-budget .k { color: var(--text-secondary); white-space: nowrap; }
@@ -217,15 +220,17 @@
 .lu-budget .b > span { position: absolute; left: 0; top: 0; height: 7px; background: var(--ink); transition: width 0.25s var(--ease-out), left 0.25s var(--ease-out); }
 /* What a factor took away is hatched, so the bar reads without colour */
 .lu-budget .b > .cut { background: repeating-linear-gradient(135deg, var(--ink) 0 1.5px, transparent 1.5px 4px); }
-.lu-card-why { margin: 7px 0 0; font-size: var(--font-sm); font-style: italic; line-height: 1.42; color: var(--text-muted); }
+.lu-card-reg { margin: 6px 0 0; font-size: var(--font-sm); line-height: 1.42; color: var(--text-secondary); font-variant-numeric: lining-nums tabular-nums; }
+.lu-card-reg:empty, .lu-card-rate:empty { display: none; }
 .lu-card-acts { margin-top: 8px; }
-.lu-control { font-variant-numeric: lining-nums tabular-nums; }
 
 /* Fig. 2: the trace, or the ladder */
 .lu-trace { display: block; width: 100%; height: 204px; }
 .lu-ladder { display: block; width: 100%; height: 300px; }
-.lu-readings { margin: 8px 0 0; display: grid; gap: 3px; font-size: var(--font-sm); line-height: 1.42; color: var(--text-secondary); font-variant-numeric: lining-nums tabular-nums; }
-.lu-readings b { font-weight: 400; color: var(--text); }
+.lu-readings { margin: 8px 0 0; display: grid; gap: 3px; }
+
+/* The reference pages, one word each */
+.lu-ref-list { margin: 0; font-size: var(--font-sm); line-height: 1.7; color: var(--text-muted); }
 
 /* ─── The reference overlay ─── */
 .lu-ref-title { margin: 0; padding: 6px 0 9px; font-size: var(--font-lg); font-weight: 400; }

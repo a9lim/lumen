@@ -1,10 +1,10 @@
 // Dashboard — the legend's live parts, read from the engine: the enzyme card
 // (card.js) with its Pulse, Inhibit and Hold, the held enzyme's control
-// coefficients against its paired baseline, and Fig. 2's readings (Δp and its
+// coefficients against its paired baseline, and Fig. 2's readings (Δp's
 // parts, ATP's sources, the exchange with the medium, the membrane's
 // health). The canvas tooltip's last line comes from here too.
 import Cell, { SYSTEM } from './cell.js';
-import { HOLD, ZMV } from './engine/engine.js';
+import { HOLD } from './engine/engine.js';
 import { MapView } from './map.js';
 import { Membrane } from './membrane.js';
 import { COMPLEX } from './mapbind.js';
@@ -46,19 +46,21 @@ export function chooseEnzyme(target) {
 }
 
 const fmtC = (c) => Math.abs(c) >= 10 ? c.toFixed(0) : c.toFixed(2).replace('-', '−');
+/** A readout line: label–value pairs, each kept on one line, broken only after a ·. */
+const pairs = (...ps) => ps.filter(Boolean).map((p) => `<span class="lu-pair">${p}</span>`).join('&nbsp;· ');
 function heldName(c) {
     const sel = _dom && _dom.enzymeSelect, o = sel && [...sel.options].find(o => o.value === c.targets[0]);
     return o ? o.textContent : Cell.engine.reactions[Cell.engine.rIndex[c.own]].name;
 }
-/** The paired baseline's report: running, its coefficients at the steady state, or why there are none. */
+/** The paired baseline's report: running (model seconds so far), cancelled, no steady state, or its control coefficients there. */
 function controlText() {
     const c = Cell.compare; if (!c) return null;
-    const how = `${heldName(c)} held ×${(1 + c.sign * HOLD).toFixed(1)}`;
-    if (c.state === 'running') return `${how} against a paired baseline: running both to a steady state, ${c.t} s of model time so far.`;
-    if (c.state === 'cancelled') return `${how}: conditions changed before a steady state, so no comparison. Hold it again.`;
-    if (!c.steady) return `${how}: no steady state within ${c.t} s of model time, so no control coefficient.`;
-    const parts = [[c.own, 'its own flux'], ...SYSTEM.filter(([r]) => r !== c.own)].filter(([r]) => c.C[r] != null).map(([r, n]) => `${n} ${fmtC(c.C[r])}`);
-    return `${how}, at the steady state ${c.t} s on. Its control over ${parts.join(' · ')}` + (parts.length ? '.' : 'no flux large enough to judge.');
+    const how = `${heldName(c)} held <b>×${(1 + c.sign * HOLD).toFixed(1)}</b>`;
+    if (c.state === 'running') return pairs(how, `settling <b>${c.t}</b> s`);
+    if (c.state === 'cancelled') return pairs(how, 'cancelled');
+    if (!c.steady) return pairs(how, `no steady state by <b>${c.t}</b> s`);
+    const parts = [[c.own, 'own flux'], ...SYSTEM.filter(([r]) => r !== c.own)].filter(([r]) => c.C[r] != null).map(([r, n]) => `${n} <b>${fmtC(c.C[r])}</b>`);
+    return pairs(how, `steady at <b>${c.t}</b> s`, ...(parts.length ? ['C: ' + parts[0], ...parts.slice(1)] : ['C: —']));
 }
 
 let _dirty = false;
@@ -97,22 +99,22 @@ export function fillInspector(first) {
     Card.show(sel.value);
 }
 
-/** The tooltip's last line for a target: its rate and its three factors. */
+/** The tooltip's last line for a target: its main reaction's rate (negative backward), ΔG, its three factors and any pulse. */
 export function factorText(target) {
     const e = Cell.engine; if (!e) return null;
     const j = mainReaction(target); if (j == null) return null;
-    const f = e.factors(j), r = e.reactions[j];
+    const f = e.factors(j), p = e.pulseNow(j);
     const dG = Number.isFinite(f.dG) ? f.dG.toFixed(1).replace('-', '−') + ' kJ/mol' : f.dG > 0 ? '+∞' : '−∞';
-    const way = f.v < 0 ? ', running backward' : '';
     const held = Cell.held && [].concat(Cell.held).includes(target);
-    const pulse = held ? `; held ×${e.pulseNow(j).toFixed(1)}` : Math.abs(e.pulseNow(j) - 1) > 0.02 ? `; pulsed ×${e.pulseNow(j).toFixed(1)}` : '';
-    return `${r.name}: ${fmt(f.v)} mM/s${way}; ΔG ${dG}; thermodynamics ${f.thermo.toFixed(2)}, saturation ${f.sat.toFixed(2)}, regulation ${f.reg.toFixed(2)}` + pulse;
+    const parts = [`${fmtR(f.v)} mM/s`, `ΔG ${dG}`, `thermodynamics ${f.thermo.toFixed(2)}`, `saturation ${f.sat.toFixed(2)}`, `regulation ${f.reg.toFixed(2)}`];
+    if (held || Math.abs(p - 1) > 0.02) parts.push(`${held ? 'held ' : ''}×${p.toFixed(1)}`);
+    return parts.join(' · ');
 }
 
 const fmt = (x) => { const a = Math.abs(x); return a === 0 ? '0' : a >= 10 ? x.toFixed(0) : a >= 1 ? x.toFixed(1) : a >= 0.01 ? x.toFixed(2) : x.toExponential(0); };
 const num = (x) => fmt(x).replace('-', '−');
 // a reading: small rates in plain decimals, not exponents
-const fmtR = (x) => { const a = Math.abs(x); return a === 0 ? '0' : a < 0.001 ? 'under 0.001' : a < 0.01 ? x.toFixed(3) : fmt(x); };
+const fmtR = (x) => { const a = Math.abs(x); return (a === 0 ? '0' : a < 0.001 ? (x < 0 ? '−' : '') + '<0.001' : a < 0.01 ? x.toFixed(3) : fmt(x)).replace('-', '−'); };
 const _set = (el, t) => { if (el && el.textContent !== t) el.textContent = t; };
 const _html = (el, t) => { if (el && el.innerHTML !== t) el.innerHTML = t; };
 
@@ -138,25 +140,20 @@ function atpThreshold() {
  * two electrons over protons per ATP (the ring's, and in mitochondria the phosphate carrier's
  * one more, with ANT's charge: one proton-motive force's worth per ATP exported).
  */
-export function yieldText() {
+function yieldText() {
     const e = Cell.engine, has = (r) => r in e.rIndex, nH = (r) => has(r) ? e.coupling(e.rIndex[r]).nH : 0;
     if (!has('ATPS')) return '';
-    const ring = e.cell.ring || 12, synth = -nH('ATPS'), carrier = has('PIC') ? 1 : 0, cost = synth + carrier;
-    const f = (x) => x.toFixed(1), per = `${f(cost)} per ATP (${ring} c subunits turn for three ATP${carrier ? ', and exporting each ATP costs one more' : ''})`;
-    const out = [];
-    if (has('PSII')) {
-        const lin = nH('PSII') + nH('CYTBF'), y = lin / cost;
-        out.push(`ATP per NADPH by linear flow: ${f(y)}, from ${lin} protons per two electrons and ${per}. ` + (y < 1.5 - 1e-9 ? 'The Calvin cycle needs 1.5, so cyclic flow makes up the rest.' : 'That meets the Calvin cycle’s 1.5 without cyclic flow.'));
-    }
+    const ring = e.cell.ring || 12, cost = -nH('ATPS') + (has('PIC') ? 1 : 0);
+    const f = (x) => `<b>${x.toFixed(1)}</b>`, out = [];
+    if (has('PSII')) out.push(`ATP/NADPH, linear ${f((nH('PSII') + nH('CYTBF')) / cost)}`);
     // complex I takes NADH; the cyanobacterium's NDH-1 takes ferredoxin, from NADPH through FNR in the dark
-    const entry = has('NDH1') ? ['NDH1', 'NADH'] : has('NDH1F') ? ['NDH1F', 'NADPH (through ferredoxin)'] : null;
+    const entry = has('NDH1') ? ['NDH1', 'NADH'] : has('NDH1F') ? ['NDH1F', 'NADPH'] : null;
     if (entry && has('CYTOX')) {
-        const nadh = nH(entry[0]) + nH('CYTBF') + nH('CYTOX'), succ = nH('CYTBF') + nH('CYTOX');
-        out.push(`P/O ${f(nadh / cost)} from ${entry[1]} and ${f(succ / cost)} from succinate: ${nadh} and ${succ} protons pumped per two electrons${has('PSII') ? ', ' + f(cost) + ' per ATP' : ', ' + per}.`);
+        const succ = nH('CYTBF') + nH('CYTOX');
+        out.push(`P/O ${entry[1]} ${f((nH(entry[0]) + succ) / cost)}`, `succinate ${f(succ / cost)}`);
     }
-    if (has('BR') && !has('PSII')) out.push(`Bacteriorhodopsin pumps one proton per photon, so an ATP takes ${f(synth)} photons (${ring} c subunits turn for three ATP).`);
-    if (!out.length) out.push(`No chain here. Run backward, ATP synthase spends an ATP to pump ${f(synth)} protons out (${ring} c subunits turn for three ATP).`);
-    return out.join(' ');
+    out.push(`H⁺/ATP ${f(cost)}`, `ring <b>c${String(ring).replace(/\d/g, (d) => '₀₁₂₃₄₅₆₇₈₉'[d])}</b>`);
+    return pairs(...out);
 }
 
 /** Full refresh, four times a second and after a click: the card, the hold's report, Fig. 2's readings. */
@@ -168,31 +165,35 @@ export function updateDashboard() {
     Card.update();
     Cell.checkCompare();
     _dom.enzymeHold.setAttribute('aria-pressed', String(!!Cell.held && Cell.held === _dom.enzymeSelect.value));
-    const t = controlText(); _dom.enzymeControl.hidden = !t; _set(_dom.enzymeControl, t || '');
+    const t = controlText(); _dom.enzymeControl.hidden = !t; _html(_dom.enzymeControl, t || '');
 
     // Fig. 2's readings: Δp and its parts, ATP's sources, the exchange with the medium, the membrane's health
     const lines = [];
     const th = atpThreshold();
-    lines.push(`Δp <b>${Math.round(e.dp())} mV</b>: Δψ ${num(Math.round(e.psi()))} and ΔpH ${num(Math.round(e.dpH()))} (${num(+(e.dpH() / ZMV).toFixed(1))} pH units)` + (Number.isFinite(th) ? `; making ATP needs ${Math.round(th)}.` : '.'));
+    // Δp itself is Fig. 2's first row; here its parts, and the Δp ATP synthase needs
+    const dp = [`Δψ <b>${num(Math.round(e.psi()))}</b>`, `ΔpH <b>${num(Math.round(e.dpH()))}</b>`];
+    if (Number.isFinite(th)) dp.push(`ATP needs <b>${Math.round(th)}</b>`);
+    dp[dp.length - 1] += ' mV';
+    lines.push(pairs(...dp));
     if (has('ATPS')) {
-        const sub = Math.max(0, R('PGK')) + Math.max(0, R('PYK')) + Math.max(0, R('SUCOAS')), ox = R('ATPS');
-        lines.push(ox < -0.005 ? `ATP synthase runs backward, splitting <b>${fmt(-ox)} mM/s</b>; substrates make ${fmt(sub)}.`
-            : `ATP made <b>${fmt(ox)} mM/s</b> by ATP synthase, ${fmt(sub)} by substrates.`);
+        // ATP synthase's rate is negative while it runs backward, splitting ATP
+        const sub = Math.max(0, R('PGK')) + Math.max(0, R('PYK')) + Math.max(0, R('SUCOAS'));
+        lines.push(pairs(`ATP from synthase <b>${fmtR(R('ATPS'))}</b>`, `substrates <b>${fmtR(sub)}</b> mM/s`));
     }
-    // Exchange with the medium, mM/s of cytosol: in, or out
+    // Exchange with the medium, mM/s of cytosol: in, or out; then growth
     const ex = [];
     for (const [rid, name] of [['EX_o2', 'O₂'], ['EX_co2', 'CO₂'], ['EX_glc', 'glucose']]) {
         if (!has(rid)) continue;
         const x = R(rid);
-        if (Math.abs(x) >= 0.005) ex.push(`${name} ${x > 0 ? 'in' : 'out'} ${fmtR(Math.abs(x))}`);
+        if (Math.abs(x) >= 0.005) ex.push(`${name} ${x > 0 ? 'in' : 'out'} <b>${fmtR(Math.abs(x))}</b>`);
     }
-    let exch = ex.length ? ex.join(', ') + ' mM/s' : '';
-    if (has('BIOMASS')) exch += (exch ? '; ' : '') + `growing ${fmtR(R('BIOMASS') / (300 / 3600))} /h`;
-    if (exch) lines.push(exch[0].toUpperCase() + exch.slice(1) + '.');
+    if (ex.length) ex[ex.length - 1] += ' mM/s';
+    if (has('BIOMASS')) ex.push(`growing <b>${fmtR(R('BIOMASS') / (300 / 3600))}</b> /h`);
+    if (ex.length) { ex[0] = ex[0][0].toUpperCase() + ex[0].slice(1); lines.push(pairs(...ex)); }
     const m = 'm' in e.model.comps ? 'm' : 'c', health = 100 * (1 - e.state.damage);
-    lines.push(`Membrane ${Math.round(health)}% intact; superoxide ${fmtR(e.conc('o2s', m) * 1e6)} nM, peroxide ${fmtR(e.conc('h2o2', m) * 1e6)} nM.`);
+    lines.push(pairs(`Membrane intact <b>${Math.round(health)}%</b>`, `O₂•⁻ <b>${fmtR(e.conc('o2s', m) * 1e6)}</b> nM`, `H₂O₂ <b>${fmtR(e.conc('h2o2', m) * 1e6)}</b> nM`));
     _html(_dom.readings, lines.map(l => `<p>${l}</p>`).join(''));
-    _set(_dom.yieldNote, yieldText());
+    _html(_dom.yieldNote, yieldText());
 }
 
 export { targetName };

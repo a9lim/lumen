@@ -39,7 +39,7 @@ export const MapView = {
     bounds: null,
     keyBox: KEY_BOX,    // where the key and the locator sit, grid units
     locBox: LOC_BOX,
-    keyRows: [],        // the key's line rows as drawn: [{ line, toggle, box }] (world px), its switches
+    keyRows: [],        // the key's line rows as drawn: [{ line, toggle, name, key, box }] (world px), its switches
     keyScreen: null,    // phones: the key under the map instead, { x, y, w } (px)
     pulseOf: null,      // segment id → its enzymes' pulse factor now (main.js), for the pulse marks
 

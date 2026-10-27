@@ -13,8 +13,7 @@ import Card, { mapPoint } from './src/card.js';
 import Trace from './src/trace.js';
 import Stroma from './src/stroma.js';
 import { cacheDOMElements, bindEvents, drawSpecimenIcons } from './src/ui.js';
-import { updateFlux, RUNNING } from './src/flux.js';
-import { lineState } from './src/mapdraw.js';
+import { updateFlux } from './src/flux.js';
 import { LINES } from './src/maplayout.js';
 import { Membrane } from './src/membrane.js';
 import { MapView } from './src/map.js';
@@ -33,8 +32,6 @@ Renderer.onPulse = (target, sign, hold) => {
     const first0 = [].concat(target)[0];
     if (!ok && first0 && !first0.startsWith('line:') && !(Array.isArray(target) && target.length > 2)) chooseEnzyme(target);
     if (ok) {
-        const hint = document.getElementById('lu-verb-hint');
-        if (hint && !hint.hidden) { hint.hidden = true; try { localStorage.setItem('lumen.verb', 'used'); } catch { /* fine */ } }
         // a whole line (a loop's name) is marked by its line's name and leaves the card as it is
         const first = [].concat(target)[0], line = (Array.isArray(target) && target.length > 2) || first.startsWith('line:');
         const name = line && first.startsWith('seg:') ? LINES[MapView.segs[first.slice(4)].line].name : targetName(target);
@@ -61,7 +58,6 @@ let frozen = false;
 const hooks = { onInteract: () => { frozen = false; } };
 Renderer.onInteract = hooks.onInteract;
 simState.autoPlay = !reduced;
-try { if (localStorage.getItem('lumen.verb') === 'used') document.getElementById('lu-verb-hint').hidden = true; } catch { /* storage off: keep the hint */ }
 bindEvents(dom, hooks);
 hooks.applyOrganism('cyanobacterium', true);
 Renderer.endWarm();
@@ -72,31 +68,18 @@ new ResizeObserver(() => requestAnimationFrame(() => Renderer.resize())).observe
 new MutationObserver(() => { Renderer.themeChanged(); updateDashboard(); drawSpecimenIcons(); Trace.dirty = true; })
     .observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
 
-// ── Caption: one line, what the plate shows now ──
+// ── Caption: one line, the plate's live values (the specimen is panel a's title, the conditions are the legend's, each line's flux is the key's) ──
 const setCaption = _colophon.caption(dom.caption, 400);
-const fmt = (f) => f >= 10 ? f.toFixed(0) : f >= 1 ? f.toFixed(1) : f.toFixed(2);
 function captionText() {
-    const spec = Membrane.spec, e = Cell.engine;
-    let busiest = null;
-    for (const id of Object.keys(LINES)) {
-        const st = lineState(id);
-        if (st && st.on && (!busiest || st.flux > busiest.flux)) busiest = st;
-    }
-    // the drawn ATP synthase's turns a second: the model's rate at its centre, a third of a turn per ATP
-    const mv = Math.round(e.dp()), turns = (Win.rate.ATPS || 0) / 3, back = turns < -0.005, light = e.env.light, o2 = e.env.o2;
-    const tps = (x) => Math.abs(x) >= 0.1 ? Math.abs(x).toFixed(1) : Math.abs(x).toFixed(2);
-    const lit = light <= 0 ? 'dark' : light < 0.95 ? `${Math.round(light * 100)}% sun` : 'light';
-    const air = o2 <= 0 ? ', no O₂' : o2 < 0.95 ? `, ${Math.round(o2 * 100)}% O₂` : '';
-    const state = frozen ? ', still' : simState.autoPlay ? '' : ', paused';
-    const parts = [];
-    parts.push(busiest && busiest.flux > RUNNING ? `${busiest.name} ${fmt(busiest.flux)} mM C/s` : 'no line running');
-    parts.push(`Δp ${mv} mV`);
-    if (Membrane.pos.atpSyn) parts.push(`ATP synthase ${Math.abs(turns) < 0.005 ? 'still' : (back ? 'back ' : '') + tps(turns) + ' turns/s'}`);
+    // the drawn ATP synthase's turns a second (negative backward): the model's rate at its centre, a third of a turn per ATP
+    const turns = (Win.rate.ATPS || 0) / 3, a = Math.abs(turns);
+    const parts = [`Δp ${Math.round(Cell.engine.dp())} mV`];
+    if (Membrane.pos.atpSyn) parts.push(`ATP synthase ${a < 0.005 ? '0' : (turns < 0 ? '−' : '') + (a >= 0.1 ? a.toFixed(1) : a.toFixed(2))} turns/s`);
     // Past the window's cap a centre is drawn one turnover in w (window.js)
     const w = Object.values(Win.thin);
-    const thin = w.length ? `; 1 in ${Math.max(...w)} turnovers drawn` : '';
-    const name = Renderer.narrow ? spec.name.replace(/^(Cyanobacterial|Chloroplast|Mitochondrial|Anaerobe|Halophile|Composite) /, '') : spec.name;
-    return `${name[0].toUpperCase() + name.slice(1)}, ${lit}${air}${state}; slowed ${Win.slow}×: ${parts.join(', ')}${thin}.`;
+    if (w.length) parts.push(`1 in ${Math.max(...w)} turnovers drawn`);
+    // each pair kept on one line, broken only after a ·
+    return parts.map((p) => p.replace(/ /g, '\u00a0')).join(' · ');
 }
 
 // ── Loop ──
@@ -121,10 +104,8 @@ function frame(now) {
         Renderer.draw(frozen ? 0 : dt);
         setCaption(captionText());
         if (dom.legendVisible()) {
-            if (dom.view() === 'ladder') {
-                const note = drawLadder(dom.ladder);
-                if (dom.ladderNote.textContent !== (note || '')) { dom.ladderNote.textContent = note || ''; dom.ladderNote.hidden = !note; }
-            } else if (traceT >= 0.2 || Trace.dirty) { traceT = 0; Trace.dirty = false; Trace.draw(dom.trace); }
+            if (dom.view() === 'ladder') drawLadder(dom.ladder);
+            else if (traceT >= 0.2 || Trace.dirty) { traceT = 0; Trace.dirty = false; Trace.draw(dom.trace); }
         }
     }
     requestAnimationFrame(frame);

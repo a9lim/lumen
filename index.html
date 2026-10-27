@@ -259,7 +259,7 @@
       </div>
       <div id="map-container" class="lu-scene lu-scene-map"><canvas id="map-canvas" role="img" aria-label="The cell's carbon network, drawn as an upright transit map."></canvas></div>
       <figcaption class="lu-capbar">
-        <p class="caption" aria-live="off"><span class="caption-n">Fig. 1</span><span id="lu-caption">Cyanobacterial thylakoid in the light.</span></p>
+        <p class="caption" aria-live="off"><span class="caption-n">Fig. 1</span><span id="lu-caption"></span></p>
         <button id="mode-btn" class="lu-btn lu-mode" type="button" aria-pressed="false" title="Taps pulse (X)" aria-label="Taps pulse">taps pulse</button>
         <div class="lu-zoom" role="group" aria-label="Zoom">
           <button id="zoom-out-btn" class="lu-btn" type="button" title="Zoom out (−)" aria-label="Zoom out">−</button>
@@ -280,19 +280,17 @@
             <button type="button" role="radio" data-org="obligateAnaerobe" aria-checked="false" title="Obligate anaerobe"><canvas class="lu-spec-icon" aria-hidden="true"></canvas><span class="sr-only">Obligate anaerobe</span></button>
             <button type="button" role="radio" data-org="plantChloroplast" aria-checked="false" title="Plant chloroplast"><canvas class="lu-spec-icon" aria-hidden="true"></canvas><span class="sr-only">Plant chloroplast</span></button>
             <button type="button" role="radio" data-org="archaeon" aria-checked="false" title="Archaeon"><canvas class="lu-spec-icon" aria-hidden="true"></canvas><span class="sr-only">Archaeon</span></button>
-            <button type="button" role="radio" data-org="custom" aria-checked="false" title="Custom: every pathway and every complex"><canvas class="lu-spec-icon" aria-hidden="true"></canvas><span class="sr-only">Custom</span></button>
+            <button type="button" role="radio" data-org="custom" aria-checked="false" title="Custom"><canvas class="lu-spec-icon" aria-hidden="true"></canvas><span class="sr-only">Custom</span></button>
           </div>
-          <p class="lu-spec-name"><span id="spec-name">Cyanobacterium</span> <i id="spec-cut">· a thylakoid, cut through</i></p>
-          <p class="lu-desc" id="organism-desc"></p>
+          <p class="lu-spec-name" id="spec-name">Cyanobacterium</p>
         </section>
 
         <section class="lu-sec lu-sec-cond" aria-labelledby="h-conditions">
           <h2 class="lu-label" id="h-conditions">Conditions <button class="info-trigger" type="button" data-info="conditions" aria-label="Conditions info">?</button></h2>
-          <p class="lu-sentence" id="lu-sentence"></p>
+          <div class="lu-conds" id="lu-conds"></div>
           <div class="lu-dialbox" id="lu-dialbox" hidden>
             <label class="lu-dial"><span class="lu-name" id="lu-dial-name"></span><input type="range" id="lu-dial" aria-labelledby="lu-dial-name"><output id="lu-dial-val" for="lu-dial"></output></label>
           </div>
-          <p class="lu-hint" id="lu-sentence-hint">Drag a dotted value, or click it for a dial.</p>
           <p class="lu-acts">
             <span class="lu-act-group" id="lu-feed">Feed <button id="add-glucose-btn" class="lu-word" type="button" title="Add glucose to the medium (G)">glucose</button><span class="lu-sep"> · </span><button id="add-fatty-acid-btn" class="lu-word" type="button" title="Add fatty acid to the medium (F)">fatty acid</button></span>
             <button id="reset-btn" class="lu-word" type="button" title="Start this cell over (R)">Reset</button>
@@ -308,33 +306,32 @@
         </section>
 
         <section class="lu-sec lu-sec-enz" aria-labelledby="h-enzyme">
-          <h2 class="lu-label lu-label-row" id="h-enzyme"><span>The enzyme <button class="info-trigger" type="button" data-info="inspector" aria-label="Enzyme card info">?</button></span><select id="lu-enzyme" class="lu-select" aria-label="Choose an enzyme"></select></h2>
+          <h2 class="lu-label lu-label-row" id="h-enzyme"><span>Enzyme <button class="info-trigger" type="button" data-info="inspector" aria-label="Enzyme card info">?</button></span><select id="lu-enzyme" class="lu-select" aria-label="Choose an enzyme"></select></h2>
           <div class="lu-card" id="lu-card" aria-live="polite"></div>
           <div class="lu-acts lu-card-acts">
             <button id="lu-enzyme-pulse" class="lu-word" type="button" title="Raise its activity ×5 for a moment">Pulse</button>
             <button id="lu-enzyme-inhibit" class="lu-word" type="button" title="Cut its activity to a tenth for a moment">Inhibit</button>
             <button id="lu-enzyme-hold" class="lu-word" type="button" aria-pressed="false" title="Hold it 10% up and compare with an unchanged copy of the cell">Hold</button>
           </div>
-          <p class="lu-desc lu-control" id="lu-enzyme-control" aria-live="polite" hidden></p>
-          <p class="lu-hint" id="lu-verb-hint">Click an enzyme on the plate to pulse it and bring it here.</p>
+          <p class="lu-read" id="lu-enzyme-control" aria-live="polite" hidden></p>
         </section>
 
         <section class="lu-sec lu-fig2" aria-labelledby="h-fig2">
-          <h2 class="lu-label lu-label-row" id="h-fig2"><span><b class="lu-fig-n">Fig. 2</b> <span id="fig2-title">The last two minutes</span> <button class="info-trigger" type="button" data-info="trace" aria-label="Fig. 2 info">?</button></span>
+          <h2 class="lu-label lu-label-row" id="h-fig2"><span><b class="lu-fig-n">Fig. 2</b> <button class="info-trigger" type="button" data-info="trace" aria-label="Fig. 2 info">?</button></span>
             <span class="lu-views" role="group" aria-label="Fig. 2 shows"><button type="button" class="lu-word" data-view="trace" aria-pressed="true">trace</button> · <button type="button" class="lu-word" data-view="ladder" aria-pressed="false">ladder</button></span></h2>
           <div class="lu-view" data-view="trace">
             <canvas class="lu-trace" id="lu-trace" role="img" aria-label="The last two minutes: Δp, the ATP and reduced-carrier shares, and the cell's main flux, with arrows where you changed something."></canvas>
           </div>
           <div class="lu-view" data-view="ladder" hidden>
             <canvas class="lu-ladder" id="lu-ladder" role="img" aria-label="The electron transport chain's carriers at their midpoint potentials, with each electron now in flight as a bead on its carrier."></canvas>
-            <p class="lu-desc" id="lu-ladder-note" hidden></p>
-            <p class="lu-desc" id="lu-yield"></p>
+            <p class="lu-read" id="lu-yield"></p>
           </div>
           <div class="lu-readings" id="lu-readings"></div>
         </section>
 
-        <section class="lu-sec lu-refs" aria-label="Reference">
-          <p class="lu-desc">Read more on <button class="lu-word" type="button" data-ref="engine">the model</button> · <button class="lu-word" type="button" data-ref="protons">Δp</button> · <button class="lu-word" type="button" data-ref="sunlight">light</button> · <button class="lu-word" type="button" data-ref="oxygen">oxygen</button> · <button class="lu-word" type="button" data-ref="uncoupling">uncoupling</button> · <button class="lu-word" type="button" data-ref="oxStress">oxidative stress</button> · <button class="lu-word" type="button" data-ref="ladder">the ladder</button> · <button class="lu-word" type="button" data-ref="glycolysis">glycolysis</button> · <button class="lu-word" type="button" data-ref="ppp">the pentose phosphate pathway</button> · <button class="lu-word" type="button" data-ref="calvin">the Calvin cycle</button> · <button class="lu-word" type="button" data-ref="krebs">the Krebs cycle</button> · <button class="lu-word" type="button" data-ref="betaox">fatty acids</button> · <button class="lu-word" type="button" data-ref="equations">the net equations</button></p>
+        <section class="lu-sec lu-refs" aria-labelledby="h-refs">
+          <h2 class="lu-label" id="h-refs">Reference</h2>
+          <p class="lu-ref-list"><button class="lu-word" type="button" data-ref="engine">model</button>&nbsp;· <button class="lu-word" type="button" data-ref="protons">Δp</button>&nbsp;· <button class="lu-word" type="button" data-ref="sunlight">light</button>&nbsp;· <button class="lu-word" type="button" data-ref="oxygen">oxygen</button>&nbsp;· <button class="lu-word" type="button" data-ref="uncoupling">uncoupling</button>&nbsp;· <button class="lu-word" type="button" data-ref="oxStress">ROS</button>&nbsp;· <button class="lu-word" type="button" data-ref="ladder">ladder</button>&nbsp;· <button class="lu-word" type="button" data-ref="glycolysis">glycolysis</button>&nbsp;· <button class="lu-word" type="button" data-ref="ppp">pentose phosphate</button>&nbsp;· <button class="lu-word" type="button" data-ref="calvin">Calvin cycle</button>&nbsp;· <button class="lu-word" type="button" data-ref="krebs">Krebs cycle</button>&nbsp;· <button class="lu-word" type="button" data-ref="betaox">fatty acids</button>&nbsp;· <button class="lu-word" type="button" data-ref="equations">net equations</button></p>
         </section>
       </div>
     </aside>
@@ -368,7 +365,7 @@
     <h3>Organism presets</h3>
     <p>Five organisms each have their own reactions, compartments, pools and membrane: a cyanobacterium, an animal cell with its mitochondrial matrix, an obligate anaerobe, a plant chloroplast and a halophilic archaeon.</p>
     <h3>Accessibility</h3>
-    <p>Lumen provides keyboard shortcuts, labeled controls, light, dark and sunlight-following themes, and numerical readouts; the enzyme card reaches every enzyme from the keyboard, and the conditions sentence's values are sliders. With reduced motion requested, Lumen opens on a still frame, and the model clock can be paused.</p>
+    <p>Lumen provides keyboard shortcuts, labeled controls, light, dark and sunlight-following themes, and numerical readouts; the enzyme card reaches every enzyme from the keyboard, and the conditions' values are sliders. With reduced motion requested, Lumen opens on a still frame, and the model clock can be paused.</p>
     <p><em>See also: <a href="/worldline">Worldline</a> for particle physics, <a href="/shoals">Shoals</a> for options trading, <a href="/miasma">Miasma</a> for epidemics.</em></p>
 <h3>Learning outcomes</h3>
 <p>After using Lumen, students should be able to: trace simulated carbon flow through glycolysis, pyruvate processing, the Krebs cycle, and linked biosynthetic routes; explain how the proton-motive force couples electron transfer to ATP synthesis and limits it (respiratory control); read an enzyme's rate as thermodynamics, saturation and regulation; interpret a flux control coefficient; compare respiratory, photosynthetic, and fermentative network states; and describe how electron leaks, scavenging, and NADPH availability affect ROS and cell health.</p>

@@ -485,7 +485,7 @@ export function lineState(id) {
  */
 const KEYS = { glycolysis: 1, ppp: 2, calvin: 3, krebs: 4, betaox: 5 };
 /** The key's height at its fullest, side by side (for the phones' map canvas). */
-export function keyHeight(us) { const fs = Math.max(10.5, 12.5 * us), rh = Math.round(fs * 1.55); return fs * 2.3 + 8 * rh + fs * 1.8 + 12; }
+export function keyHeight(us) { const fs = Math.max(10.5, 12.5 * us), rh = Math.round(fs * 1.55); return fs * 2.3 + 8 * rh + 6; }
 function drawKey(c, us, hover) {
     const M = MapView, P = K.P, [gx0, gy0, gx1, gy1] = M.keyBox, ks = M.keyScreen, narrow = M.G.rot && !ks;
     const a = M.T(gx0, gy0), b = M.T(gx1, gy1);
@@ -497,7 +497,7 @@ function drawKey(c, us, hover) {
     const spec = SPECIMENS[simState.specimen] || SPECIMENS.composite, can = spec.can, gs = fs * 0.42;
     const pair = (k1, k2) => (cc, x, y) => { K.molGlyph(cc, x - 6.5, y, gs, k1); K.molGlyph(cc, x + 7.5, y, gs, k2); };
     const marks = [[(cc, x, y) => { cc.beginPath(); cc.arc(x, y, 3, 0, TAU); cc.fillStyle = P.accent; cc.fill(); }, 'Proton, 2 mV of Δp', String(store.protonGradient), 'Proton, 2 mV']];
-    if (can.photo || can.resp || can.cyclic) marks.push([(cc, x, y) => { cc.beginPath(); cc.arc(x, y, 3, 0, TAU); cc.fillStyle = P.canvas; cc.fill(); cc.lineWidth = 1.2; cc.strokeStyle = P.text; cc.stroke(); }, 'Electron in transit', undefined, 'Electron']);
+    if (can.photo || can.resp || can.cyclic) marks.push([(cc, x, y) => { cc.beginPath(); cc.arc(x, y, 3, 0, TAU); cc.fillStyle = P.canvas; cc.fill(); cc.lineWidth = 1.2; cc.strokeStyle = P.text; cc.stroke(); }, 'Electron']);
     if (simState.lightOn && (can.photo || can.brAuto)) marks.push([(cc, x, y) => photonSwatch(cc, x, y), 'Photon']);
     for (const [k, name, tot] of [['atp', 'ATP · ADP', 'totalAtpAdp'], ['nadh', 'NADH · NAD⁺', 'totalNad'], ['nadph', 'NADPH · NADP⁺', 'totalNadp']]) {
         if (!store[tot]) continue;
@@ -508,7 +508,7 @@ function drawKey(c, us, hover) {
     // Layout: two columns side by side, or stacked on the upright phone map
     const W = narrow ? x1 - x0 : Math.min(x1 - x0, 560 * us), colL = narrow ? W - 2 * pad : (W - 2 * pad) * 0.47, colR = narrow ? W - 2 * pad : W - 2 * pad - colL - 22;
     const nL = lines.length + (missing.length ? 1 : 0), head = fs * 2.3;
-    const H = narrow ? head + (nL + marks.length) * rh + fs * 2.6 + pad + 8 : head + Math.max(nL, marks.length) * rh + fs * 1.8 + pad;
+    const H = narrow ? head + (nL + marks.length) * rh + fs * 1.4 + pad / 2 : head + Math.max(nL, marks.length) * rh + pad / 2;
     const bx = narrow ? x0 : x0, by = y0;
     c.save();
     c.fillStyle = P.canvas; c.fillRect(bx, by, W, H);
@@ -518,7 +518,7 @@ function drawKey(c, us, hover) {
     c.textBaseline = 'alphabetic'; c.textAlign = 'left';
     c.font = `italic ${fs}px ${_FONT.text}`; c.fillStyle = P.muted;
     const lx = bx + pad, rx = narrow ? lx : lx + colL + 22, ty = by + fs * 1.6;
-    c.fillText('Lines, by carbon flux (mM C/s)', lx, ty);
+    c.fillText('Lines · mM C/s', lx, ty);
     if (!narrow) c.fillText('Marks', rx, ty);
     c.textBaseline = 'middle';
     M.keyRows = [];
@@ -541,13 +541,13 @@ function drawKey(c, us, hover) {
         if (hov) { const nw = c.measureText(name).width; c.fillRect(sx + 26 * us, y + fs * 0.55, nw, 1); }
         c.textAlign = 'right'; c.fillStyle = P.text2; c.fillText(r.on ? fmtFlux(r.flux) : 'off', lx + colL, y);
         c.textAlign = 'left';
-        M.keyRows.push({ line: r.id, toggle: tog, on: r.on, name: r.name, flux: fmtFlux(r.flux) + ' mM C/s', key: KEYS[tog] || '', box: [lx - 4, y - rh / 2, lx + colL + 4, y + rh / 2] });
+        M.keyRows.push({ line: r.id, toggle: tog, name: r.name, key: KEYS[tog] || '', box: [lx - 4, y - rh / 2, lx + colL + 4, y + rh / 2] });
     });
     if (missing.length) {
         const y = by + head + rh * (lines.length + 0.5);
         c.font = `italic ${fs * 0.92}px ${_FONT.text}`; c.fillStyle = P.muted;
-        let t = 'Not in this cell: ' + missing.join(', ').replace('Pentose phosphate', 'pentose phosphate').replace('Glycolysis', 'glycolysis');
-        while (c.measureText(t).width > colL && missing.length > 1) { missing.pop(); t = 'Not in this cell: ' + missing.join(', ') + '…'; }
+        let t = 'Absent: ' + missing.join(', ').replace('Pentose phosphate', 'pentose phosphate').replace('Glycolysis', 'glycolysis');
+        while (c.measureText(t).width > colL && missing.length > 1) { missing.pop(); t = 'Absent: ' + missing.join(', ') + '…'; }
         c.fillText(t, lx, y);
     }
     // The marks
@@ -561,9 +561,6 @@ function drawKey(c, us, hover) {
         c.fillText(short && c.measureText(text).width > room ? short : text, rx + 26, y);
         if (val !== undefined) { c.textAlign = 'right'; c.fillStyle = P.text2; c.fillText(val, rx + colR, y); }
     });
-    // What the counts are
-    c.font = `italic ${fs * 0.9}px ${_FONT.text}`; c.fillStyle = P.muted; c.textAlign = 'left'; c.textBaseline = 'alphabetic';
-    c.fillText('Counts are molecules in the drawn slab, here and at the stations.', lx, by + H - pad + 2);
     c.restore();
 }
 

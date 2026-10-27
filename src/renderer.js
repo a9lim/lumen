@@ -37,12 +37,12 @@ function size(cv, w, h, dpr) {
     cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr);
     cv.style.width = w + 'px'; cv.style.height = h + 'px';
 }
-// What a stroma molecule's tooltip says
+// What a stroma molecule's tooltip says (the pools' counts are the key's)
 const _MOL_INFO = {
-    atp: { on: 'ATP', off: 'ADP', total: 'totalAtpAdp', pool: 'adenylates', charged: 'carry three phosphates', what: 'Adenosine triphosphate / diphosphate', does: 'ATP synthase and the kinases make ATP; nearly every pathway spends it.' },
-    nadh: { on: 'NADH', off: 'NAD⁺', total: 'totalNad', pool: 'NAD molecules', charged: 'are reduced', what: 'Nicotinamide adenine dinucleotide', does: 'Catabolism reduces NAD⁺; respiration hands NADH’s electrons to the chain.' },
-    nadph: { on: 'NADPH', off: 'NADP⁺', total: 'totalNadp', pool: 'NADP molecules', charged: 'are reduced', what: 'NAD phosphate, the cell’s reducing power for building', does: 'FNR, the pentose phosphate pathway and NNT reduce it; the Calvin cycle and fatty-acid synthesis spend it.' },
-    fadh2: { on: 'FADH₂', off: 'FAD', total: 'totalFad', pool: 'FAD molecules', charged: 'are reduced', what: 'Flavin adenine dinucleotide', does: 'Succinate dehydrogenase and β-oxidation reduce it; complex II passes its electrons to the quinone pool.' },
+    atp: { on: 'ATP', off: 'ADP', what: 'Adenosine triphosphate / diphosphate', does: 'ATP synthase and the kinases make ATP; nearly every pathway spends it.' },
+    nadh: { on: 'NADH', off: 'NAD⁺', what: 'Nicotinamide adenine dinucleotide', does: 'Catabolism reduces NAD⁺; respiration hands NADH’s electrons to the chain.' },
+    nadph: { on: 'NADPH', off: 'NADP⁺', what: 'NAD phosphate, the cell’s reducing power for building', does: 'FNR, the pentose phosphate pathway and NNT reduce it; the Calvin cycle and fatty-acid synthesis spend it.' },
+    fadh2: { on: 'FADH₂', off: 'FAD', what: 'Flavin adenine dinucleotide', does: 'Succinate dehydrogenase and β-oxidation reduce it; complex II passes its electrons to the quinone pool.' },
 };
 const _PAIR_OF = Object.fromEntries(Object.entries(PAIR).map(([a, b]) => [b, a]));   // a Calvin twin → the labelled corridor segment
 
@@ -260,7 +260,7 @@ const Renderer = {
         const c = this.mapCtx;
         c.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
         c.fillStyle = K.P.canvas; c.fillRect(0, 0, this.W, this.mapH);
-        panelTitle(c, 14, 20, 'b', 'Carbon network, by flux', 10.5);
+        panelTitle(c, 14, 20, 'b', 'Carbon network', 10.5);
         drawMapLines(c, hov, dt);
         drawMapText(c, hov);
         // Where the cut is: the upright map's empty top right
@@ -270,14 +270,14 @@ const Renderer = {
     /** Panel a's title and scale under the cross-section, a hairline, panel b's title over the map. */
     _drawTitles(c, withMap = true) {
         const n = this.narrow, fs = n ? 10.5 : 12.5, x0 = Membrane.x0, y = this.titleY, spec = Membrane.spec;
-        const r = panelTitle(c, x0 + 2, y, 'a', n ? spec.name : spec.name + ', cut through, to scale', fs);
+        const r = panelTitle(c, x0 + 2, y, 'a', spec.name, fs);
         scaleBar(c, r + (n ? 14 : 22), y - 2, Membrane.s, 10, fs - 1.5);
         c.save(); c.font = `italic ${fs}px ${_FONT.text}`; c.fillStyle = K.P.muted; c.textAlign = 'right'; c.textBaseline = 'alphabetic';
         if (!n || Membrane.x1 - r > 150) c.fillText(spec.sides.below, Membrane.x1 - 2, y);
         c.restore();
         if (!withMap) return;
         hairline(c, x0, Membrane.x1, y + 9);
-        panelTitle(c, x0 + 2, y + 9 + fs + 8, 'b', n ? 'Carbon network' : 'The carbon network, by flux', fs);
+        panelTitle(c, x0 + 2, y + 9 + fs + 8, 'b', 'Carbon network', fs);
     },
 
     /** The membrane's still parts, painted once per layout, theme and zoom. */
@@ -339,10 +339,8 @@ const Renderer = {
 
     _info(hit) {
         if (!hit) return null;
-        if (hit.kind === 'key') {
-            const r = hit.row;
-            return { name: r.name, desc: `${r.on ? 'Click to knock out' : 'Click to restore'} its enzymes (key ${r.key}). Line weight and the figure read carbon flux, ${r.flux}.` };
-        }
+        // a key row: its line's name and its shortcut (the row itself shows its flux)
+        if (hit.kind === 'key') return { name: hit.row.name + (hit.row.key ? ` (${hit.row.key})` : '') };
         if (hit.kind === 'mem') {
             const info = ENZYMES[_ETC_INFO[hit.key]];
             if (!info) return null;
@@ -358,8 +356,8 @@ const Renderer = {
         if (hit.kind === 'loop') return ENZYMES[hit.loop.info] || null;
         if (hit.kind === 'station') return METABOLITES[hit.st.id] || null;
         if (hit.kind === 'mol') {
-            const k = hit.m.pool, on = hit.m.on, M = _MOL_INFO[k], tot = store[M.total], n = store[k];
-            return { name: on ? M.on : M.off, full: M.what, desc: `One of ${tot} ${M.pool} in the drawn slab (its mean count at the cell's concentration); ${n} ${M.charged}. ${M.does}` };
+            const M = _MOL_INFO[hit.m.pool];
+            return { name: hit.m.on ? M.on : M.off, full: M.what, desc: M.does };
         }
         return null;
     },
@@ -388,7 +386,7 @@ const Renderer = {
         let html = '<strong>' + info.name + '</strong>';
         if (info.full) html += '<br><span class="ct-full">' + info.full + '</span>';
         if (info.eq) html += '<br><span class="ct-eq">' + info.eq + '</span>';
-        html += '<br>' + info.desc;
+        if (info.desc) html += '<br>' + info.desc;
         if (info.regulation) html += '<br><em>' + info.regulation + '</em>';
         if (info.note) html += '<br><em>' + info.note + '</em>';
         this._tooltip.el.innerHTML = html;

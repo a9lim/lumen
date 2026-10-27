@@ -23,12 +23,12 @@ function hex(c, x, y, r) { c.moveTo(x + r, y); for (let k = 1; k <= 6; k++) { co
 
 /**
  * Draw the locator for a specimen into the box (x, y, w, h).
- * opts: { mono: a colour for everything (icons), fs, label: the panel letter, caption }
+ * opts: { mono: a colour for everything (icons), fs, label: the panel letter (false: no box), lw, ground }
  */
 export function drawLocator(c, x, y, w, h, spec, opts = {}) {
     const P = K.P, fs = opts.fs || 12, mono = opts.mono;
     const line = mono || P.text2, faint = mono ? K.rgba(mono, 0.55) : K.rgba(P.text, 0.32), tint = (n, t = 0.1) => mono || K.mix(K.ink(n), P.canvas, t);
-    const lw = opts.lw || 1.2, capH = opts.caption === false ? 0 : fs + 4, H = h - capH, cx = x + w / 2, cy = y + H / 2;
+    const lw = opts.lw || 1.2, H = h, cx = x + w / 2, cy = y + H / 2;
     let box = null;
     c.save(); c.lineJoin = 'round'; c.lineCap = 'round';
     if (spec === 'thylakoid') {
@@ -106,10 +106,6 @@ export function drawLocator(c, x, y, w, h, spec, opts = {}) {
             c.strokeStyle = K.rgba(P.text, 0.45); c.beginPath(); c.moveTo(bx + bw, by + bh / 2); c.lineTo(lx - 4, ly - fs * 0.35); c.stroke();
             c.font = `600 ${fs}px ${_FONT.text}`; c.fillStyle = P.text; c.textAlign = 'left'; c.textBaseline = 'alphabetic'; c.fillText(opts.label, lx - 2, ly);
         }
-    }
-    if (opts.caption !== false) {
-        c.font = `italic ${fs - 1}px ${_FONT.text}`; c.fillStyle = P.muted; c.textAlign = 'center'; c.textBaseline = 'alphabetic';
-        c.fillText(opts.caption || 'Where the cut is', cx, y + h - 2);
     }
     c.restore();
 }

@@ -4,8 +4,9 @@
 // it has reached. Light lifts a bead at P680 and again at P700; respiration
 // only falls, from NADH to oxygen. The potentials are rounded: the photosynthetic
 // carriers in the order and placement of Stirbet et al. (2023), the respiratory
-// couples from a standard table (see the reference overlay). Drawn only while
-// Fig. 2 shows it.
+// couples from a standard table (see the reference overlay). A membrane with
+// no chain (the anaerobe's) has no ladder, and Fig. 2's ladder view is
+// disabled for it. Drawn only while Fig. 2 shows it.
 import Particles from './particles.js';
 import { Membrane } from './membrane.js';
 import * as K from './complexes.js';
@@ -60,18 +61,19 @@ const SETS = {
         groups: { ndh1: ['nadh', 'ndh'], sdh: ['succ'], pq: ['mk'], cytb6f: ['bc'], pc: ['hc'], cytOx: ['ba3', 'o2'] },
         resp: ['nadh', 'ndh', 'succ', 'mk', 'bc', 'hc', 'ba3', 'o2'],
         lines: [['nadh', 'ndh', 'resp'], ['ndh', 'mk', 'resp'], ['succ', 'mk', 'resp'], ['mk', 'bc', 'resp'], ['bc', 'hc', 'resp'], ['hc', 'ba3', 'resp'], ['ba3', 'o2', 'resp']],
-        note: 'Bacteriorhodopsin pumps a proton for each photon and moves no electron.',
     },
-    plasma: { nodes: {}, groups: {}, resp: [], lines: [], note: 'No electron chain in this membrane: every ATP is made in the cytoplasm.' },
 };
+/** Whether a specimen's membrane has a chain to draw. */
+export const hasLadder = (specId) => specId in SETS;
 const E0 = -1.45, E1 = 1.3;
 
 let _cache = null, _key = '';
 
-/** Draw the ladder into its canvas; returns the note to show under it, if any. */
+/** Draw the ladder into its canvas. */
 export function drawLadder(cv) {
-    if (!cv || !cv.offsetWidth) return null;
-    const set = SETS[Membrane.specId] || SETS.thylakoid, dpr = Math.min(2, window.devicePixelRatio || 1), w = cv.offsetWidth, h = cv.offsetHeight;
+    const set = SETS[Membrane.specId];
+    if (!cv || !cv.offsetWidth || !set) return;
+    const dpr = Math.min(2, window.devicePixelRatio || 1), w = cv.offsetWidth, h = cv.offsetHeight;
     if (cv.width !== Math.round(w * dpr)) { cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr); }
     const c = cv.getContext('2d'), P = K.P;
     const x0 = 52, x1 = w - 46, y0 = 10, y1 = h - 12, cols = Math.max(...Object.values(set.nodes).map(n => n[0]), 1);
@@ -89,7 +91,7 @@ export function drawLadder(cv) {
             g.fillStyle = P.muted; g.fillText((E > 0 ? '+' : E < 0 ? '−' : '') + Math.abs(E).toFixed(1), x0 - 8, Y(E));
         }
         g.save(); g.translate(8, (y0 + y1) / 2); g.rotate(-Math.PI / 2); g.textAlign = 'center'; g.font = `italic 10.5px ${_FONT.text}`;
-        g.fillText('E′₀ (V), more reducing up', 0, 0); g.restore();
+        g.fillText('E′₀ (V)', 0, 0); g.restore();
         const N = set.nodes, resp = K.ink('indigo');
         for (const [a, b, kind] of set.lines) {
             const A = N[a], B = N[b];
@@ -136,5 +138,4 @@ export function drawLadder(cv) {
         const px = X(A[0] + (B[0] - A[0]) * fr), py = Y(A[1] + (B[1] - A[1]) * fr), r = e.type === 'resp';
         c.beginPath(); c.arc(px, py, 3.3, 0, TAU); c.fillStyle = P.canvas; c.fill(); c.lineWidth = 1.3; c.strokeStyle = r ? K.ink('indigo') : P.text; c.stroke();
     }
-    return set.note || null;
 }

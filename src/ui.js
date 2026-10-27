@@ -1,5 +1,5 @@
-// UI wiring — the colophon, the legend (the specimens, the conditions
-// sentence, the knockouts, feeding, Fig. 2's views), organism presets and
+// UI wiring — the colophon, the legend (the specimens, the conditions,
+// the knockouts, feeding, Fig. 2's views), organism presets and
 // their cells and specimens, keyboard shortcuts, the about panel, info tips
 // and the reference overlay.
 import { simState } from './state.js';
@@ -10,10 +10,10 @@ import Renderer from './renderer.js';
 import Particles from './particles.js';
 import Stroma from './stroma.js';
 import { MapView } from './map.js';
-import { ORGANISMS } from './organisms.js';
 import { SPECIMEN_OF } from './specimens.js';
 import { REFERENCE } from './reference.js';
 import { drawLocator } from './locator.js';
+import { hasLadder } from './ladder.js';
 import { LINE_REACTIONS } from './mapbind.js';
 import Cell from './cell.js';
 import Legend from './legend.js';
@@ -31,14 +31,14 @@ export function cacheDOMElements() {
     const $ = (id) => document.getElementById(id);
     return {
         canvas: $('sim-canvas'), caption: $('lu-caption'),
-        sentence: $('lu-sentence'), dialBox: $('lu-dialbox'),
+        conds: $('lu-conds'), dialBox: $('lu-dialbox'),
         glycToggle: $('glyc-toggle'), pppToggle: $('ppp-toggle'), calvinToggle: $('calvin-toggle'),
         krebsToggle: $('krebs-toggle'), betaoxToggle: $('betaox-toggle'),
         resetBtn: $('reset-btn'), addGlucoseBtn: $('add-glucose-btn'), addFattyAcidBtn: $('add-fatty-acid-btn'), feed: $('lu-feed'),
         themeBtn: $('theme-btn'), menuBtn: $('menu-btn'), closeLegend: $('close-legend'), legend: $('legend'),
         modeBtn: $('mode-btn'),
-        organismGroup: $('organism-group'), organismDesc: $('organism-desc'), specName: $('spec-name'), specCut: $('spec-cut'),
-        yieldNote: $('lu-yield'), readings: $('lu-readings'), trace: $('lu-trace'), ladder: $('lu-ladder'), ladderNote: $('lu-ladder-note'),
+        organismGroup: $('organism-group'), specName: $('spec-name'),
+        yieldNote: $('lu-yield'), readings: $('lu-readings'), trace: $('lu-trace'), ladder: $('lu-ladder'),
         card: $('lu-card'), enzymeSelect: $('lu-enzyme'), enzymePulse: $('lu-enzyme-pulse'), enzymeInhibit: $('lu-enzyme-inhibit'), enzymeHold: $('lu-enzyme-hold'), enzymeControl: $('lu-enzyme-control'),
         legendVisible: () => Renderer.folio || !document.body.classList.contains('lu-closed'),
         view: () => document.querySelector('.lu-views [aria-pressed="true"]')?.dataset.view || 'trace',
@@ -60,7 +60,7 @@ export function drawSpecimenIcons() {
         cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr);
         const c = cv.getContext('2d'); c.setTransform(dpr, 0, 0, dpr, 0, 0); c.clearRect(0, 0, w, h);
         const on = b.getAttribute('aria-checked') === 'true';
-        drawLocator(c, 1, 1, w - 2, h - 2, SPECIMEN_OF[b.dataset.org], { caption: false, label: false, lw: 1, mono: on ? null : K.P.muted });
+        drawLocator(c, 1, 1, w - 2, h - 2, SPECIMEN_OF[b.dataset.org], { label: false, lw: 1, mono: on ? null : K.P.muted });
     }
 }
 
@@ -71,9 +71,6 @@ function setMargin(dom, open) {
 }
 
 const LINE_NAME = { glycolysis: 'glycolysis', ppp: 'pentose phosphate pathway', calvin: 'Calvin cycle', krebs: 'Krebs cycle', betaox: 'β-oxidation' };
-// What the cut shows, after the specimen's name
-const CUT = { thylakoid: 'a thylakoid, cut through', chloroplast: 'a thylakoid where it meets a granum', cristae: 'a crista, cut through',
-    plasma: 'its plasma membrane, under the wall', purple: 'its purple membrane', composite: 'every complex on one membrane' };
 // The enzyme the card opens on: something each specimen shows well
 const FIRST = { cyanobacterium: 'mem:cytb6f', plantChloroplast: 'mem:cytb6f', animalCell: 'seg:g2', obligateAnaerobe: 'seg:g2', archaeon: 'mem:atpSyn', custom: 'mem:atpSyn' };
 
@@ -85,12 +82,10 @@ export function bindEvents(dom, hooks) {
 
     /** Show the cell's own state in the legend: its conditions, its knockouts, what it can be fed. */
     const syncLegend = () => {
-        const org = ORGANISMS[simState.activeOrganism];
         for (const [pw, t] of Object.entries(pathwayRows)) {
             const present = LINE_REACTIONS[pw].some(Cell.has);
-            const reason = present ? '' : (org && org.lockedReason?.[pw]) || `This cell has no ${LINE_NAME[pw]}`;
             t.checked = present && Cell.lines[pw]; t.disabled = !present;
-            simState.lockedPathways[pw] = present ? undefined : reason;
+            simState.lockedPathways[pw] = !present;
         }
         Legend.sync();
         // Feed only what the cell can take up
@@ -116,6 +111,7 @@ export function bindEvents(dom, hooks) {
         for (const b of dom.organismGroup.querySelectorAll('[data-org]')) {
             const on = b.dataset.org === key;
             b.setAttribute('aria-checked', String(on)); b.tabIndex = on ? 0 : -1;
+            if (on) dom.specName.textContent = b.title;
         }
         const spec = SPECIMEN_OF[key];
         setSpecimen(spec);
@@ -123,10 +119,8 @@ export function bindEvents(dom, hooks) {
         simState.activeOrganism = key;
         simState.uncouplingEnabled = false;
         Cell.use(key, spec);
-        dom.specName.textContent = key === 'custom' ? 'Custom' : ORGANISMS[key].name.replace(/ Cell$/, ' cell').replace(/ (Anaerobe|Chloroplast)$/, (m) => m.toLowerCase());
-        dom.specCut.textContent = '· ' + CUT[spec];
-        dom.organismDesc.textContent = key === 'custom' ? 'Every pathway and every complex on one membrane: a composite, not an organism.' : ORGANISMS[key].desc + '.';
         Legend.build();
+        syncViews();
         refresh(true);
         if (!quiet) _buzz('medium');
     };
@@ -144,8 +138,8 @@ export function bindEvents(dom, hooks) {
         e.preventDefault(); const n = bs[(i + d + bs.length) % bs.length]; n.focus(); n.click();
     });
 
-    // ── The conditions sentence ──
-    Legend.init(dom.sentence, dom.dialBox, (k, v, label) => {
+    // ── The conditions ──
+    Legend.init(dom.conds, dom.dialBox, (k, v, label) => {
         touched();
         if (k === 'light') updateTheme(dom.themeBtn);
         if (k === 'slow') showToast('Chemistry slowed ' + v + '×');
@@ -187,14 +181,20 @@ export function bindEvents(dom, hooks) {
     dom.addGlucoseBtn.addEventListener('click', addGlucose);
     dom.addFattyAcidBtn.addEventListener('click', addFat);
 
-    // ── Fig. 2: the trace, or the ladder ──
+    // ── Fig. 2: the trace, or the ladder (disabled where the membrane has no chain) ──
     const views = [...document.querySelectorAll('.lu-views [data-view]')];
     const setView = (v) => {
+        if (v === 'ladder' && !hasLadder(simState.specimen)) return;
         for (const b of views) b.setAttribute('aria-pressed', String(b.dataset.view === v));
         for (const p of document.querySelectorAll('.lu-view')) p.hidden = p.dataset.view !== v;
-        document.getElementById('fig2-title').textContent = v === 'ladder' ? 'Electrons, by redox potential' : 'The last two minutes';
     };
     for (const b of views) b.addEventListener('click', () => setView(b.dataset.view));
+    // (applyOrganism calls it, once bindEvents has run)
+    const syncViews = () => {
+        const ladder = views.find(b => b.dataset.view === 'ladder');
+        ladder.disabled = !hasLadder(simState.specimen);
+        if (ladder.disabled && dom.view() === 'ladder') setView('trace');
+    };
 
     // ── The legend ──
     setMargin(dom, !_isPhone());
@@ -241,7 +241,7 @@ export function bindEvents(dom, hooks) {
             { label: 'Hold it 10% up', value: 'Press and hold; the card compares it' },
             { label: 'A whole line', value: 'Click a loop’s name' },
             { label: 'Knock out a line', value: 'Click it in the plate’s key, or 1–5' },
-            { label: 'Conditions', value: 'Drag a value in the legend’s sentence' },
+            { label: 'Conditions', value: 'Drag a dotted value in the legend' },
             { label: 'Light, oxygen, uncoupler', value: 'L / O / U' },
             { label: 'Add substrate', value: 'Glucose (G) / fatty acid (F)' },
             { label: 'Play / pause', value: 'Space' },
@@ -264,13 +264,12 @@ export function bindEvents(dom, hooks) {
 
     // ── Info tips and the reference overlay ──
     registerInfoTips({
-        conditions: { title: 'Conditions', body: 'What the cell lives in and what it is asked to do. Each dotted value is a control: drag it sideways, step it with the arrow keys, or click it for a dial. Light is a share of full sun and oxygen a share of air’s. ATP demand is the work the model doesn’t draw (ion pumps, motility, turnover); growth draws new cell’s precursors from the map, and a plastid exports triose phosphate instead. Slowing the chemistry changes how much of it a second shows, not the chemistry.' },
-        inspector: { title: 'The enzyme', body: 'The last enzyme you clicked on the plate, or chose here. Its rate is its capacity times each factor the model puts on it: thermodynamics (1 − e^(ΔG/RT)), saturation with its substrates, and regulation, with light, a switch or a pulse where they act. Each bar is the rate so far on a log scale; the hatched part is what that factor took away. Hold raises its activity 10% and keeps it there while two copies of the cell, one held and one not, run to a steady state; each flux’s response is the enzyme’s control coefficient over it (Kacser & Burns 1973).' },
-        trace: { title: 'Fig. 2', body: 'The last two minutes of the cell, sampled while the chemistry runs: Δp, the share of the adenylates that is ATP, the reduced share of the cell’s main carrier, and its headline flux. Each arrow is something you did. The ladder view stands every carrier of the chain at its midpoint potential, with each electron now in flight as a bead on it.' },
+        conditions: { title: 'Conditions', body: 'ATP demand is the work the model doesn’t draw (ion pumps, motility, turnover); growth draws a new cell’s precursors from the map, and a plastid exports triose phosphate instead. The slowdown changes how much chemistry a second shows, not the chemistry.' },
+        inspector: { title: 'Enzyme', body: 'Rate = capacity × thermodynamics (1 − e^(ΔG/RT)) × saturation × regulation, each bar the running product on a log scale, hatched where a factor cut it. Hold keeps it 10% up while a held and an unheld copy of the cell run to a steady state; each flux’s response is its control coefficient C (Kacser & Burns 1973).' },
+        trace: { title: 'Fig. 2', body: 'Trace: Δp, the ATP share of the adenylates, the reduced share of the main carrier and the headline flux, with an arrow for each change you made. Ladder: every carrier at its midpoint potential, each electron in flight a bead on it.' },
     });
     const openReference = initReferenceOverlay(document.getElementById('reference-overlay'), document.getElementById('reference-title'),
         document.getElementById('reference-body'), document.getElementById('reference-close'), REFERENCE);
     bindReferenceTriggers(openReference);
     for (const b of document.querySelectorAll('[data-ref]')) b.addEventListener('click', () => openReference(b.dataset.ref));
-    setMobileHint('lu-verb-hint', 'Tap an enzyme or a complex to pulse it and bring it here; “taps” under the plate makes taps inhibit. Long-press holds it 10% up and compares; pinch to zoom.');
 }

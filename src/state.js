@@ -10,7 +10,7 @@ export const simState = {
     lightOn: true, oxygenAvailable: true, uncouplingEnabled: false,   // mirrors of the environment and the UCP switch
     activeOrganism: 'cyanobacterium',
     specimen: 'thylakoid',
-    lockedPathways: {},         // line → why this cell has none of it
+    lockedPathways: {},         // line → true where this cell has none of it
     visualLightMode: true,
 };
 

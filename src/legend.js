@@ -1,8 +1,7 @@
-// Legend — the conditions as a sentence whose values are the controls: the
-// light, the oxygen, ATP demand, growth (or a plastid's export), the
+// Legend — the conditions as label–value rows whose values are the controls:
+// the light, the oxygen, ATP demand, growth (or a plastid's export), the
 // uncoupler where the cell has one, and the slowdown. Drag a value sideways,
-// step it with the arrow keys, or click it for a dial under the sentence.
-// The caption says what the plate shows; this says what you set.
+// step it with the arrow keys, or click it for a dial under the rows.
 import Cell, { SLOWDOWNS } from './cell.js';
 import Win from './window.js';
 import { simState } from './state.js';
@@ -12,29 +11,26 @@ const DRAG_PX = 7;   // px of drag per step
 // The slowdown reads left to right as its number grows: 3× to 300×
 const SLOW = [...SLOWDOWNS].sort((a, b) => a - b);
 
-/** Each value: its range, how it reads in the sentence, how it reads as a mark on Fig. 2, and its getter and setter. */
+/** Each value: its range, how it reads, how it reads as a mark on Fig. 2, and its getter and setter. */
 const FIELDS = {
     light: { name: 'Light', min: 0, max: 1, step: 0.05, get: (e) => e.env.light, set: (v) => Cell.setEnv('light', v),
-        text: (v) => v <= 0 ? 'darkness' : v >= 1 ? 'full sun' : `${pct(v)}% sun`, dial: (v) => `${pct(v)}%`, mark: (v) => v <= 0 ? 'dark' : `light ${pct(v)}%` },
+        text: (v) => `${pct(v)}% sun`, mark: (v) => v <= 0 ? 'dark' : `light ${pct(v)}%` },
     o2: { name: 'Oxygen', min: 0, max: 1, step: 0.05, get: (e) => e.env.o2, set: (v) => Cell.setEnv('o2', v),
-        text: (v) => v <= 0 ? 'anoxia' : v >= 1 ? 'air' : `${pct(v)}% of air’s oxygen`, dial: (v) => `${pct(v)}% air`, mark: (v) => v <= 0 ? 'anoxia' : `O₂ ${pct(v)}%` },
+        text: (v) => `${pct(v)}% air`, mark: (v) => v <= 0 ? 'anoxia' : `O₂ ${pct(v)}%` },
     atp: { name: 'ATP demand', min: 0, max: 3, step: 0.1, get: (e) => e.dial.atp, set: (v) => Cell.setDial('atp', v),
         text: (v) => `${v.toFixed(1)} mM/s`, mark: (v) => `ATP demand ${v.toFixed(1)}` },
     growth: { name: 'Growth', min: 0, max: 0.3, step: 0.01, get: (e) => e.dial.growth, set: (v) => Cell.setDial('growth', v),
-        text: (v) => `${v.toFixed(2)} per hour`, dial: (v) => `${v.toFixed(2)} /h`, mark: (v) => `growth ${v.toFixed(2)}` },
+        text: (v) => `${v.toFixed(2)} /h`, mark: (v) => `growth ${v.toFixed(2)}` },
     export: { name: 'Export', min: 0, max: 2, step: 0.05, get: (e) => e.dial.export, set: (v) => Cell.setDial('export', v),
         text: (v) => `${v.toFixed(2)} mM/s`, mark: (v) => `export ${v.toFixed(2)}` },
     ucp: { name: 'Uncoupler', toggle: true, get: () => simState.uncouplingEnabled, set: (v) => { simState.uncouplingEnabled = v; Cell.applySwitches(); },
-        text: (v) => v ? 'an uncoupler open' : 'no uncoupler', mark: (v) => v ? 'uncoupler' : 'uncoupler shut' },
+        text: (v) => v ? 'open' : 'shut', mark: (v) => v ? 'uncoupler' : 'uncoupler shut' },
     slow: { name: 'Slowdown', list: SLOW, get: () => Win.slow, set: (v) => { Win.slow = v; },
         text: (v) => `${v}×`, mark: (v) => `slowed ${v}×` },
 };
 
-// Who spends: what the specimen is
-const SUBJECT = { plantChloroplast: 'the chloroplast', custom: 'the composite' };
-
 const Legend = {
-    el: null, dialBox: null, dial: null, dialName: null, dialVal: null, hint: null,
+    el: null, dialBox: null, dial: null, dialName: null, dialVal: null,
     open: null,           // the field whose dial is showing
     onChange: null,       // (key, value, markText) after a change you made
     _last: { light: 1 },  // the light to return to when L switches it back on
@@ -42,8 +38,6 @@ const Legend = {
     init(el, dialBox, onChange) {
         this.el = el; this.dialBox = dialBox; this.onChange = onChange;
         this.dial = dialBox.querySelector('input'); this.dialName = dialBox.querySelector('.lu-name'); this.dialVal = dialBox.querySelector('output');
-        this.hint = document.getElementById('lu-sentence-hint');
-        try { if (localStorage.getItem('lumen.sentence') === 'used') this.hint.hidden = true; } catch { /* storage off: keep the hint */ }
         this.dial.addEventListener('input', () => {
             const F = FIELDS[this.open]; if (!F) return;
             this._apply(this.open, F.list ? F.list[+this.dial.value] : +this.dial.value);
@@ -52,17 +46,12 @@ const Legend = {
         document.addEventListener('pointerdown', (e) => { if (this.open && !this.el.contains(e.target) && !this.dialBox.contains(e.target)) this.close(); });
     },
 
-    /** Write the sentence for the cell now under the microscope. */
+    /** Write the rows for the cell now under the microscope: export instead of growth where it has TPT, the uncoupler where it has UCP. */
     build() {
-        const has = Cell.has, subject = SUBJECT[simState.activeOrganism] || 'the cell';
-        const v = (k) => `<span class="lu-v${FIELDS[k].toggle ? ' tog' : ''}" data-k="${k}" tabindex="0" role="${FIELDS[k].toggle ? 'switch' : 'slider'}"></span>`;
-        let s = `In ${v('light')} and ${v('o2')}, ${subject} spends ATP at ${v('atp')}`;
-        if (has('TPT')) s += ` and exports triose phosphate to its cell at ${v('export')}`;
-        else if (has('BIOMASS')) s += ` and grows at ${v('growth')}`;
-        if (has('UCP')) s += `, with ${v('ucp')}`;
-        s += `. Its chemistry runs ${v('slow')} slower than life.`;
+        const has = Cell.has;
+        const keys = ['light', 'o2', 'atp', has('TPT') ? 'export' : has('BIOMASS') ? 'growth' : null, has('UCP') ? 'ucp' : null, 'slow'].filter(Boolean);
         this.close();
-        this.el.innerHTML = s;
+        this.el.innerHTML = keys.map((k) => `<span class="lu-k">${FIELDS[k].name}</span><span><span class="lu-v${FIELDS[k].toggle ? ' tog' : ''}" data-k="${k}" tabindex="0" role="${FIELDS[k].toggle ? 'switch' : 'slider'}"></span></span>`).join('');
         for (const sp of this.el.querySelectorAll('.lu-v')) this._bind(sp);
         this.sync();
     },
@@ -105,7 +94,7 @@ const Legend = {
         sp.setAttribute('aria-valuetext', t);
     },
 
-    /** Set a value, as you did: the model, the sentence, the dial, and a mark on Fig. 2. */
+    /** Set a value, as you did: the model, its row, the dial, and a mark on Fig. 2. */
     _apply(k, v) {
         const F = FIELDS[k];
         if (F.toggle) v = !!v;
@@ -115,7 +104,6 @@ const Legend = {
         if (k === 'light' && v > 0) this._last.light = v;
         const sp = this._span(k); if (sp) this._paint(sp);
         if (this.open === k) this._fillDial(k);
-        if (this.hint && !this.hint.hidden) { this.hint.hidden = true; try { localStorage.setItem('lumen.sentence', 'used'); } catch { /* fine */ } }
         this.onChange && this.onChange(k, v, F.mark(v));
     },
     _step(k, n) {
@@ -130,7 +118,7 @@ const Legend = {
         this.dialName.textContent = F.name;
         if (F.list) { this.dial.min = 0; this.dial.max = F.list.length - 1; this.dial.step = 1; this.dial.value = F.list.indexOf(v); }
         else { this.dial.min = F.min; this.dial.max = F.max; this.dial.step = F.step; this.dial.value = v; }
-        this.dialVal.textContent = (F.dial || F.text)(v);
+        this.dialVal.textContent = F.text(v);
     },
     _toggleDial(k) {
         if (FIELDS[k].toggle) { this._step(k, this._value(k) ? -1 : 1); return; }

@@ -66,7 +66,8 @@ const E_PQ = 0.080, E_UQ = 0.045, E_PC = 0.370, E_CYTC = 0.260, E_FD = -0.428;
 export const CELLS = {
     cyanobacterium: {
         name: 'Synechocystis sp. PCC 6803',
-        // NDH-1 takes ferredoxin here, NDH-2 NADH (network.js)
+        // NDH-1 takes ferredoxin here, NDH-2 NADH (network.js). It makes fatty acids but has no β-oxidation:
+        // a functional pathway appears to be missing in cyanobacteria (von Berlepsch et al. 2012)
         reactions: uniq(HOUSE, GROW, GLYC, PPP_OX, PPP_NONOX, CALVIN, STORE, KREBS, FAS, ['NDH1F', 'NDH2', 'CYTBF', 'CYTOX'], ROS, PHOTO,
             ['PPS', 'PPC', 'PDH', 'LDH', 'EX_lac', 'EX_glc', 'EX_o2', 'NNT']),
         compartments: { c: 1, l: 0.1 },
