@@ -1,0 +1,209 @@
+<header class="top">
+  <a class="colophon" href="https://a9l.im/lumen/" aria-label="Lumen">{{SEAL}}<span>Lumen</span></a>
+  <p class="meta">Round three of Lumen’s roadmap · 27 October 2026 · against <code>e30d90d</code></p>
+  <h1>Time, comparison, destinations</h1>
+  <p class="lede">The engine is built and the plate reads it truly, but Lumen lives in the instant. It can’t hold a moment, run two histories of one cell side by side, last long enough for the classic experiments, or say where the carbon went. And its flagship, the cyanobacterium, misbehaves at its very first dial. This page audits what was built, proposes the next milestones, and runs three of them as live prototypes on today’s engine.</p>
+</header>
+
+<section id="now" aria-labelledby="h-now">
+  <h2 id="h-now">Where it stands</h2>
+  <div class="twocol">
+    <figure class="fig" style="margin-top:0">
+      <img class="only-light" src="{{IMG:today-light}}" alt="Lumen at 1440 by 900: the cyanobacterial thylakoid above the carbon transit map, with the legend at right." style="display:block;width:100%;border:1px solid var(--rule)">
+      <img class="only-dark" src="{{IMG:today-dark}}" alt="Lumen at 1440 by 900 in the dark theme." style="width:100%;border:1px solid var(--rule)">
+      <div class="bar"><p class="cap"><span class="n">Fig. 1</span>Lumen today, opening on the cyanobacterium: Δp 185 mV, ATP synthase 0.5 turns/s.</p></div>
+    </figure>
+    <div class="notes">
+      <div><p class="label">Built</p><p>Respiratory control and the conservation leaks (milestone 0), the presets’ biology (0.5), and the engine with its membrane energetics (1). Then three visual passes: the plate; the pools as molecules; the legend, Fig. 2 and the phone folio.</p></div>
+      <div><p class="label">The engine</p><p>Six cells of 31 to 115 reactions, BiGG-identified and balanced, with eQuilibrator’s ΔG′°, separable rates, Δψ and ΔpH, each cell’s c-ring, and damage with consequence, integrated by ROS2. 28 headless tests.</p></div>
+      <div><p class="label">Throughput, model seconds per wall second</p><p>Cyanobacterium 370 · animal cell 175 · anaerobe 1,350 · chloroplast 520 · halophile 520 · composite 175, on one core of an M5 Max. A model day is about four minutes for one history. Both reads measured the same.</p></div>
+    </div>
+  </div>
+</section>
+
+<section id="found" aria-labelledby="h-found">
+  <h2 id="h-found">What round three found <span class="sub">ranked by how much each misteaches</span></h2>
+  <div class="prose">
+    <p>Two independent reads went into this, as in rounds one and two: mine, playing every preset and probing the engine headless, and Codex’s, briefed without my ideas. Codex then reviewed the synthesis adversarially and corrected four of my causal readings. Its points are marked.</p>
+  </div>
+  <div class="find">
+    <div><div>
+      <h3>The flagship’s first dial misbehaves</h3>
+      <p>Light is the first condition and the cyanobacterium the first specimen. Read 60 model seconds after each change:</p>
+      <div class="tablewrap"><table class="dial">
+        <thead><tr><th>Cyanobacterium</th><th>ATP, mM</th><th>ATP share</th><th>Lactate out</th><th>O₂ taken up</th></tr></thead>
+        <tbody>
+          <tr><td>Full sun, air</td><td>2.60</td><td>87%</td><td>0.007</td><td>−0.64, given off</td></tr>
+          <tr><td>30% sun, air</td><td>0.58</td><td class="bad">19%</td><td class="bad">0.121</td><td>−0.16</td></tr>
+          <tr><td>Dark, air</td><td>0.69</td><td>23%</td><td class="bad">0.123</td><td>0.072</td></tr>
+          <tr><td>Dark, no O₂, 120 s</td><td class="bad">0.000</td><td class="bad">0%</td><td>0.007</td><td>0</td></tr>
+        </tbody>
+      </table></div>
+      <p>In the aerobic dark it sends about as many electrons to lactate as to oxygen. In anoxia every adenylate ends as AMP and NADH/NAD⁺ reaches 32; glycolysis stops at PFK, which needs the ATP the cell no longer has, so it ferments nothing at all. The chloroplast shares the shortfall at 30% sun (ATP share 39%). Which causes matter is a hypothesis, not a finding: NNT carries 0.14 mM/s of NADH to NADPH in the dark, so NADH has exits <em>(Codex)</em>; dark carbon runs mostly through the NAD-linked GAPDH where <i>Synechocystis</i> leans on the oxidative pentose phosphate pathway; and the demands are set for the light. Its lactate is also the L-isomer, where <i>Synechocystis</i> makes D-lactate.</p>
+    </div></div>
+    <div><div>
+      <h3>No carbon-concentrating mechanism</h3>
+      <p>At full sun the cell’s CO₂ is 2.2 µM against air’s 15, RuBP piles up to 2.6 mM, and PSII runs at 60% of its capacity. Real cyanobacteria pump inorganic carbon and keep RuBisCO in carboxysomes. Round two’s open quirk is consistent with it: dimming to 30% raises RuBisCO from 0.67 to 0.97 mM/s for two seconds while net CO₂ uptake falls from 0.64 to 0.11, as the cell refixes the CO₂ its own oxidative pentose phosphate pathway releases. Fig. 5 runs it. Whether the missing CCM causes it is a test for when a CCM exists <em>(Codex)</em>.</p>
+    </div></div>
+    <div><div>
+      <h3>Growth is starved, and its carbon disappears</h3>
+      <p>The cyanobacterium asks 0.07 /h and makes 0.0014 /h: α-KG sits at 0.1 µM against the biomass row’s 5 µM. The animal cell makes 35% of its dial. Round two promised “to the cell” spurs and a ledger of what was made; neither exists, and the legend says “growing” where round two decided “biosynthetic demand”.</p>
+    </div></div>
+    <div><div>
+      <h3>Identities and poise</h3>
+      <p>The flagship runs α-ketoglutarate dehydrogenase, which <i>Synechocystis</i> lacks; it closes its cycle through a decarboxylase bypass and the GABA shunt <em>(Codex)</em>. The chloroplast’s NADP is 99.6% reduced at full sun and its RuBisCO still runs at night, causes undiagnosed. And switching glycogen synthase off doesn’t make a glycogen-less mutant: phosphorylase runs backward and glycogen still climbs <em>(Codex)</em>.</p>
+    </div></div>
+    <div><div>
+      <h3>Fig. 2 records the instant, not an experiment</h3>
+      <p>Its two minutes are wall time, four model seconds at 30×, and changing the slowdown bends the kinetics within one trace. Its O₂ is PSII’s gross production, not the net exchange an electrode’s chamber would show, so in the dark it reads zero while the cell takes up oxygen. The hold’s “steady state” checks fluxes only, while glycogen climbs to 327 mM in an hour <em>(Codex)</em>.</p>
+    </div></div>
+    <div><div>
+      <h3>The clock isn’t ready for a bench</h3>
+      <p><code>advance</code> stops after 5,000 steps, so a long call silently falls short; events run up to a step late; snapshots drop held pulses, events and the random streams; the solver factors a dense matrix <em>(Codex, confirmed in the code)</em>.</p>
+    </div></div>
+  </div>
+</section>
+
+<section id="runs" aria-labelledby="h-runs">
+  <h2 id="h-runs">What already runs <span class="sub">today’s engine, in this page</span></h2>
+  <div class="prose">
+    <p>The core holds. Respiratory control, the Pasteur effect and the anaerobe’s backward ATP synthase all emerge, and two classic protocols already run, with poisons as generic cuts in activity. Both figures below are Lumen’s engine computing as you watch, recorded in model time. They continue Lumen’s own numbering, as a notebook would: its plate is Fig. 1 and its trace Fig. 2.</p>
+  </div>
+  <figure class="fig">
+    <div id="stress-rec"></div>
+    <div class="reads" id="stress-reads"><span class="rec-busy">running</span></div>
+    <div class="bar"><p class="cap"><span class="n">Fig. 3</span>A mitochondrial stress test on the intact animal cell. Oligomycin is ATP synthase switched off and the uncoupler stands in for FCCP; glycolysis takes over when the synthase stops, which is the lactate a real assay reads as acidification. Four times the uncoupler lowers the rate, so the highest tested rate isn’t necessarily the maximum <em>(Codex)</em>.</p></div>
+  </figure>
+  <figure class="fig">
+    <div id="reox-rec"></div>
+    <div id="reox-zoom" style="margin-top:22px"></div>
+    <div class="bar"><p class="cap"><span class="n">Fig. 4</span>Anoxia and reoxygenation. Without oxygen SDH runs backward and succinate piles up; when oxygen returns, complex I runs backward for a moment (reverse electron transport) and Δp overshoots. The superoxide burst of Chouchani et al. (2014) is missing, because complex I’s superoxide isn’t tied to its reverse flow: a candidate extension, to be tested against reoxygenation data.</p></div>
+  </figure>
+</section>
+
+<section id="thesis" aria-labelledby="h-thesis">
+  <h2 id="h-thesis">The thesis</h2>
+  <div class="prose">
+    <p>Round one found the drawing truer than the model. The model is now a mechanism, not a schedule, but it lives in the instant. The next era makes time, comparison and destinations tangible <em>(Codex’s framing; mine reached the first two independently)</em>, and the flagship’s misbehaviour is the first thing those tools should be pointed at. Two principles come with it.</p>
+  </div>
+  <div class="principles">
+    <div>
+      <h3>One model, two observers</h3>
+      <p>The plate and the instruments read the same model, each through an explicit measurement function, and never each other. The plate samples a small slab and thins its turnovers, so an instrument never counts glyphs: the electrode reads dissolved O₂ in a chamber of stated volume, 340 nm sums NADH and NADPH, pH is an activity through the buffers. Where the plate can draw what an instrument measures, it does, as an aspiration, not a gate. <em>(Codex’s correction of my first version, “instruments read what the plate draws”.)</em></p>
+    </div>
+    <div>
+      <h3>Run fast, look slow</h3>
+      <p>The record runs ahead at bench speed, minutes to hours of model time in a worker; the plate looks at any moment of it, slowed. Scrubbing moves a cursor and never edits the past; changing a condition at an earlier moment makes an explicit branch beside the recorded future. The plate’s picture there is rebuilt by replay from a checkpoint. A plate that must be slowed 30× to be watched and experiments that last minutes stop pulling against each other.</p>
+    </div>
+  </div>
+</section>
+
+<section id="record" aria-labelledby="h-record">
+  <h2 id="h-record">The record, prototyped <span class="sub">milestone 3’s core, live</span></h2>
+  <div class="prose">
+    <p>Two copies of one cell start from the same moment. Ten model seconds in, one of them changes; the other doesn’t. Both run for two minutes, and every row shows the unchanged copy dashed and the changed one in its ink. Move across the record to read both at any moment. Under it, the ledger says where each copy’s carbon went.</p>
+  </div>
+  <figure class="fig">
+    <div class="ctl" style="justify-content:space-between">
+      <div class="seg" id="two-cell" aria-label="Cell"></div>
+      <div class="seg" id="two-change" aria-label="The change"></div>
+    </div>
+    <div id="two-rec"></div>
+    <div class="ledger" id="two-ledger"></div>
+    <div class="bar"><p class="cap"><span class="n">Fig. 5</span>Two histories of one cell. With the light at 30%, gross fixation rises for two seconds while net CO₂ uptake falls, ATP drops to a fifth of the adenylates, and lactate leaves the lit, aerobic cell: findings one and two, readable at a glance once the control runs beside them.</p></div>
+  </figure>
+</section>
+
+<section id="road" aria-labelledby="h-road">
+  <h2 id="h-road">The roadmap <span class="sub">proposed, for your decision</span></h2>
+  <div class="prose">
+    <p>Milestone 2 was “the bench”. Both reads keep the bench next but split it, because bundled it would be another engine rewrite <em>(Codex)</em>. My first draft put the flagship’s night first; Codex argued the record should come first, because the record is what makes that diagnosis inspectable, and I agree. Preparations come forward from the old milestone 3, and each famous experiment becomes its own extension.</p>
+  </div>
+  <div class="tablewrap"><table class="road">
+    <thead><tr><th></th><th>Milestone</th><th>What it holds</th><th>What you see</th></tr></thead>
+    <tbody>
+      <tr class="was"><td>0–1</td><td>Built</td><td>Respiratory control, the presets’ biology, the engine and its membrane energetics; three visual passes.</td><td class="see">Fig. 1</td></tr>
+      <tr><td>2</td><td>Identities</td><td>The TCA bypass and D-lactate in <i>Synechocystis</i>; “biosynthetic demand” in the legend; stale numbers corrected. Small; can land any time.</td><td class="see">The flagship’s map names its own enzymes.</td></tr>
+      <tr><td>3</td><td>The record</td><td>Events at exact model times, complete checkpoints, long runs in a worker; the slowdown dial past life, up to 100× faster. Fig. 2 in model time with defined observables and additions as arrows. One paired control. A hold that reports a steady state only when there is one. CSV export with the model’s version.</td><td class="see">Fig. 5’s strips under the plate, for any change you make.</td></tr>
+      <tr><td>3b</td><td>The record, extended</td><td>Scrubbing with the plate rebuilt by replay; branches; the carbon and ATP ledger with the “to the cell” spurs; setups in the URL with the model’s version pinned; the notebook.</td><td class="see">Fig. 5’s ledger; a link that replays a run.</td></tr>
+      <tr><td>4</td><td>Day and night, diagnosed</td><td>Targets first: measured dark respiration, survival and fermentation products for <i>Synechocystis</i>, with their conditions. Then the routes and demands that miss them, the chloroplast’s poise, the backward phosphorylase.</td><td class="see">Dimming and night read as the organism’s, with the record as evidence.</td></tr>
+      <tr><td>5</td><td>Preparations and poisons</td><td>Isolated mitochondria in a cuvette and the oxygen electrode as a chamber model: Chance &amp; Williams’ states 3 and 4, the respiratory control and P/O ratios. Named poisons with their mechanisms, drawn bound. RET superoxide as a tested candidate.</td><td class="see">The classic electrode figure redrawn from the model; poisons in their pockets.</td></tr>
+      <tr><td>6</td><td>The flagship made whole</td><td>The CCM: transporters, the CO₂-uptake NDH-1 complexes as their own complexes, the carboxysome. Photorespiration. Carbon and nitrogen allocation made explicit, so α-KG’s supply and its use are each qualified.</td><td class="see">Part of a carboxysome under the thylakoid; growth that meets its dial or shows what holds it back.</td></tr>
+      <tr><td>7</td><td>Light’s instruments</td><td>PSII’s centre states; fluorescence, Kautsky and PAM; Kok’s flashes; light with colour and Emerson; OCP and state transitions; a cloud passing, then a day. Each its own extension.</td><td class="see">Photons sent back out of PSII; a fluorometer’s trace.</td></tr>
+      <tr><td>8</td><td>Transport and named cells</td><td>Fare zones and interchanges for the carriers; isolated thylakoids (Jagendorf) and the Racker–Stoeckenius vesicle; the halophile’s night on arginine; named animal cells where a story needs one.</td><td class="see">NADH stops crossing for free; ANT’s cost on the map.</td></tr>
+      <tr><td>9</td><td>Growth</td><td>Enzyme allocation, a cell that grows and divides, in <i>Synechocystis</i> first; a culture’s optical density on the bench.</td><td class="see">The north star.</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section id="draw" aria-labelledby="h-draw">
+  <h2 id="h-draw">Three drawings the roadmap adds <span class="sub">sketches, in the plate’s register</span></h2>
+  <div class="prose">
+    <p>Each depicts a quantity the model would carry; none is decoration. They are sketches drawn for this page, not the sim’s own code.</p>
+  </div>
+  <div class="draw">
+    <figure><canvas data-sketch="carboxysome" role="img" aria-label="A thylakoid membrane with a CO2-uptake NDH-1 complex whose CupA subunit hydrates CO2 to bicarbonate, and below it part of a carboxysome's shell of hexamer tiles, packed inside with RuBisCO."></canvas><figcaption><b>Milestone 6</b>The carboxysome is far larger than the window, so the cut shows part of its shell, RuBisCO packed behind it. Above, a CO₂-uptake NDH-1 hydrates CO₂ to bicarbonate at CupA.</figcaption></figure>
+    <figure><canvas data-sketch="psii" role="img" aria-label="Photosystem II above its phycobilisome; photons arrive at the antenna rods and a few leave PSII as fluorescence, drawn dashed; an orange carotenoid protein is docked at the phycobilisome's core."></canvas><figcaption><b>Milestone 7</b>Photons arrive at the phycobilisome; a few leave PSII again as fluorescence, dashed, more of them while its centres are closed. OCP, docked at the core, turns excitation into heat.</figcaption></figure>
+    <figure><canvas data-sketch="antimycin" role="img" aria-label="Complex III in the inner mitochondrial membrane at the zoom layer, with antimycin bound in the Qi pocket and an electron waiting at heme bH."></canvas><figcaption><b>Milestone 5</b>Antimycin in complex III’s Qᵢ pocket, at the zoom layer. The electron that would reduce quinone there waits at heme b<sub>H</sub>, and the chain behind it stops.</figcaption></figure>
+  </div>
+</section>
+
+<section id="where" aria-labelledby="h-where">
+  <h2 id="h-where">Where the record lives</h2>
+  <div class="prose">
+    <p>At 280 to 320 px the legend already holds the conditions, the enzyme card and Fig. 2. A record of several strips with additions and a control needs width.</p>
+  </div>
+  <div class="wires">
+    <figure>
+      <svg viewBox="0 0 240 150" role="img" aria-label="Wireframe: the plate at left, the legend at right holding a taller Fig. 2."><rect x="0.5" y="0.5" width="239" height="149" fill="none" stroke="currentColor" stroke-opacity=".35"/><line x1="10" y1="55" x2="180" y2="55" stroke="currentColor" stroke-opacity=".35"/><text x="12" y="20" font-size="9" font-style="italic" fill="currentColor">a</text><text x="12" y="68" font-size="9" font-style="italic" fill="currentColor">b</text><line x1="188" y1="0" x2="188" y2="150" stroke="currentColor" stroke-opacity=".35"/><rect class="rec-fill" x="193" y="70" width="42" height="70"/><polyline class="acc" fill="none" stroke-width="1" points="196,82 205,80 212,90 222,88 232,86"/><polyline fill="none" stroke="currentColor" stroke-width="1" points="196,104 206,102 214,112 232,110"/><polyline fill="none" stroke="currentColor" stroke-width="1" points="196,126 206,128 214,120 232,122"/></svg>
+      <figcaption><b>A · Fig. 2 grows in the legend</b>Least change; the strips stay 280 px wide, so a two-minute record has a pixel for every half second.</figcaption>
+    </figure>
+    <figure>
+      <svg viewBox="0 0 240 150" role="img" aria-label="Wireframe: the plate's panels a and b at top left, a full-width recording area of strips under them, the legend at right."><rect x="0.5" y="0.5" width="239" height="149" fill="none" stroke="currentColor" stroke-opacity=".35"/><line x1="10" y1="40" x2="180" y2="40" stroke="currentColor" stroke-opacity=".35"/><text x="12" y="16" font-size="9" font-style="italic" fill="currentColor">a</text><text x="12" y="52" font-size="9" font-style="italic" fill="currentColor">b</text><line x1="188" y1="0" x2="188" y2="150" stroke="currentColor" stroke-opacity=".35"/><rect class="rec-fill" x="6" y="88" width="178" height="56"/><polyline class="acc" fill="none" stroke-width="1" points="10,100 50,99 60,96 90,104 130,102 180,101"/><polyline fill="none" stroke="currentColor" stroke-width="1" stroke-dasharray="3 2" points="10,100 180,100"/><polyline fill="none" stroke="currentColor" stroke-width="1" points="10,120 50,121 60,130 100,128 180,127"/><polyline fill="none" stroke="currentColor" stroke-width="1" points="10,138 50,138 60,134 180,135"/><line x1="58" y1="88" x2="58" y2="144" stroke="currentColor" stroke-opacity=".6"/></svg>
+      <figcaption><b>B · A recording area under the plate (recommended)</b>Opens when you start a record, full width under panels a and b, which shrink while it is open. Fig. 5 is its prototype <em>(Codex’s proposal)</em>.</figcaption>
+    </figure>
+    <figure>
+      <svg viewBox="0 0 240 150" role="img" aria-label="Wireframe: the plate with three registers, a, b and a permanent panel c of traces at the bottom, the legend at right."><rect x="0.5" y="0.5" width="239" height="149" fill="none" stroke="currentColor" stroke-opacity=".35"/><line x1="10" y1="38" x2="180" y2="38" stroke="currentColor" stroke-opacity=".35"/><line x1="10" y1="100" x2="180" y2="100" stroke="currentColor" stroke-opacity=".35"/><text x="12" y="16" font-size="9" font-style="italic" fill="currentColor">a</text><text x="12" y="50" font-size="9" font-style="italic" fill="currentColor">b</text><text x="12" y="112" font-size="9" font-style="italic" fill="currentColor">c</text><line x1="188" y1="0" x2="188" y2="150" stroke="currentColor" stroke-opacity=".35"/><polyline class="acc" fill="none" stroke-width="1" points="24,126 60,125 70,118 120,121 180,120"/><polyline fill="none" stroke="currentColor" stroke-width="1" points="24,140 60,141 70,134 180,136"/></svg>
+      <figcaption><b>C · A permanent panel c</b>Round one’s plan: a third register on the plate. Always present, so the map loses a third of its height even when nothing is recorded.</figcaption>
+    </figure>
+  </div>
+</section>
+
+<section id="designs" aria-labelledby="h-designs">
+  <h2 id="h-designs">Creative designs <span class="sub">ranked by delight per unit of work</span></h2>
+  <div class="tablewrap"><table class="designs">
+    <thead><tr><th></th><th>Design</th><th>What a visitor does</th><th>What it needs</th></tr></thead>
+    <tbody>
+      <tr><td>1</td><td>Two histories of one cell <span class="tag">Codex; mine as “run fast, look slow”</span></td><td>Pins a moment, changes one thing, watches the outcomes diverge and switches the plate between them.</td><td>Milestone 3; prototyped in Fig. 5.</td></tr>
+      <tr><td>2</td><td>Where the carbon went <span class="tag">Codex</span></td><td>Reads a patterned ribbon of destinations: respired, stored, fermented, “to the cell”.</td><td>Element ledgers, no atom paths; 3b; prototyped under Fig. 5.</td></tr>
+      <tr><td>3</td><td>The poison cabinet, drawn bound <span class="tag">both rounds</span></td><td>Adds cyanide, rotenone, antimycin, oligomycin, DCMU or a protonophore and sees each in its pocket, the chain stopping behind it.</td><td>Milestone 5; mechanisms per poison.</td></tr>
+      <tr><td>4</td><td>Every observable drawn <span class="tag">mine, narrowed by Codex</span></td><td>Sees the photons PSII re-emits leave it and the O₂ cross the boundary, beside the instrument that measures them.</td><td>Milestone 7 for fluorescence; the chamber model in 5.</td></tr>
+      <tr><td>5</td><td>Metabolic fingerprints <span class="tag">Codex</span></td><td>Keeps responses as small trace specimens, then matches an unknown perturbation against the collection, with an optional reveal.</td><td>The record and its export.</td></tr>
+      <tr><td>6</td><td>The notebook <span class="tag">mine</span></td><td>Each finished run pins as the next figure, as this page’s do: small multiples to overlay and share by link.</td><td>3b: URL setups, a pinned model version.</td></tr>
+      <tr><td>7</td><td>Same Δp, different consequences <span class="tag">Codex</span></td><td>Trades Δψ for ΔpH with nigericin or valinomycin and watches ATP export and the carriers part ways at the same total.</td><td>Additions; the carriers’ connections drawn (8).</td></tr>
+      <tr><td>8</td><td>The smallest working membrane <span class="tag">both rounds</span></td><td>Builds a membrane in Custom from complexes; bacteriorhodopsin and ATP synthase alone is Racker and Stoeckenius.</td><td>Complex-level knockouts drawn absent; a vesicle preparation.</td></tr>
+      <tr><td>9</td><td>Reoxygenation <span class="tag">mine</span></td><td>Runs Fig. 4 and, with the extension, sees superoxide answer reverse electron transport.</td><td>A tested RET superoxide (5).</td></tr>
+      <tr><td>10</td><td>Mutants as specimens <span class="tag">mine</span></td><td>Grows ΔglgC, Δpgr5 or ΔndhD1/D2 beside the wild type.</td><td>Gene-to-reaction mapping and the right reversibility; nutrient context.</td></tr>
+      <tr><td>11</td><td>A cloud passing, then a day <span class="tag">both</span></td><td>Replays one fluctuating light history with different reserves; then the sun’s arc.</td><td>Timed forcing, qualified storage (4, 7).</td></tr>
+      <tr><td>12</td><td>Label, chase, recover <span class="tag">both</span></td><td>Pulses patterned carbon through the map and reads a chromatogram.</td><td>Validated atom mappings and isotopomer dynamics: major.</td></tr>
+      <tr><td>13</td><td>A whole cell in the locator <span class="tag">speculative</span></td><td>Sees the locator become a Goodsell whole-cell section that elongates and divides.</td><td>Milestone 9.</td></tr>
+      <tr><td>14</td><td>Listening to the membrane <span class="tag">speculative</span></td><td>Hears one click per drawn turnover of a chosen complex.</td><td>Little; decoration unless it reads a quantity.</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section id="decide" aria-labelledby="h-decide">
+  <h2 id="h-decide">For you to decide</h2>
+  <div class="qs3">
+    <div><div><h3>The thesis</h3><p>Time, comparison and destinations as the next era, with its two principles: one model, two observers; run fast, look slow. <span class="rec-pick">Recommended.</span></p></div></div>
+    <div><div><h3>The order</h3><p>Identities, then the record’s core, then the flagship’s day and night diagnosed on it (Codex’s order). Or repair the night first, before any record (my first draft). <span class="rec-pick">Recommended: Codex’s order.</span></p></div></div>
+    <div><div><h3>Where the record lives</h3><p>A, B or C above. <span class="rec-pick">Recommended: B, a recording area under the plate.</span></p></div></div>
+    <div><div><h3>The clock</h3><p>One clock whose dial runs past life, with a scrubbed cursor rebuilding the plate by replay; or a separate bench run beside a live plate. <span class="rec-pick">Recommended: one clock.</span></p></div></div>
+    <div><div><h3>The flagship made whole, or light’s instruments, first</h3><p>The CCM, the carboxysome and carbon–nitrogen allocation (6), or PSII’s states, fluorescence and Kok (7). <span class="rec-pick">Recommended: 6, since 7’s light curves mean little while the cell is CO₂-starved.</span></p></div></div>
+    <div><div><h3>Which designs to carry</h3><p>The table above, kept, reordered or dropped.</p></div></div>
+  </div>
+</section>
+
+<footer>
+  The full round is <code>docs/VISION.md</code> in the Lumen repository, with every number’s probe, the experiments as regression tests, the risks and the references, each checked against Crossref today. Codex’s read and review: gaslamp thread <code>lumen-roadmap-round3-codex</code>. The figures run Lumen’s own engine at <code>e30d90d</code>, bundled into this page.
+</footer>

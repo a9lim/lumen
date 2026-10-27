@@ -150,13 +150,16 @@ On phones the legend's sections sit in the page between the plate's canvases (se
 
 ## Open work
 
-`docs/VISION.md` (not staged) holds the ideation rounds of 2026-10-24 and 2026-10-25 and a9's decisions on them: where Lumen could go, its milestones, the engine's design, and the faults the engine was built to fix. Milestones 0, 0.5 and 1 are built: phase A (the engine and the window) and phase B (membrane energetics) both landed on 2026-10-25. The third visual pass (2026-10-26; `docs/third-pass/` has its proposal, the motion probe and its handoff) made the margin the figure's legend and gave Fig. 2 its first trace. Milestone 2, the bench, is next: it grows Fig. 2 into instrument traces, and its experiments need clocks faster than life (the window's thinning already draws them).
+`docs/VISION.md` (not staged) holds the three ideation rounds (2026-10-24, 10-25 and 10-27) and a9's decisions on them: where Lumen could go, the engine's design, round 3's audit of what was built, and the milestones. Milestones 0, 0.5 and 1 are built (the engine's phases A and B landed on 2026-10-25), and the third visual pass (2026-10-26; `docs/third-pass/` has its proposal, the motion probe and its handoff) made the margin the figure's legend and gave Fig. 2 its first trace. Round 3 (2026-10-27; `docs/round-3/` has its proposal page, which runs the engine live) reorients the roadmap around time, comparison and destinations: identities (2), then the record (3: model-time traces, checkpoints, a paired control), the flagship's day and night diagnosed on it (4), preparations and poisons (5), the flagship made whole (6: the CCM, carbon and nitrogen), light's instruments (7), transport and named cells (8), growth (9). Its decisions are open.
 
-Known approximations, to revisit as the engine matures:
+Known approximations, to revisit as the engine matures (VISION.md, "What round 3 found", has the numbers):
 
 - Most parameters are illustrative (rates.js), and most pool sizes too (cells.js); SABIO-RK's constants and each organism's measured pools should replace them. The biomass row is E. coli's core composition in every cell.
+- The cyanobacterium at 30% sun or in the dark runs short of ATP and exports lactate with oxygen present, and in anoxic dark its ATP reaches zero; its lactate is L, not D. It has no carbon-concentrating mechanism, so at full sun its CO₂ is drawn down to 2 µM.
+- Growth is starved at α-KG (the cyanobacterium makes 2% of its dial) and its products aren't accounted anywhere; the map has no spurs "to the cell".
 - The cyanobacterium's Krebs cycle is drawn with α-ketoglutarate dehydrogenase and succinyl-CoA synthetase, which most cyanobacteria lack (Zhang & Bryant 2011).
-- Fatty-acid synthesis runs on acyl-CoA, not ACP, lumped per round; the animal cell makes no fatty acid (it would need the citrate shuttle out of the matrix). The matrix's carriers are lumped (milestone 3 draws their anatomy).
+- Fatty-acid synthesis runs on acyl-CoA, not ACP, lumped per round; the animal cell makes no fatty acid (it would need the citrate shuttle out of the matrix). The matrix's carriers are lumped (milestone 8 draws their anatomy).
 - The halophile has no amino-acid metabolism, so without light it has nothing to run on.
-- The lumen's drawn protons stand for 2 mV each, not for counts; Kok's S-states and PSII's centre states aren't modeled yet (the bench).
+- The lumen's drawn protons stand for 2 mV each, not for counts; Kok's S-states and PSII's centre states aren't modeled yet (milestone 7).
+- Fig. 2's two minutes are wall time, and its O₂ is PSII's gross production, not net exchange. The hold's steady state checks fluxes only. `advance` stops at 5,000 steps a call, events run up to a step late, and snapshots leave out held pulses, events and the random streams (milestone 3).
 - The pulse's size and fade (×5 at its peak, 1.5 model seconds) and the hold's 10% are first guesses, to tune by eye.
