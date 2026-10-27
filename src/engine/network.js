@@ -98,6 +98,8 @@ R('SUCOAS', 'SCS', 'Succinyl-CoA synthetase (GTP counted as ATP)', 'succoa + adp
 R('SDH', 'SDH', 'Succinate dehydrogenase (complex II)', 'succ + q8 -> fum + q8h2', { at: 'mito', membrane: 'sdh' });
 R('FUM', 'FUM', 'Fumarase', 'fum + h2o -> mal__L', { at: 'mito' });
 R('MDH', 'MDH', 'Malate dehydrogenase', 'mal__L + nad -> oaa + nadh + h', { at: 'mito' });
+// The cytosol's isozyme, where a cell has a matrix: it returns ATP-citrate lyase's oxaloacetate as malate
+R('MDHc', 'MDH', 'Malate dehydrogenase (cytosol)', 'mal__L + nad -> oaa + nadh + h');
 
 // ─── β-oxidation, one reaction per chain length (C16 → C4); the acyl-CoA
 // dehydrogenase's FAD hands its electrons to ETF, and ETF:quinone
@@ -114,6 +116,9 @@ R('ETFQO', 'ETF-QO', 'ETF:quinone oxidoreductase', 'etfred + q8 -> etfox + q8h2'
 // ─── Fatty-acid synthesis: a separate pathway on its own enzymes, which the
 // model lumps per elongation round (condensation, reduction, dehydration,
 // reduction) and runs on the same acyl-CoA species for want of ACP ───
+// In a cell with a matrix, the cytosol's acetyl-CoA comes from citrate: ATP-citrate lyase splits what the
+// citrate carrier brings out
+R('ACLY', 'ACLY', 'ATP-citrate lyase', 'cit + atp + coa -> accoa + oaa + adp + pi');
 R('ACC', 'ACC', 'Acetyl-CoA carboxylase', 'accoa + atp + co2 + h2o -> malcoa + adp + pi + 2 h');
 R('FAS4', 'FAS', 'Fatty-acid synthase, first round', 'accoa + malcoa + 2 nadph + 3 h -> btcoa + co2 + coa + 2 nadp + h2o', { group: 'FAS', chain: 4 });
 CHAIN.slice(1).forEach((n, j) => {
@@ -205,6 +210,9 @@ R('PIC', 'PiC', 'Phosphate carrier', 'pi[c] + h[l] -> pi[m] + h[m]', { transport
 R('MAS', 'MAS', 'Malate–aspartate shuttle (NADH into the matrix)', 'nadh[c] + nad[m] + h[l] -> nad[c] + nadh[m] + h[m]', { transport: true });
 R('OAAX', 'OAA out', 'Oxaloacetate out of the matrix, as malate', 'oaa[m] + nadh[m] + nad[c] -> oaa[c] + nad[m] + nadh[c]', { transport: true });
 R('CPT', 'CPT', 'Carnitine shuttle (palmitoyl-CoA into the matrix)', 'pmtcoa[c] + coa[m] -> pmtcoa[m] + coa[c]', { transport: true });
+// The citrate carrier exchanges citrate and a proton, carried out together, for malate: two charges each
+// way, so Δψ doesn't touch it, and the proton it carries out works against ΔpH
+R('CIC', 'CIC', 'Citrate carrier (citrate out, malate in)', 'cit[m] + mal__L[c] + h[m] -> cit[c] + mal__L[m] + h[l]', { transport: true, z: -1 });
 
 // ─── Exchange with the medium ───
 R('EX_glc', 'GLUT', 'Glucose uptake', 'glc__D[e] -> glc__D[c]', { exchange: true });

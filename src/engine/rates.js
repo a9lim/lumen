@@ -133,7 +133,7 @@ p('AKGDH', 15, { km: { coa: 0.005 }, reg: [inh(['nadh', 'nad'], 0.5), inh(['succ
 p('SUCOAS', 30);
 p('SDH', 15);
 p('FUM', 20);
-p('MDH', 50);
+p(['MDH', 'MDHc'], 50);
 
 // ─── β-oxidation and fatty-acid synthesis ───
 // The spiral's enzymes far outrun its entry, so its intermediates (each holding a CoA) stay at µM:
@@ -142,14 +142,18 @@ for (const n of [16, 14, 12, 10, 8, 6, 4]) {
     p('ACAD' + n, 10, { km: { etfox: 0.002 } }); p('ECH' + n, 50); p('HACD' + n, 50); p('KAT' + n, 50, { km: { coa: 0.01 } });
 }
 // Malonyl-CoA keeps fatty acids out of the matrix (CPT1). It rises when acetyl-CoA is in surplus
-// (as citrate, through ACC), which the matrix's acetyl-CoA/CoA ratio stands for here
-p('CPT', 0.1, { reg: [inh('malcoa', 0.005), inh(['accoa[m]', 'coa[m]'], 2, 2)] });
+// (as citrate, through ACC), which the matrix's acetyl-CoA/CoA ratio stands for here. It binds
+// palmitoyl-CoA at tens of µM (illustrative), so it takes fat from the medium fast and the cell's own,
+// held at the µM growth draws on, slowly
+p('CPT', 0.1, { km: { pmtcoa: 0.03 }, reg: [inh('malcoa', 0.005), inh(['accoa[m]', 'coa[m]'], 2, 2)] });
 p('FACS', 0.3, { reg: [inh(['accoa', 'coa'], 2, 2)] });
-// Acetyl-CoA carboxylase, fatty-acid synthesis's committed step, is switched on by light (thioredoxin) in
-// plastids and cyanobacteria, so at night it doesn't lock the CoA pool into fatty acids growth isn't using
-// Long-chain acyl-CoA holds it back at a few µM, so fatty acids made wait at the µM growth draws on rather
-// than holding the CoA pool
-p('ACC', 1, { km: { co2: 0.002 }, reg: [act('cit', 0.5, 1, 0.2), inh('pmtcoa', 0.005, 2), light()] });
+// Acetyl-CoA carboxylase, fatty-acid synthesis's committed step: citrate opens it, and long-chain acyl-CoA
+// holds it back at a few µM, so fatty acids made wait at the µM growth draws on rather than holding the
+// CoA pool. In plastids and cyanobacteria light switches it on too (thioredoxin: cells.js)
+p('ACC', 1, { km: { co2: 0.002 }, reg: [act('cit', 0.5, 1, 0.2), inh('pmtcoa', 0.005, 2)] });
+// ATP-citrate lyase gives way as the cytosol's acetyl-CoA accumulates, as PDH, FACS and CPT do for
+// theirs, so it doesn't lock the cytosol's small CoA pool in acetyl-CoA once ACC slows
+p('ACLY', 1, { reg: [inh(['accoa', 'coa'], 0.5, 2)] });
 for (const n of [4, 6, 8, 10, 12, 14, 16]) p('FAS' + n, 2);
 
 // ─── Housekeeping ───
@@ -206,7 +210,7 @@ p('GPX', 3, { km: { h2o2: 0.005, nadph: 0.01 } });
 p('REPAIR', 0, { km: { atp: 0.5, adp: 100, pi: 100 } });
 
 // ─── Carriers between the cytosol and the matrix ───
-p('MPC', 5); p('ANT', 20); p('PIC', 50); p('MAS', 5); p('OAAX', 1);
+p('MPC', 5); p('ANT', 20); p('PIC', 50); p('MAS', 5); p('OAAX', 1); p('CIC', 1);
 
 // ─── Exchange with the medium: gases diffuse (rate constants, /s); the rest are carriers ───
 p(['EX_o2', 'EX_co2'], 50, { law: 'diffusion' });

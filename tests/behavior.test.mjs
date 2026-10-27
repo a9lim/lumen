@@ -7,7 +7,7 @@ import assert from 'node:assert/strict';
 import { CELLS } from '../src/engine/cells.js';
 import { MOIETIES } from '../src/engine/species.js';
 import { createEngine, HOLD } from '../src/engine/engine.js';
-import { runCompare, coefficients } from '../src/compare.js';
+import { runCompare, coefficients, HMAX } from '../src/compare.js';
 import { RT } from '../src/engine/thermo.js';
 import { makeRng } from '../src/engine/rng.js';
 
@@ -210,10 +210,15 @@ test('a hold against its paired baseline gives control coefficients at a steady 
     const C = coefficients(res, 1, e.rIndex, ['PFK', 'EX_glc', 'CYTOX']);
     assert.ok(C.EX_glc > 0.05 && C.EX_glc < 2, `PFK's control over glucose uptake ${C.EX_glc}`);
     // the baseline copy is the cell left alone: it matches a plain run from the same state
-    const b = createEngine('animalCell', { chemostat: true }); b.restore(snap); for (let t = 0; t < res.t; t++) b.advance(1);
+    const b = createEngine('animalCell', { chemostat: true, hmax: HMAX }); b.restore(snap); for (let t = 0; t < res.t; t++) b.advance(1);
     b.evaluate();
     for (const r of ['PFK', 'CYTOX', 'ATPS']) assert.ok(Math.abs(b.state.v[b.rIndex[r]] - res.vb[b.rIndex[r]]) < 1e-12, r);
     assert.equal(e.pulseNow(j), 1, 'and the cell itself is untouched');
+});
+
+test("a hold settles in the cyanobacterium: its fast enzymes near equilibrium don't saw on the picture", () => {
+    const e = run('cyanobacterium', 40), res = runCompare('cyanobacterium', e.snapshot(), [e.rIndex.ATPS], 1);
+    assert.ok(res.steady, `no steady state in ${res.t} s`);
 });
 
 test('a pulse leaves the trajectory independent of frames', () => {
@@ -278,7 +283,8 @@ test("β-oxidation's electrons reach the quinone pool through ETF", () => {
     const e = run('animalCell', 60);
     const acad = [16, 14, 12, 10, 8, 6, 4].reduce((a, n) => a + rate(e, 'ACAD' + n), 0);
     assert.ok(acad > 0.01 && Math.abs(rate(e, 'ETFQO') - acad) < 0.05 * acad, `ACAD ${acad}, ETF-QO ${rate(e, 'ETFQO')}`);
-    e.state.activity[e.rIndex.ETFQO] = 0; e.advance(30);
+    // the short chains' steps run backward on the matrix's acetyl-CoA for a while, taking ETF's electrons
+    e.state.activity[e.rIndex.ETFQO] = 0; e.advance(300);
     assert.ok(rate(e, 'ACAD16') < 0.01 * acad, 'without ETF-QO, ETF stays reduced and β-oxidation stops');
 });
 
@@ -417,6 +423,18 @@ test('nitrogen: ammonium taken up is nitrogen grown, through glutamine and gluta
     assert.ok(Math.abs(r('EX_nh4') - 5.4528 * grow) < 0.05 * r('EX_nh4'), `ammonium in ${r('EX_nh4')}, nitrogen grown ${5.4528 * grow}`);
     assert.ok(Math.abs(r('GLNS') - r('EX_nh4')) < 0.05 * r('GLNS') && r('GLUSy') > 0.9 * r('GLNS') - 0.2557 * grow,
         `GS ${r('GLNS')}, GOGAT ${r('GLUSy')}`);
+});
+
+test("the animal cell makes its own fatty acid from the matrix's citrate once its medium's is gone", () => {
+    const e = run('animalCell', 300), want = e.dial.growth / 3600 * 300;
+    // fed fat, it takes it up and makes almost none
+    assert.ok(rate(e, 'FACS') > 0.001 && rate(e, 'FAS16') < 0.01 * rate(e, 'FACS'), `fed: uptake ${rate(e, 'FACS')}, synthesis ${rate(e, 'FAS16')}`);
+    e.advance(1200);
+    assert.ok(e.conc('hdca', 'e') < 1e-3, `the medium's fatty acid ${e.conc('hdca', 'e')}`);
+    // citrate out, split in the cytosol, made into palmitoyl-CoA, and grown on
+    assert.ok(rate(e, 'CIC') > 0.002 && Math.abs(rate(e, 'ACLY') - rate(e, 'CIC')) < 0.05 * rate(e, 'CIC') && rate(e, 'FAS16') > 1e-4,
+        `citrate carrier ${rate(e, 'CIC')}, ATP-citrate lyase ${rate(e, 'ACLY')}, synthase ${rate(e, 'FAS16')}`);
+    assert.ok(rate(e, 'BIOMASS') > 0.1 * want, `growth ${rate(e, 'BIOMASS') / want} of its dial`);
 });
 
 test('the composite cell lives through twilight on its store', () => {

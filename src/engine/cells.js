@@ -116,7 +116,7 @@ export const CELLS = {
         kinetics: { ...ION_THYLAKOID, ATPS: { reg: [{ type: 'brake', b: 0, dG: -3, name: 'AtpΘ' }] }, LEAK: { vmax: 0.001 },
             GAPD: { vmax: 2, reg: [dark(0.05)] }, PFK: { vmax: 0.5, reg: [dark(0.05)] }, PYK: { reg: [act('rb15bp', 0.1, 2, 0)] },
             PPC: { vmax: 1 }, FBP: { reg: [light()] },
-            CS: { vmax: 2, reg: [inh('akg', 0.05, 2)] }, AKGDH: { vmax: 0.01 },
+            CS: { vmax: 2, reg: [inh('akg', 0.05, 2)] }, AKGDH: { vmax: 0.01 }, ACC: { reg: [light()] },
             BIOMASS: { reg: [light(0.02), act(['atp', 'adp'], 3, 2, 0)] },
             G6PDH: { reg: [dark(0.01)] }, GLGP: { reg: [dark(0.02)] }, TALA: { vmax: 1 },
             // Respiration shares the thylakoid's carriers: its oxidase's capacity is a night's respiration's
@@ -132,12 +132,17 @@ export const CELLS = {
     },
     animalCell: {
         name: 'Animal cell',
-        reactions: uniq(HOUSE, GROW, GDH, GLYC, PPP_OX, PPP_NONOX, KREBS, BETAOX, RESP, ROS, MATRIX,
+        // It makes its fatty acid in the cytosol from the matrix's citrate: the citrate carrier brings
+        // citrate out for malate, ATP-citrate lyase splits it into acetyl-CoA and oxaloacetate, and the
+        // cytosol's malate dehydrogenase returns that as malate. Growth is its only sink for lipid, so
+        // long-chain acyl-CoA holds ACC at the µM growth draws on, and what it makes beyond that is carried
+        // into the matrix and burned (it has no lipid store). Fed fat, it stops making its own
+        reactions: uniq(HOUSE, GROW, GDH, GLYC, PPP_OX, PPP_NONOX, KREBS, BETAOX, FAS, RESP, ROS, MATRIX, ['ACLY', 'MDHc', 'CIC'],
             ['G6PP', 'FBP', 'PC', 'PPCK', 'PDH', 'LDH', 'ADH', 'ALDH', 'ACS', 'FACS', 'EX_lac', 'EX_glc', 'EX_fa', 'EX_etoh', 'EX_ac', 'EX_o2', 'NNT', 'UCP']),
         compartments: { c: 1, m: 0.2, l: 0.02 },
         potentials: { q: E_UQ, pc: E_CYTC, fd: E_FD },
         env: { light: 0, o2: 1, co2: 1 }, medium: { glc__D: 5, hdca: 0.1, lac__L: 1 }, pmf: PMF_ENERGIZED, ring: 8, atpDemand: 1, growth: 0.02,
-        kinetics: { ...ION_MITO, ATPS: { reg: [IF1] } },
+        kinetics: { ...ION_MITO, ATPS: { reg: [IF1] }, ACC: { reg: [inh('pmtcoa', 0.0005, 2)] } },
         pools: {
             c: { nad: [0.5, 'illustrative'], nadp: [0.1, 'illustrative'], adenine: [5, 'illustrative'], coa: [0.1, 'illustrative'] },
             m: { nad: [3, 'illustrative'], nadp: [0.5, 'illustrative'], adenine: [8, 'illustrative'], coa: [2, 'illustrative'] },
@@ -166,7 +171,7 @@ export const CELLS = {
         // the cell's ATP on a gradient. RuBisCO activase needs ATP, so RuBisCO deactivates as the stroma's
         // ATP/ADP falls, and in dim light the cycle slows before it drains the stroma's ATP
         kinetics: { ...ION_THYLAKOID, ATPS: { reg: [light(0.05), { type: 'brake', b: 0, dG: -3, name: 'CF₁' }] }, FBP: { reg: [light()] },
-            GLGS: { reg: [light()] }, GLGP: { reg: [dark(0.02)] }, RBPC: { reg: [act(['atp', 'adp'], 4, 2, 0.02)] }, G6PDH: { reg: [dark(0.01)] },
+            GLGS: { reg: [light()] }, GLGP: { reg: [dark(0.02)] }, ACC: { reg: [light()] }, RBPC: { reg: [act(['atp', 'adp'], 4, 2, 0.02)] }, G6PDH: { reg: [dark(0.01)] },
             PFK: { reg: [dark(0.05)] }, PYK: { reg: [dark(0.05)] }, TALA: { vmax: 5 } },
         pools: { c: { nad: [0.5, 'illustrative'], nadp: [1, 'illustrative'], adenine: [2, 'illustrative'], coa: [0.5, 'illustrative'] } },
     },
@@ -190,7 +195,7 @@ export const CELLS = {
         env: { light: 1, o2: 1, co2: 1 }, medium: { glc__D: 5, hdca: 0.1 }, pmf: PMF_THYLAKOID, atpDemand: 0.6, growth: 0.1,
         // Its demand outruns dim light, so its phosphorylase keeps the Calvin cycle's gentler switch (half set
         // at 5% sun) and it draws on its store in twilight
-        kinetics: { ...ION_THYLAKOID, GLGP: { reg: [dark(0.02, 0.05, 2)] } },
+        kinetics: { ...ION_THYLAKOID, GLGP: { reg: [dark(0.02, 0.05, 2)] }, ACC: { reg: [light()] } },
         carriers: { q: 2, pc: 1, fd: 0.3 }, start: CALVIN_START,
         // Bennett et al. 2009 (10.1038/nchembio.186), E. coli on glucose: ATP 9.6, ADP 0.56, AMP 0.28 mM;
         // NAD⁺ 2.6, NADH 0.083; NADP⁺ 0.0021, NADPH 0.12

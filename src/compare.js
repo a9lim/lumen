@@ -12,11 +12,15 @@ const MAX_T = 900;      // model s to look for a steady state
 const CALM = 5;         // seconds in a row with every flux still, in both copies
 const TOL = 1e-3;       // still: no flux changes by more than this share a second
 const FLOOR = 1e-3;     // mM/s: fluxes smaller than this are too small to judge
+// s: the copies' longest step. Their fluxes are read on the picture, the straight line between steps, and a
+// fast enzyme near equilibrium (adenylate kinase, malate dehydrogenase) read there saws with a long step,
+// never still: at 10 s the cyanobacterium's held ATP synthase never settled
+export const HMAX = 2;
 
 /** Run a held copy and its baseline from snap until both are steady: { t, steady, va, vb }. */
 export function runCompare(cellId, snap, js, sign, onProgress) {
     // The medium held where it is (a chemostat): a finite medium running out has no steady state
-    const a = createEngine(cellId, { chemostat: true }), b = createEngine(cellId, { chemostat: true });
+    const a = createEngine(cellId, { chemostat: true, hmax: HMAX }), b = createEngine(cellId, { chemostat: true, hmax: HMAX });
     a.restore(snap); b.restore(snap);
     for (const j of js) a.pulse(j, sign, true);
     let last = null, calm = 0, t = 0;
