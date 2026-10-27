@@ -287,9 +287,11 @@ test("the cyanobacterium's NDH-1 runs on ferredoxin: cyclic flow in the light, r
     assert.ok(rate(e, 'NDH1F') > 0.02, `NDH-1 in the light ${rate(e, 'NDH1F')}`);
     e.env.light = 0; e.advance(60);
     assert.ok(rate(e, 'FNR') < -0.01 && rate(e, 'NDH1F') > 0.01 && rate(e, 'CYTOX') > 0.05, `dark: FNR ${rate(e, 'FNR')}, NDH-1 ${rate(e, 'NDH1F')}, oxidase ${rate(e, 'CYTOX')}`);
-    const o2 = rate(e, 'CYTOX');
-    e.state.activity[e.rIndex.NDH1F] = 0; e.advance(30);
-    assert.ok(rate(e, 'CYTOX') < 0.8 * o2, 'and without NDH-1 the dark cell respires less');
+    // without NDH-1 its electrons reach the quinone pool without pumping: less Δp, less ATP for each O₂
+    e.advance(1800);
+    const dp = e.dp(), yieldOf = () => rate(e, 'ATPS') / rate(e, 'CYTOX'), y = yieldOf();
+    e.state.activity[e.rIndex.NDH1F] = 0; e.advance(1800);
+    assert.ok(e.dp() < dp - 5 && yieldOf() < 0.9 * y, `without NDH-1: Δp ${dp} → ${e.dp()}, ATP per O₂ pair ${y} → ${yieldOf()}`);
 });
 
 test('every reaction moves the charges and protons across the membrane that its biology says', () => {
@@ -310,4 +312,71 @@ test('every reaction moves the charges and protons across the membrane that its 
         const a = e.coupling(e.rIndex.ATPS), n = (CELLS[id].ring || 12) / 3;
         assert.ok(Math.abs(a.z + n) < 1e-12 && Math.abs(a.nH + n) < 1e-12, `${id}: ATP synthase moves ${n}`);
     }
+});
+
+// ─── The night (VISION.md, milestone 2): each archetype against its qualitative targets ───
+
+/** The cell after 10 minutes in full sun, its store set to a dusk's (glucosyl mM). */
+const dusk = (id, store) => { const e = run(id, 600); if (store != null) e.set('glycogen', 'c', store); return e; };
+const ec = (e, c = 'c') => { const a = e.conc('atp', c), d = e.conc('adp', c), m = e.conc('amp', c); return (a + d / 2) / (a + d + m); };
+
+test('the cyanobacterium lives through a night on its glycogen, through the pentose phosphate pathway into NDH-1', () => {
+    const e = dusk('cyanobacterium', 300), o2day = -rate(e, 'EX_o2');
+    e.env.light = 0; e.advance(3600);
+    // the store's carbon goes round the oxidative pentose phosphate pathway, not down glycolysis, and its
+    // electrons enter the chain at NDH-1 (from NADPH, through ferredoxin)
+    assert.ok(rate(e, 'G6PDH') > 3 * Math.abs(rate(e, 'PFK')), `G6PDH ${rate(e, 'G6PDH')} against PFK ${rate(e, 'PFK')}`);
+    assert.ok(rate(e, 'NDH1F') > rate(e, 'NDH2') && rate(e, 'NDH1F') > rate(e, 'SDH'), `NDH-1 ${rate(e, 'NDH1F')}, NDH-2 ${rate(e, 'NDH2')}, SDH ${rate(e, 'SDH')}`);
+    e.advance(11 * 3600);
+    const o2 = rate(e, 'EX_o2');
+    assert.ok(ec(e) > 0.9 && e.conc('glycogen') > 50, `at dawn: energy charge ${ec(e)}, glycogen ${e.conc('glycogen')} mM`);
+    assert.ok(o2 > 0 && o2 < 0.1 * o2day, `it respires ${o2} mM O₂/s, against the day's ${o2day}`);
+    assert.ok(Math.abs(rate(e, 'EX_lac')) < 1e-3, `and makes no lactate with oxygen: ${rate(e, 'EX_lac')}`);
+});
+
+test('dimming slows the cyanobacterium without starving it', () => {
+    const fix = (L) => { const e = dusk('cyanobacterium'); e.env.light = L; e.advance(600); return e; };
+    const full = fix(1);
+    for (const L of [0.3, 0.1]) {
+        const e = fix(L);
+        assert.ok(ec(e) > 0.85 && rate(e, 'EX_lac') < 0.01, `${L * 100}% sun: energy charge ${ec(e)}, lactate ${rate(e, 'EX_lac')}`);
+        assert.ok(rate(e, 'RBPC') < rate(full, 'RBPC'), `${L * 100}% sun fixes less`);
+    }
+});
+
+test('without oxygen in the dark the cyanobacterium ferments, AtpΘ keeps its ATP, and oxygen brings it back', () => {
+    const e = dusk('cyanobacterium', 300);
+    e.env.light = 0; e.env.o2 = 0; e.applyEnv(); e.advance(3600);
+    assert.ok(rate(e, 'EX_lac') > 0.02 && ec(e) > 0.7, `anoxic: lactate ${rate(e, 'EX_lac')}, energy charge ${ec(e)}`);
+    // its ATP synthase doesn't split ATP to hold a gradient it can't use
+    assert.ok(rate(e, 'ATPS') > -1e-3 && e.dp() < 30, `ATP synthase ${rate(e, 'ATPS')}, Δp ${e.dp()}`);
+    e.env.o2 = 1; e.applyEnv(); e.advance(600);
+    assert.ok(ec(e) > 0.95 && rate(e, 'EX_lac') < 1e-3, `oxygen back: energy charge ${ec(e)}, lactate ${rate(e, 'EX_lac')}`);
+});
+
+test('the chloroplast turns RuBisCO off at night, exports from its starch, and lets its thylakoid go flat', () => {
+    const e = dusk('plantChloroplast', 300), rubisco = rate(e, 'RBPC');
+    assert.ok(rate(e, 'TPT') > 0.03, `it exports by day: ${rate(e, 'TPT')}`);
+    e.env.light = 0; e.advance(1800);
+    assert.ok(rate(e, 'RBPC') < 0.01 * rubisco, `RuBisCO at night ${rate(e, 'RBPC')} against ${rubisco}`);
+    assert.ok(rate(e, 'GLGP') > 0.005 && rate(e, 'TPT') > 0.01, `starch ${rate(e, 'GLGP')} out as triose ${rate(e, 'TPT')}`);
+    assert.ok(e.dp() < 20 && ec(e) > 0.8, `Δp ${e.dp()}, energy charge ${ec(e)}`);
+});
+
+test("a polymer's amount leaves its reactions' equilibria alone", () => {
+    const e = run('cyanobacterium', 60), j = e.rIndex.GLGP;
+    e.set('glycogen', 'c', 10); const small = e.factors(j).dG;
+    e.set('glycogen', 'c', 300); const big = e.factors(j).dG;
+    assert.ok(Math.abs(small - big) < 1e-9, `phosphorylase's ΔG ${small} with 10 mM stored, ${big} with 300`);
+});
+
+test('an empty store is not spent backward: synthesis needs a chain both ways, and carbon is kept', () => {
+    // Codex's case: glycogen synthase pushed backward by spent ATP and piled-up ADP and PPᵢ, with nothing stored
+    const e = createEngine('cyanobacterium'); e.applyEnv();
+    e.state.activity.fill(0); e.state.activity[e.rIndex.GLGS] = 1;
+    for (const [id, v] of Object.entries({ glycogen: 0, g6p: 0, atp: 0.01, adp: 2, ppi: 1, '3pg': 1 })) e.set(id, 'c', v);
+    const carbon = () => e.species.reduce((s, sp, i) => s + (sp.carbon || 0) * e.x[i] * e.vol[i], 0), c0 = carbon();
+    assert.equal(rate(e, 'GLGS'), 0);
+    e.advance(600);
+    assert.ok(e.conc('glycogen') >= 0 && Math.abs(carbon() - c0) < 1e-9 * c0, `glycogen ${e.conc('glycogen')}, carbon ${c0} → ${carbon()}`);
 });

@@ -65,8 +65,10 @@ M('succ', 'Succinate'); M('fum', 'Fumarate'); M('mal__L', 'Malate');
 M('6pgl', '6-PGL'); M('6pgc', '6-PGA'); M('ru5p__D', 'Ru5P'); M('r5p', 'R5P'); M('xu5p__D', 'Xu5P');
 M('e4p', 'E4P'); M('s7p', 'S7P'); M('s17bp', 'SBP'); M('rb15bp', 'RuBP');
 M('hdca', 'Palmitate');
-// Glycogen (or starch): one glucosyl unit of the polymer, so its count is glucose stored
-sp('glycogen', 'Glycogen', 'met', { formula: 'C6H10O5', charge: 0 });
+// Glycogen (or starch): one glucosyl unit of the polymer, so its count is glucose stored. A polymer:
+// adding or taking a unit leaves its chains' ends as they were, so its amount enters an enzyme's
+// saturation but not a reaction's equilibrium (engine.js)
+sp('glycogen', 'Glycogen', 'met', { formula: 'C6H10O5', charge: 0, polymer: true });
 
 // Fatty acyl-CoAs on β-oxidation's spiral, one species per chain length and stage
 export const CHAIN = [16, 14, 12, 10, 8, 6, 4];

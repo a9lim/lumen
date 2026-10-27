@@ -56,6 +56,9 @@ export const PULSE_UP = 4, PULSE_DOWN = 0.9, PULSE_TAU = 1.5, PULSE_MAX = 20, HO
 // Steps: error-controlled (RTOL, ATOL) up to HMAX model seconds; while a pulse fades, H_PULSE at most,
 // since a step holds the pulse's factor where it started; H0 after an intervention
 const RTOL = 2e-3, ATOL = 1e-6, HMAX = 60, H_PULSE = PULSE_TAU / 30, H0 = 1e-3, HMIN = 1e-9;
+// A polymer's chains, the acceptor its synthase builds on: half there at this much stored (mM of units), so an
+// emptied store can't be spent backward and refills from what remains (illustrative)
+const KM_CHAIN = 0.01;
 /** mV per pH unit: 2.303 RT/F. */
 export const ZMV = RT * Math.LN10 / F * 1000;
 
@@ -76,7 +79,7 @@ export function createEngine(cellId, opts = {}) {
 
     // Species the integration leaves alone: fixed (water, buffered H⁺) and the medium's gases and Pᵢ, set by
     // env; with opts.chemostat, the whole medium, so a steady state can exist (compare.js)
-    const hold = Uint8Array.from(S, s => s.fixed || (s.comp === 'e' && (opts.chemostat || ['o2', 'co2', 'pi', 'atp', 'adp'].includes(s.id))) ? 1 : 0);
+    const hold = Uint8Array.from(S, s => s.fixed || (s.comp === 'e' && (opts.chemostat || ['o2', 'co2', 'pi', 'atp', 'adp', 'g3p'].includes(s.id))) ? 1 : 0);
     const free = [...Array(nS).keys()].filter(i => !hold[i]), nF = free.length;
     const fpos = new Int32Array(nS).fill(-1); free.forEach((i, k) => { fpos[i] = k; });
 
@@ -85,7 +88,7 @@ export function createEngine(cellId, opts = {}) {
         const par = PARAMS[r.id] || { vmax: 1 };
         const over = (cell.kinetics || {})[r.id] || {};
         const km = { ...(par.km || {}), ...(over.km || {}) };
-        const sub = [], pro = [];
+        const sub = [], pro = [], poly = [], chain = [];
         // What the reaction moves to the lumen side: charge (z: every lumen species', and its carriers'
         // between cytosol and matrix) and protons (nH)
         let z = r.z || 0, nH = 0;
@@ -95,16 +98,20 @@ export function createEngine(cellId, opts = {}) {
             if (S[i].fixed) continue;
             const K = km[S[i].id] ?? KM[S[i].id] ?? KM_DEFAULT;
             const Kd = par.kmDemand ? par.kmDemand[S[i].id] ?? par.kmDemand.default : 0;
+            // A polymer made is the chain it was made on: it doesn't hold back the enzyme making it, it
+            // needs a chain to build on (both ways, so an empty store can't be spent backward), and on
+            // either side it leaves the reaction's equilibrium alone
+            if (S[i].polymer) { (nu < 0 ? poly : chain).push(i); if (nu > 0) continue; }
             (nu < 0 ? sub : pro).push([i, Math.abs(nu), K, Kd]);
         }
         const regs = [...(par.reg || []), ...(over.reg || [])].map(e => compileReg(e, r.comp)).filter(Boolean);
         const law = par.law || 'cm';
         // Which species its rate reads: substrates, products, effectors, and Δp when protons cross
-        const deps = new Set([...sub, ...pro].map(([i]) => i));
+        const deps = new Set([...sub, ...pro].map(([i]) => i).concat(chain));
         for (const e of regs) { if (e.a != null) deps.add(e.a); if (e.bx != null) deps.add(e.bx); if (e.type === 'dp') { deps.add(iHl); deps.add(iQ); } }
         if (z || nH || law === 'leak') { deps.add(iHl); deps.add(iQ); }
         return {
-            r, j, law, vmax: over.vmax ?? par.vmax, light: !!par.light, sub, pro, z, nH, regs,
+            r, j, law, vmax: over.vmax ?? par.vmax, light: !!par.light, sub, pro, poly, chain, z, nH, regs, brake: regs.find(e => e.type === 'brake'),
             dmg: r.id === 'LEAK' ? 'leak' : r.id === 'ACONT' ? 'aco' : null,
             dg0: dg0(cell, r), homeVol: model.comps[r.comp],
             deps: [...deps].filter(i => !hold[i]),
@@ -114,7 +121,7 @@ export function createEngine(cellId, opts = {}) {
     function compileReg(e, home) {
         // An effector names a species in the reaction's compartment, or another with a tag: 'accoa[m]'
         const pick = (id) => { const m = /^(.+?)(?:\[([clme])\])?$/.exec(id); return m[2] ? idx(m[1], m[2]) ?? idx(m[1], 'c') : idx(id, home) ?? idx(id, 'c'); };
-        if (e.type === 'light' || e.type === 'dark' || e.type === 'dp') return e;
+        if (e.type === 'light' || e.type === 'dark' || e.type === 'dp' || e.type === 'brake') return e;
         if (Array.isArray(e.x)) {
             const a = pick(e.x[0]), bx = pick(e.x[1]);
             return a == null || bx == null ? null : { ...e, a, bx };
@@ -137,7 +144,9 @@ export function createEngine(cellId, opts = {}) {
     const rtol = opts.rtol ?? RTOL, hmax = opts.hmax ?? HMAX;
 
     // ─── Rates ───
-    const lightOn = () => env.light / (env.light + 0.05);
+    // Thioredoxin's switch: half set at 5% of full sun, and cooperative, so that by a fifth of full sun the
+    // enzymes light turns off are off (a hyperbola would leave a seventh of them running at 30% sun)
+    const lightOn = () => env.light * env.light / (env.light * env.light + 0.0025);
 
     /** η_reg: the product of the reaction's effectors (rates.js) at state x. */
     function regFactor(c, x, dp) {
@@ -146,6 +155,7 @@ export function createEngine(cellId, opts = {}) {
             if (e.type === 'light') f *= e.b + (1 - e.b) * lightOn();
             else if (e.type === 'dark') f *= e.b + (1 - e.b) * (1 - lightOn());
             else if (e.type === 'dp') { const q = Math.pow(Math.max(dp, 0) / e.K, e.h); f *= q / (1 + q); }
+            else if (e.type === 'brake') continue;
             else {
                 const val = e.bx != null ? x[e.a] / Math.max(x[e.bx], 1e-12) : x[e.a];
                 const q = Math.pow(Math.max(val, 0) / e.K, e.h);
@@ -153,6 +163,17 @@ export function createEngine(cellId, opts = {}) {
             }
         }
         return f;
+    }
+    /**
+     * A brake against running backward (AtpΘ, CF₁), phenomenological: it binds as the reaction stalls, reading
+     * its own ΔG through e^(ΔG/RT), the backward rate over the forward. Half bound at ΔG = dG (a little on the
+     * forward side of equilibrium), it leaves the reaction free while ΔG drives it forward and holds it
+     * at b once it would run back. It slows both directions alike, so the flux still follows ΔG.
+     */
+    function brakeFactor(c, rf, rb) {
+        if (!(rf > 0 || rb > 0)) return 1;
+        const r = rf > 0 ? rb / rf * Math.exp(-c.brake.dG / RT) : Infinity;
+        return c.brake.b + (1 - c.brake.b) / (1 + r ** 4);
     }
 
     /** The pulses on reaction j at model time t: a multiplier on its activity. */
@@ -199,10 +220,14 @@ export function createEngine(cellId, opts = {}) {
             d2 *= nu === 1 ? 1 + s / K : Math.pow(1 + s / K, nu);
             prodM *= nu === 1 ? s / 1000 : Math.pow(s / 1000, nu);
         }
+        // a polymer spent is also the polymer left: its amount cancels from the mass-action ratio
+        for (const i of c.poly) prodM *= Math.max(x[i], 0) / 1000;
         const D = d1 + d2 - 1;
         // 1/K' with the proton-motive force: each charge moved to the lumen side costs F·Δψ, each proton F·ΔpH more
         const invK = Math.exp((c.dg0 + (c.z * psi + c.nH * ph) * F / 1000) / RT);
         RF = V * num / D; RB = V * prodM * invK / ksM / D;
+        for (const i of c.chain) { const s = Math.max(x[i], 0), f = s / (KM_CHAIN + s); RF *= f; RB *= f; }
+        if (c.brake) { const f = brakeFactor(c, RF, RB); RF *= f; RB *= f; }
     }
 
     /** Every reaction's rate at state x: net, forward and backward. */
@@ -349,6 +374,12 @@ export function createEngine(cellId, opts = {}) {
     const rng = makeRng(opts.seed ?? 1);
     const clock = typeof performance !== 'undefined' ? () => performance.now() : () => Date.now();
 
+    /** A reaction's brake factor at the picture's state, from its rates without the brake. */
+    function brakeOf(c) {
+        const b = c.brake; c.brake = null; rate1(c.j, state.x); c.brake = b;
+        return brakeFactor(c, RF, RB);
+    }
+
     const engine = {
         model, cell, env, dial, state, rng, pmf, vol,
         get t() { return state.t; },
@@ -406,7 +437,7 @@ export function createEngine(cellId, opts = {}) {
             rate1(j, x);
             // ln Q exactly: a missing substrate makes ΔG +∞, a missing product −∞
             let lnQ = 0;
-            for (const [i, nu] of c.sub) lnQ -= nu * Math.log(Math.max(x[i], 0) / 1000);
+            for (const [i, nu] of c.sub) if (!c.poly.includes(i)) lnQ -= nu * Math.log(Math.max(x[i], 0) / 1000);
             for (const [i, nu] of c.pro) lnQ += nu * (x[i] > 0 ? Math.log(x[i] / 1000) : -Infinity);
             if (Number.isNaN(lnQ)) lnQ = 0;
             const dG = c.dg0 + RT * lnQ + (c.z * psi + c.nH * ph) * F / 1000;
@@ -414,8 +445,12 @@ export function createEngine(cellId, opts = {}) {
             let num = 1, d1 = 1, d2 = 1;
             for (const [i, nu, K] of c.sub) { const r = Math.max(x[i], 0) / K; num *= Math.pow(r, nu); d1 *= Math.pow(1 + r, nu); }
             for (const [i, nu, K] of c.pro) d2 *= Math.pow(1 + Math.max(x[i], 0) / K, nu);
-            const sat = c.law === 'cm' ? num / (d1 + d2 - 1) : 1;
-            return { dG, thermo: 1 - Math.exp(dG / RT), sat, reg: c.law === 'cm' ? regFactor(c, x, dp) : 1, vf: RF, vb: RB, v: RF - RB, law: c.law || 'cm' };
+            let sat = c.law === 'cm' ? num / (d1 + d2 - 1) : 1;
+            for (const i of c.chain) sat *= Math.max(x[i], 0) / (KM_CHAIN + Math.max(x[i], 0));
+            // regulation includes a brake, read from the rates before it acts
+            const reg = c.law === 'cm' ? regFactor(c, x, dp) * (c.brake ? brakeOf(c) : 1) : 1;
+            rate1(j, x);
+            return { dG, thermo: 1 - Math.exp(dG / RT), sat, reg, vf: RF, vb: RB, v: RF - RB, law: c.law || 'cm' };
         },
         /**
          * Pulse a reaction (sign 1) or inhibit it (−1) now, in model time; a second pulse
@@ -468,13 +503,14 @@ export function createEngine(cellId, opts = {}) {
                 if (e.type === 'light') f = e.b + (1 - e.b) * lightOn();
                 else if (e.type === 'dark') f = e.b + (1 - e.b) * (1 - lightOn());
                 else if (e.type === 'dp') { const q = Math.pow(Math.max(dp, 0) / e.K, e.h); f = q / (1 + q); }
+                else if (e.type === 'brake') f = brakeOf(c);
                 else {
                     const val = e.bx != null ? x[e.a] / Math.max(x[e.bx], 1e-12) : x[e.a];
                     const q = Math.pow(Math.max(val, 0) / e.K, e.h);
                     f = e.type === 'inh' ? 1 / (1 + q) : (e.b + q) / (1 + q);
                 }
-                const what = e.type === 'light' || e.type === 'dark' || e.type === 'dp' ? e.type : Array.isArray(e.x) ? e.x.map(s => s.replace(/\[.\]$/, '')) : e.x;
-                return { what, how: e.type === 'inh' || e.type === 'dark' ? 'inh' : 'act', f };
+                const what = e.type === 'brake' ? e.name : e.type === 'light' || e.type === 'dark' || e.type === 'dp' ? e.type : Array.isArray(e.x) ? e.x.map(s => s.replace(/\[.\]$/, '')) : e.x;
+                return { what, how: e.type === 'inh' || e.type === 'dark' || e.type === 'brake' ? 'inh' : 'act', f };
             });
         },
         /** What reaction j moves across the membrane: z charges and nH protons to the lumen side; its ΔG'° (kJ/mol). */
@@ -489,9 +525,11 @@ export function createEngine(cellId, opts = {}) {
             if (o2 != null) state.x[o2] = AIR_O2 * env.o2;
             if (co2 != null) state.x[co2] = AIR_CO2 * env.co2;
             if (pi != null) state.x[pi] = PI_MEDIUM;
-            // A chloroplast's medium is its cell's cytosol: ATP held at 2 mM, ADP at 0.2
-            const atp = idx('atp', 'e'), adp = idx('adp', 'e');
+            // A chloroplast's medium is its cell's cytosol: ATP held at 2 mM, ADP at 0.2, and the triose
+            // phosphate it exports kept low (illustrative), as the cell makes sucrose of it
+            const atp = idx('atp', 'e'), adp = idx('adp', 'e'), tp = idx('g3p', 'e');
             if (atp != null) { state.x[atp] = 2; state.x[adp] = 0.2; }
+            if (tp != null) state.x[tp] = 0.005;
         },
         /** Fill the pools and metabolites to the cell's starting state. */
         reset() {

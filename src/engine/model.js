@@ -37,7 +37,7 @@ export function buildCell(cellId) {
             index[k] = species.length;
             // Water and buffered H⁺ are fixed; h_l carries the proton-motive force
             const fixed = s.kind === 'fixed' && !(id === 'h' && comp === 'l');
-            species.push({ key: k, id, comp, name: s.name, kind: s.kind, fixed, carbon: s.carbon, el: s.el, charge: s.charge });
+            species.push({ key: k, id, comp, name: s.name, kind: s.kind, fixed, carbon: s.carbon, el: s.el, charge: s.charge, polymer: !!s.polymer });
         }
         return index[k];
     };

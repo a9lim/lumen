@@ -43,7 +43,9 @@ for (const k of [...ACYL.acyl, ...ACYL.enoyl, ...ACYL.hydroxy, ...ACYL.keto]) KM
 // x is a species' concentration in the reaction's compartment, or a ratio [a, b]
 // of two. light: thioredoxin's switch, b + (1 − b)·L with L = I / (I + 0.05);
 // dark: the reverse, for enzymes light switches off. dp: a floor on Δp below
-// which the enzyme shuts (IF1 on the mitochondrial ATP synthase).
+// which the enzyme shuts (IF1 on the mitochondrial ATP synthase). brake: holds a
+// reaction against running backward (AtpΘ on the cyanobacterium's ATP synthase:
+// engine.js), half bound at ΔG = dG kJ/mol, b what it leaves.
 const inh = (x, K, h = 1) => ({ type: 'inh', x, K, h });
 const act = (x, K, h = 1, b = 0.1) => ({ type: 'act', x, K, h, b });
 const light = (b = 0.03) => ({ type: 'light', b });
@@ -63,10 +65,15 @@ p('FBP', 4, { reg: [inh('amp', 0.02, 2)] });
 p('PYK', 5, { reg: [act('fdp', 0.3, 1, 0.2)] });
 p('PC', 2, { reg: [act('accoa', 0.05, 1, 0.1)] });
 p('PPCK', 2);
-p('PPS', 1);
+// PEP synthetase spends two ATP: like FBPase, a low energy charge (AMP) holds it, so it doesn't cycle against PK
+p('PPS', 1, { reg: [inh('amp', 0.02, 2)] });
 p('PPC', 0.3, { reg: [inh('mal__L', 2)] });
-p(['GLGS'], 0.15, { reg: [act('3pg', 1, 1, 0.05)] });
-p(['GLGP'], 1.5, { reg: [dark(0.1)] });
+// The store: ADP-glucose pyrophosphorylase, glycogen (or starch) synthesis's committed step, needs 3-PGA, the
+// Calvin cycle's product, so it takes what the cycle makes beyond its own needs and never its intermediates;
+// phosphorylase opens as the energy charge falls (AMP), so a cell draws on its store as it needs to (and
+// light switches it off)
+p(['GLGS'], 1, { km: { g6p: 1 }, reg: [act('3pg', 0.1, 2, 0)] });
+p(['GLGP'], 0.5, { reg: [dark(0.02), act('amp', 0.3, 2, 0.02)] });
 
 // ─── Fermentation and salvage ───
 p('LDH', 30);
@@ -77,8 +84,9 @@ p('ACS', 1);
 p('PDH', 3, { km: { coa: 0.005 }, reg: [inh(['nadh', 'nad'], 0.4, 2), inh(['accoa', 'coa'], 3)] });
 
 // ─── Pentose phosphate pathway ───
-// G6PDH is held back by its product far beyond saturation (and, in plastids, switched off by light: cells.js)
-p('G6PDH', 2, { reg: [inh(['nadph', 'nadp'], 3, 2)] });
+// G6PDH is held back by its product far beyond saturation and shuts as NADPH fills, so the pathway's
+// NADPH follows its use (and, in plastids and cyanobacteria, light switches it off: cells.js)
+p('G6PDH', 2, { reg: [inh(['nadph', 'nadp'], 3, 4)] });
 p('PGL', 20);
 p('GND', 5);
 // The non-oxidative branch is abundant: in the Calvin cycle transketolase runs uphill (K' 61 the other way),
@@ -87,12 +95,14 @@ p(['RPI', 'RPE', 'TKT1', 'TALA'], 100);
 p('TKT2', 100, { km: { f6p: 1 } });
 
 // ─── Calvin cycle: thioredoxin turns its enzymes on in the light ───
+// and in the dark CP12 holds PRK and the NADP-GAPDH together, so the cycle is off, not merely slow
+// (otherwise PRK would spend the pentose phosphate pathway's Ru5P and ATP at night)
 // RuBisCO's apparent Km for CO₂ includes a carbon-concentrating mechanism's help
-p('RBPC', 4, { km: { co2: 0.01 }, reg: [light()] });
-p('PRUK', 20, { km: { ru5p__D: 0.02 }, reg: [light()] });
+p('RBPC', 4, { km: { co2: 0.01 }, reg: [light(0.001)] });
+p('PRUK', 20, { km: { ru5p__D: 0.02 }, reg: [light(0.001)] });
 p('SBA', 100);
-p('SBP', 10, { reg: [light()] });
-p('GAPDP', 20, { reg: [light(0.05)] });
+p('SBP', 10, { reg: [light(0.001)] });
+p('GAPDP', 20, { reg: [light(0.001)] });
 
 // ─── Krebs cycle ───
 // Malate dehydrogenase's equilibrium leaves oxaloacetate sub-µM: citrate synthase is abundant and binds it at about 2 µM
@@ -140,15 +150,18 @@ p('PSI', 10, { light: true });
 // FNR runs backward in the dark, NADPH to ferredoxin for NDH-1's respiration: oxidized ferredoxin's weak
 // binding gives that direction its capacity (Haldane: kcat_b / K_P = (kcat_f / K_S) / K')
 p('FNR', 20, { km: { fdox: 0.3 } });
-p('CEF', 1.5);
+// Ferredoxin's other partners (cyclic flow, NDH-1, the flavodiiron outlet) are given FNR's weak binding of the
+// oxidized form (illustrative, not measured for them), so a mostly oxidized pool doesn't hold them back and FNR
+// doesn't take every electron
+p('CEF', 1.5, { km: { fdox: 0.3 } });
 p('ETFQO', 10, { km: { etfred: 0.002 } });
 // Ferredoxin-fed NDH-1 (cyanobacteria) and the non-pumping NDH-2, a minor route
-p('NDH1F', 3, { km: { fdred: 0.02 } });
+p('NDH1F', 3, { km: { fdred: 0.02, fdox: 0.3 } });
 p('NDH2', 0.05);
 p('BR', 2, { light: true });
 // The water–water cycle: ferredoxin (or flavodiiron proteins, in cyanobacteria) hands electrons to O₂,
 // the photosynthetic chain's outlet when the Calvin cycle can't take them
-p('MEHLER', 0.3, { km: { o2: 0.05 } });
+p('MEHLER', 0.3, { km: { o2: 0.05, fdox: 0.3 } });
 p('ATPS', 15);
 p('NNT', 2);
 // The plastid's ATP/ADP translocator: at night a chloroplast lives on the cytosol's ATP
@@ -175,8 +188,9 @@ p('MPC', 5); p('ANT', 20); p('PIC', 50); p('MAS', 5); p('OAAX', 1);
 p(['EX_o2', 'EX_co2'], 50, { law: 'diffusion' });
 p('EX_glc', 2); p('EX_fa', 0.2); p('EX_pi', 2, { km: { pi: 0.1 } });
 p(['EX_lac', 'EX_etoh', 'EX_ac'], 5, { km: { lac__L: 5, etoh: 5, ac: 5 } });
-// The plastid's export dial sets TPT's Vmax
-p('TPT', 1, { km: { g3p: 0.2, pi: 100 } });
+// The plastid's export dial sets TPT's Vmax; it binds the stroma's triose at the tens of µM the Calvin
+// cycle leaves, and its Pᵢ at about a millimolar
+p('TPT', 1, { km: { g3p: 0.05, pi: 1 } });
 
 export const PARAMS = P;
 export { inh, act, light, dark };
