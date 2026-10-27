@@ -131,13 +131,23 @@ R('PPAm', 'PPase', 'Inorganic pyrophosphatase (matrix)', 'ppi + h2o -> 2 pi + h'
 // The cell's ATP demand: the work it does that the model doesn't draw (ion pumps, motility, turnover)
 R('ATPM', 'ATPase', 'ATP demand (maintenance)', 'atp + h2o -> adp + pi + h', { demand: 'atp' });
 // Biosynthetic demand: the precursors one gram of dry cell is built from, per gram, mmol. E. coli's
-// core biomass (BiGG e_coli_core, BIOMASS_Ecoli_core_w_GAM) with its nitrogen folded back onto
-// carbon: each glutamate made from α-KG by NADPH (GDH), each glutamine from that glutamate by ATP
-// (GS), so α-KG, NADPH and ATP carry the cost. The carbon and phosphorus leave the network: a sink.
+// core biomass (BiGG e_coli_core, BIOMASS_Ecoli_core_w_GAM): its nitrogen arrives as glutamate's and
+// glutamine's amino groups, and the transaminations that pass them on give back α-KG. Its membranes'
+// fatty acyl chains are explicit, 0.25 mmol of palmitoyl-CoA (about 9% lipid, illustrative), so the
+// acetyl-CoA (8 each), NADPH (14) and ATP (7) that fatty-acid synthesis spends come off the core row's
+// lumped totals. The carbon, nitrogen and phosphorus leave the network: a sink.
 R('BIOMASS', 'to the cell', 'Biosynthetic demand (E. coli core composition)',
-    '1.496 3pg + 3.7478 accoa[m] + 60.0657 atp + 0.361 e4p + 0.0709 f6p + 0.129 g3p + 0.205 g6p + 1.0789 akg[m] + '
-    + '1.7867 oaa[m] + 0.5191 pep + 2.8328 pyr + 0.8977 r5p + 3.547 nad + 18.225 nadph + 60.0657 h2o -> '
-    + '60.0657 adp + 60.0657 pi + 3.7478 coa[m] + 3.547 nadh + 18.225 nadp', { demand: 'growth', sink: true });
+    '1.496 3pg + 1.7478 accoa[m] + 0.25 pmtcoa + 58.06 atp + 0.361 e4p + 0.0709 f6p + 0.129 g3p + 0.205 g6p + 0.2557 gln__L[m] + '
+    + '4.9414 glu__L[m] + 1.7867 oaa[m] + 0.5191 pep + 2.8328 pyr + 0.8977 r5p + 3.547 nad + 9.5279 nadph + 58.06 h2o -> '
+    + '58.06 adp + 58.06 pi + 4.1182 akg[m] + 1.7478 coa[m] + 0.25 coa + 3.547 nadh + 9.5279 nadp', { demand: 'growth', sink: true });
+
+// ─── Nitrogen ───
+// Ammonium enters on glutamate: glutamine synthetase spends ATP, and glutamate synthase (GOGAT) passes the
+// amide to α-KG, so each nitrogen assimilated spends an α-KG (bacteria, cyanobacteria and plastids).
+// Animal cells take it onto α-KG directly, with glutamate dehydrogenase in the matrix.
+R('GLNS', 'GS', 'Glutamine synthetase', 'glu__L + nh4 + atp -> gln__L + adp + pi + h', { at: 'mito' });
+R('GLUSy', 'GOGAT', 'Glutamate synthase', 'gln__L + akg + nadph + h -> 2 glu__L + nadp', { at: 'mito' });
+R('GLUDy', 'GDH', 'Glutamate dehydrogenase', 'akg + nh4 + nadph + h -> glu__L + nadp + h2o', { at: 'mito' });
 
 // ─── The drawn membrane ───
 R('NDH1', 'NDH-1', 'NADH dehydrogenase (complex I)', 'nadh + q8 + 5 h -> nad + q8h2 + 4 h[l]', { at: 'mito', membrane: 'ndh1' });
@@ -202,6 +212,7 @@ R('EX_fa', 'FAT', 'Fatty-acid uptake', 'hdca[e] -> hdca[c]', { exchange: true })
 R('EX_o2', 'O₂', 'Oxygen exchange', 'o2[e] -> o2[c]', { exchange: true });
 R('EX_co2', 'CO₂', 'Carbon dioxide exchange', 'co2[e] -> co2[c]', { exchange: true });
 R('EX_pi', 'Pᵢ', 'Phosphate uptake', 'pi[e] -> pi[c]', { exchange: true });
+R('EX_nh4', 'Amt', 'Ammonium uptake', 'nh4[e] -> nh4[c]', { exchange: true });
 R('EX_lac', 'MCT', 'Lactate export', 'lac__L[c] -> lac__L[e]', { exchange: true });
 R('EX_etoh', 'EtOH', 'Ethanol export', 'etoh[c] -> etoh[e]', { exchange: true });
 R('EX_ac', 'Ac', 'Acetate export', 'ac[c] -> ac[e]', { exchange: true });

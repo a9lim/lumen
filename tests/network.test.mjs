@@ -91,7 +91,7 @@ test("the moieties and elements span each cell's conservation laws", () => {
         // dq, the membrane's charge, is a state the engine integrates, not a chemical
         const { N, rows } = stoichMatrix(m, s => !s.fixed && s.kind !== 'charge', r => !r.sink);
         const laws = N.length - rank(N);    // dimension of the left null space
-        // What we expect to be conserved: each moiety per compartment, C and P across the cell and its
+        // What we expect to be conserved: each moiety per compartment, C, P and N across the cell and its
         // medium, and electrons: with water and buffered H⁺ fixed, H − 2O − charge (reducing equivalents
         // relative to water) is conserved by every balanced reaction, PSII's included
         const vecs = [rows.map(i => { const s = m.species[i]; return (s.el.H || 0) - 2 * (s.el.O || 0) - s.charge; })];
@@ -100,7 +100,7 @@ test("the moieties and elements span each cell's conservation laws", () => {
                 const v = rows.map(i => m.species[i].comp === comp ? members[m.species[i].id] || 0 : 0);
                 if (v.some(Boolean)) vecs.push(v);
             }
-        for (const el of ['C', 'P']) vecs.push(rows.map(i => m.species[i].el[el] || 0));
+        for (const el of ['C', 'P', 'N']) vecs.push(rows.map(i => m.species[i].el[el] || 0));
         for (const ids of EXPECTED[id] || []) vecs.push(rows.map(i => ids.includes(m.species[i].id) ? 1 : 0));
         const known = rank(vecs);
         assert.equal(laws, known, `${id}: ${laws} conservation laws, ${known} of them accounted for`);

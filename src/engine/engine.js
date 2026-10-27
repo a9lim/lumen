@@ -41,6 +41,7 @@ const V_MEDIUM = 50;       // the medium's volume, relative to the cytosol: fini
 const AIR_O2 = 0.25;       // mM O₂ in air-saturated water, 25 °C
 const AIR_CO2 = 0.015;     // mM CO₂ in water under air
 const PI_MEDIUM = 5;       // mM phosphate in the medium, held
+const NH4_MEDIUM = 1;      // mM ammonium in the medium, held (illustrative)
 const RHO = 300;           // g dry weight per litre of cytosol (E. coli, about 0.3 g/mL): turns a growth rate into precursor demand
 const GAMMA = 1 + Math.SQRT1_2;   // ROS2's γ: L-stable
 // Damage with consequence: reactive oxygen peroxidises the membrane at K_DMG per mM per s, repair
@@ -79,7 +80,7 @@ export function createEngine(cellId, opts = {}) {
 
     // Species the integration leaves alone: fixed (water, buffered H⁺) and the medium's gases and Pᵢ, set by
     // env; with opts.chemostat, the whole medium, so a steady state can exist (compare.js)
-    const hold = Uint8Array.from(S, s => s.fixed || (s.comp === 'e' && (opts.chemostat || ['o2', 'co2', 'pi', 'atp', 'adp', 'g3p'].includes(s.id))) ? 1 : 0);
+    const hold = Uint8Array.from(S, s => s.fixed || (s.comp === 'e' && (opts.chemostat || ['o2', 'co2', 'pi', 'nh4', 'atp', 'adp', 'g3p'].includes(s.id))) ? 1 : 0);
     const free = [...Array(nS).keys()].filter(i => !hold[i]), nF = free.length;
     const fpos = new Int32Array(nS).fill(-1); free.forEach((i, k) => { fpos[i] = k; });
 
@@ -145,15 +146,16 @@ export function createEngine(cellId, opts = {}) {
 
     // ─── Rates ───
     // Thioredoxin's switch: half set at 5% of full sun, and cooperative, so that by a fifth of full sun the
-    // enzymes light turns off are off (a hyperbola would leave a seventh of them running at 30% sun)
-    const lightOn = () => env.light * env.light / (env.light * env.light + 0.0025);
+    // enzymes light turns off are off (a hyperbola would leave a seventh of them running at 30% sun). An
+    // effector can give its own half-saturation K and steepness h (growth's irradiance curve: rates.js)
+    const lightOn = (e) => { const K = e && e.K || 0.05, h = e && e.h || 2, q = Math.pow(env.light / K, h); return q / (1 + q); };
 
     /** η_reg: the product of the reaction's effectors (rates.js) at state x. */
     function regFactor(c, x, dp) {
         let f = 1;
         for (const e of c.regs) {
-            if (e.type === 'light') f *= e.b + (1 - e.b) * lightOn();
-            else if (e.type === 'dark') f *= e.b + (1 - e.b) * (1 - lightOn());
+            if (e.type === 'light') f *= e.b + (1 - e.b) * lightOn(e);
+            else if (e.type === 'dark') f *= e.b + (1 - e.b) * (1 - lightOn(e));
             else if (e.type === 'dp') { const q = Math.pow(Math.max(dp, 0) / e.K, e.h); f *= q / (1 + q); }
             else if (e.type === 'brake') continue;
             else {
@@ -185,16 +187,15 @@ export function createEngine(cellId, opts = {}) {
         return (1 + p.up * f) * (1 - p.down * f);
     }
 
+    /** A reaction's capacity, mM/s: its Vmax, or a demand row's dial. */
+    const capOf = (c) => c.r.demand === 'atp' ? dial.atp : c.r.demand === 'export' ? dial.export
+        : c.r.demand === 'growth' ? dial.growth / 3600 * RHO : c.r.demand === 'repair' ? K_REP * REPAIR_ATP * now.damage : c.vmax;
     /** Reaction j's forward and backward rates at state x, mM/s in its home compartment, into RF and RB. */
     let RF = 0, RB = 0;
     function rate1(j, x) {
         const c = RX[j], psi = psiOf(x), ph = phOf(x), dp = psi + ph;
         const act = state.activity[j] * (pulses.size ? pulseFactor(j, now.t) : 1);
-        let V = c.vmax * act;
-        if (c.r.demand === 'atp') V = dial.atp * act;
-        else if (c.r.demand === 'export') V = dial.export * act;
-        else if (c.r.demand === 'growth') V = dial.growth / 3600 * RHO * act;
-        else if (c.r.demand === 'repair') V = K_REP * REPAIR_ATP * now.damage * act;
+        let V = capOf(c) * act;
         if (c.dmg) V *= c.dmg === 'leak' ? 1 + LEAK_DMG * now.damage : 1 - ACO_DMG * now.damage;
         if (c.light) V *= env.light;
         if (V === 0) { RF = RB = 0; return; }
@@ -202,10 +203,11 @@ export function createEngine(cellId, opts = {}) {
         if (c.law === 'leak') { const drive = -(c.z * psi + c.nH * ph); RF = V * Math.max(drive, 0); RB = V * Math.max(-drive, 0); return; }
         if (c.law === 'diffusion') { RF = V * x[c.sub[0][0]]; RB = V * x[c.pro[0][0]]; return; }
         if (c.law === 'demand') {
-            // Liebig: the scarcest precursor sets the pace (VISION.md: one row, every ingredient together)
+            // Liebig: the scarcest precursor sets the pace (VISION.md: one row, every ingredient together),
+            // and its regulation what the cell lets it take
             let m = 1;
             for (const [i, , , Kd] of c.sub) { const s = Math.max(x[i], 0); m = Math.min(m, s / (Kd + s)); }
-            RF = V * m; RB = 0; return;
+            RF = V * m * (c.regs.length ? regFactor(c, x, dp) : 1); RB = 0; return;
         }
         V *= regFactor(c, x, dp);
         let num = 1, d1 = 1, d2 = 1, prodM = 1, ksM = 1;
@@ -447,8 +449,11 @@ export function createEngine(cellId, opts = {}) {
             for (const [i, nu, K] of c.pro) d2 *= Math.pow(1 + Math.max(x[i], 0) / K, nu);
             let sat = c.law === 'cm' ? num / (d1 + d2 - 1) : 1;
             for (const i of c.chain) sat *= Math.max(x[i], 0) / (KM_CHAIN + Math.max(x[i], 0));
+            // a demand row's saturation is its scarcest precursor's (Liebig), as the rate uses it
+            if (c.law === 'demand') for (const [i, , , Kd] of c.sub) { const s = Math.max(x[i], 0); sat = Math.min(sat, s / (Kd + s)); }
             // regulation includes a brake, read from the rates before it acts
-            const reg = c.law === 'cm' ? regFactor(c, x, dp) * (c.brake ? brakeOf(c) : 1) : 1;
+            const reg = c.law === 'cm' ? regFactor(c, x, dp) * (c.brake ? brakeOf(c) : 1)
+                : c.law === 'demand' && c.regs.length ? regFactor(c, x, dp) : 1;
             rate1(j, x);
             return { dG, thermo: 1 - Math.exp(dG / RT), sat, reg, vf: RF, vb: RB, v: RF - RB, law: c.law || 'cm' };
         },
@@ -500,8 +505,8 @@ export function createEngine(cellId, opts = {}) {
             now.t = state.t; now.damage = state.damage;
             return c.regs.map(e => {
                 let f;
-                if (e.type === 'light') f = e.b + (1 - e.b) * lightOn();
-                else if (e.type === 'dark') f = e.b + (1 - e.b) * (1 - lightOn());
+                if (e.type === 'light') f = e.b + (1 - e.b) * lightOn(e);
+                else if (e.type === 'dark') f = e.b + (1 - e.b) * (1 - lightOn(e));
                 else if (e.type === 'dp') { const q = Math.pow(Math.max(dp, 0) / e.K, e.h); f = q / (1 + q); }
                 else if (e.type === 'brake') f = brakeOf(c);
                 else {
@@ -516,7 +521,7 @@ export function createEngine(cellId, opts = {}) {
         /** What reaction j moves across the membrane: z charges and nH protons to the lumen side; its ΔG'° (kJ/mol). */
         coupling(j) { return { z: RX[j].z, nH: RX[j].nH, dg0: RX[j].dg0 }; },
         /** A reaction's base capacity, mM/s in its home compartment (without pulses, switches or light). */
-        capacity(j) { return RX[j].vmax; },
+        capacity(j) { now.damage = state.damage; return capOf(RX[j]); },
         /** Add to the medium (a bolus of glucose or fatty acid), mM. */
         feed(id, mM) { const i = idx(id, 'e'); if (i != null) state.x[i] += mM; },
         /** Hold the medium's gases and phosphate at the environment's values. */
@@ -525,6 +530,7 @@ export function createEngine(cellId, opts = {}) {
             if (o2 != null) state.x[o2] = AIR_O2 * env.o2;
             if (co2 != null) state.x[co2] = AIR_CO2 * env.co2;
             if (pi != null) state.x[pi] = PI_MEDIUM;
+            const nh4 = idx('nh4', 'e'); if (nh4 != null) state.x[nh4] = NH4_MEDIUM;
             // A chloroplast's medium is its cell's cytosol: ATP held at 2 mM, ADP at 0.2, and the triose
             // phosphate it exports kept low (illustrative), as the cell makes sucrose of it
             const atp = idx('atp', 'e'), adp = idx('adp', 'e'), tp = idx('g3p', 'e');
@@ -570,7 +576,8 @@ function initialState(eng) {
     set('etfox', mem, 0.04); set('etfred', mem, 0.01);
     const start = { g6p: 1, f6p: 0.3, fdp: 0.5, g3p: 0.05, '13dpg': 0.01, '3pg': 1, '2pg': 0.1, pep: 0.2, pyr: 0.2,
         rb15bp: 0.5, ru5p__D: 0.02, r5p: 0.05, xu5p__D: 0.02, s7p: 0.1, e4p: 0.02, s17bp: 0.02,
-        oaa: 0.01, cit: 1, icit: 0.05, akg: 0.3, succoa: 0.05, succ: 0.5, fum: 0.1, mal__L: 0.5, glycogen: 20, lac__L: 0.5 };
+        oaa: 0.01, cit: 1, icit: 0.05, akg: 0.3, succoa: 0.05, succ: 0.5, fum: 0.1, mal__L: 0.5, glycogen: 20, lac__L: 0.5,
+        glu__L: 10, gln__L: 1, nh4: 0.2 };
     for (const [id, v] of Object.entries({ ...start, ...(cell.start || {}) })) for (const comp of ['c', 'm']) set(id, comp, v);
     for (const [id, v] of Object.entries(cell.medium || {})) set(id, 'e', v);
     // Δp starts at 150 mV, divided as the cell's membrane divides it

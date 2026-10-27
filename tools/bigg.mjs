@@ -17,6 +17,7 @@ const IDS = [
     'hdd2coa', 'td2coa', 'dd2coa', 'dc2coa', 'oc2coa', 'hx2coa', 'b2coa',
     '3hhdcoa', '3htdcoa', '3hddcoa', '3hdcoa', '3hocoa', '3hhcoa', '3hbcoa',
     '3ohdcoa', '3otdcoa', '3oddcoa', '3odcoa', '3oocoa', '3ohcoa', 'aacoa',
+    'nh4', 'glu__L', 'gln__L',
 ];
 
 const out = {};

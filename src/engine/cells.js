@@ -20,7 +20,7 @@
 // share, Δψ's part of Δp at the start: engine.js), its ATP demand (mM/s), and
 // kinetic overrides. How Δp divides at steady state is the ratio of two
 // conductances, K⁺/H⁺ exchange over counter-ions: Δψ/ΔpH = g(KHE)/g(ION).
-import { light, dark, act } from './rates.js';
+import { light, dark, act, inh } from './rates.js';
 
 // The Calvin cycle's intermediates, mM, for cells that start in the light, and a store of glycogen (or starch)
 // as by mid-morning, glucosyl units: about 15% of the dry weight, enough for a night (illustrative)
@@ -60,8 +60,10 @@ const ROS = ['ROSI', 'ROSQ', 'SOD', 'CAT', 'GPX', 'REPAIR'];
 const PHOTO = ['PSII', 'CYTBF', 'PSI', 'FNR', 'CEF', 'MEHLER'];
 const STORE = ['GLGS', 'GLGP'];
 const HOUSE = ['ADK', 'PPA', 'ATPM', 'ATPS', 'LEAK', 'ION', 'KHE', 'EX_pi', 'EX_co2'];
-// Cells that can make all of the biomass row's precursors take it
-const GROW = ['BIOMASS'];
+// Cells that can make all of the biomass row's precursors take it, with ammonium for its nitrogen: on glutamine
+// and glutamate synthase where bacteria and plastids assimilate it, on glutamate dehydrogenase in animal cells
+const GROW = ['BIOMASS', 'EX_nh4', 'GLNS'];
+const GOGAT = ['GLUSy'], GDH = ['GLUDy'];
 const MATRIX = ['MPC', 'ANT', 'PIC', 'MAS', 'OAAX', 'CPT', 'ADKm', 'PPAm'];
 
 const uniq = (...lists) => [...new Set(lists.flat())];
@@ -76,12 +78,14 @@ export const CELLS = {
         name: 'Cyanobacterium',
         // NDH-1 takes ferredoxin here, NDH-2 NADH (network.js). It makes fatty acids but has no β-oxidation:
         // a functional pathway appears to be missing in cyanobacteria (von Berlepsch et al. 2012)
-        reactions: uniq(HOUSE, GROW, GLYC, PPP_OX, PPP_NONOX, CALVIN, STORE, KREBS, FAS, ['NDH1F', 'NDH2', 'CYTBF', 'CYTOX'], ROS, PHOTO,
-            ['PPS', 'PPC', 'PDH', 'LDH', 'EX_lac', 'EX_glc', 'EX_o2', 'NNT']),
+        reactions: uniq(HOUSE, GROW, GOGAT, GLYC, PPP_OX, PPP_NONOX, CALVIN, STORE, KREBS, FAS, ['NDH1F', 'NDH2', 'CYTBF', 'CYTOX'], ROS, PHOTO,
+            ['PPC', 'PDH', 'LDH', 'EX_lac', 'EX_glc', 'EX_o2', 'NNT']),
         compartments: { c: 1, l: 0.1 },
         potentials: { q: E_PQ, pc: E_PC, fd: E_FD },
         // Its maintenance, illustrative: what a night's respiration pays, a few percent of the day's photosynthesis
-        env: { light: 1, o2: 1, co2: 1 }, medium: { glc__D: 0 }, pmf: PMF_THYLAKOID, ring: 14, atpDemand: 0.05, growth: 0.07,
+        // Its growth dial is the fastest it can grow (0.2 /h, illustrative); light and the energy charge set how
+        // close it gets
+        env: { light: 1, o2: 1, co2: 1 }, medium: { glc__D: 0 }, pmf: PMF_THYLAKOID, ring: 14, atpDemand: 0.05, growth: 0.2,
         carriers: { q: 2, pc: 1, fd: 0.3 },
         // The Calvin cycle is autocatalytic: it starts with its intermediates on hand
         start: CALVIN_START,
@@ -92,17 +96,35 @@ export const CELLS = {
         // at night. The ATP synthase makes ATP on respiration in the dark; AtpΘ binds as it stalls and
         // stops it running backward (Song et al. 2022, 10.1016/j.cub.2021.10.051), so in anoxia the cell
         // keeps its ATP rather than Δp. The glycolytic GAPDH (GAP1) is a minor activity beside the
-        // Calvin cycle's (GAP2). The thylakoid's leak is a quarter of the default: a night's few protons
+        // Calvin cycle's (GAP2), and light holds it as it holds PFK: run forward by day it oxidizes the
+        // triose GAP2 makes on NAD⁺, and NNT closes that cycle on Δp, carrying as much as FNR in dim light.
+        // The thylakoid's leak is a quarter of the default: a night's few protons
         // aren't all lost to it
+        // By day its carbon goes to growth first. The lower glycolysis runs for it (pyruvate kinase isn't
+        // held by light, PFK is), but only while the Calvin cycle keeps its RuBP: a cycle that regenerates
+        // its own acceptor collapses if a sink takes its 3-PGA faster than it fixes, and in dim light growth
+        // otherwise drains it into a relaxation oscillation. Keying pyruvate kinase on RuBP is phenomenological:
+        // it stands for the regulation at the cycle's branch point, where in cyanobacteria PirC holds
+        // phosphoglycerate mutase until PII releases it, reading the cell's carbon and nitrogen rather than
+        // RuBP (Orthwein et al. 2021, 10.1073/pnas.2019988118). Below about a fifth of full sun, where light
+        // limits the cycle and RuBP is low, it stops growth and the store takes the carbon (AGENTS.md).
+        // The Krebs cycle serves growth as much as respiration: citrate synthase gives way as α-KG accumulates
+        // (as E. coli's does) and α-KG dehydrogenase is a minor activity, so α-KG goes to nitrogen; growth
+        // itself runs in the light and slows as the energy charge falls, so at night it keeps itself on its
+        // store rather than grow on it. PEP synthetase is left out: a photoautotroph doesn't make PEP back
+        // from pyruvate
         kinetics: { ...ION_THYLAKOID, ATPS: { reg: [{ type: 'brake', b: 0, dG: -3, name: 'AtpΘ' }] }, LEAK: { vmax: 0.001 },
-            GAPD: { vmax: 2 }, PFK: { vmax: 0.5, reg: [dark(0.05)] }, PYK: { reg: [dark(0.05)] }, FBP: { reg: [light()] },
-            G6PDH: { reg: [dark(0.01)] }, TALA: { vmax: 1 },
+            GAPD: { vmax: 2, reg: [dark(0.05)] }, PFK: { vmax: 0.5, reg: [dark(0.05)] }, PYK: { reg: [act('rb15bp', 0.1, 2, 0)] },
+            PPC: { vmax: 1 }, FBP: { reg: [light()] },
+            CS: { vmax: 2, reg: [inh('akg', 0.05, 2)] }, AKGDH: { vmax: 0.01 },
+            BIOMASS: { reg: [light(0.02), act(['atp', 'adp'], 3, 2, 0)] },
+            G6PDH: { reg: [dark(0.01)] }, GLGP: { reg: [dark(0.02)] }, TALA: { vmax: 1 },
             // Respiration shares the thylakoid's carriers: its oxidase's capacity is a night's respiration's
             // few times over, small beside PSI's, so in dim light it doesn't take light's electrons from PSI
             CYTOX: { vmax: 0.5 },
-            // Its lactate dehydrogenase is a minor activity for dark anoxia: it binds pyruvate weakly, so it
-            // only runs once pyruvate piles up, as it does when PDH stops for want of NAD⁺
-            LDH: { vmax: 2, km: { pyr: 1 } } },
+            // Its lactate dehydrogenase is a minor activity for dark anoxia: it binds pyruvate weakly and opens
+            // as NADH accumulates, so it ferments only when NADH has no oxygen to go to
+            LDH: { vmax: 2, km: { pyr: 1 }, reg: [act(['nadh', 'nad'], 0.5, 2, 0.02)] } },
         pools: {
             // Ito, Watanabe & Osanai 2023 (10.1093/plphys/kiad580): NADP 2.8 mM against NAD 2.3 mM
             c: { nad: [2.3, 'measured'], nadp: [2.8, 'measured'], adenine: [3, 'illustrative'], coa: [1, 'illustrative'] },
@@ -110,7 +132,7 @@ export const CELLS = {
     },
     animalCell: {
         name: 'Animal cell',
-        reactions: uniq(HOUSE, GROW, GLYC, PPP_OX, PPP_NONOX, KREBS, BETAOX, RESP, ROS, MATRIX,
+        reactions: uniq(HOUSE, GROW, GDH, GLYC, PPP_OX, PPP_NONOX, KREBS, BETAOX, RESP, ROS, MATRIX,
             ['G6PP', 'FBP', 'PC', 'PPCK', 'PDH', 'LDH', 'ADH', 'ALDH', 'ACS', 'FACS', 'EX_lac', 'EX_glc', 'EX_fa', 'EX_etoh', 'EX_ac', 'EX_o2', 'NNT', 'UCP']),
         compartments: { c: 1, m: 0.2, l: 0.02 },
         potentials: { q: E_UQ, pc: E_CYTC, fd: E_FD },
@@ -144,7 +166,7 @@ export const CELLS = {
         // the cell's ATP on a gradient. RuBisCO activase needs ATP, so RuBisCO deactivates as the stroma's
         // ATP/ADP falls, and in dim light the cycle slows before it drains the stroma's ATP
         kinetics: { ...ION_THYLAKOID, ATPS: { reg: [light(0.05), { type: 'brake', b: 0, dG: -3, name: 'CF₁' }] }, FBP: { reg: [light()] },
-            GLGS: { reg: [light()] }, RBPC: { reg: [act(['atp', 'adp'], 4, 2, 0.02)] }, G6PDH: { reg: [dark(0.01)] },
+            GLGS: { reg: [light()] }, GLGP: { reg: [dark(0.02)] }, RBPC: { reg: [act(['atp', 'adp'], 4, 2, 0.02)] }, G6PDH: { reg: [dark(0.01)] },
             PFK: { reg: [dark(0.05)] }, PYK: { reg: [dark(0.05)] }, TALA: { vmax: 5 } },
         pools: { c: { nad: [0.5, 'illustrative'], nadp: [1, 'illustrative'], adenine: [2, 'illustrative'], coa: [0.5, 'illustrative'] } },
     },
@@ -160,12 +182,15 @@ export const CELLS = {
     },
     custom: {
         name: 'Composite cell',
-        reactions: uniq(HOUSE, GROW, GLYC, PPP_OX, PPP_NONOX, CALVIN, STORE, KREBS, BETAOX, FAS, RESP, ROS, PHOTO,
+        reactions: uniq(HOUSE, GROW, GOGAT, GLYC, PPP_OX, PPP_NONOX, CALVIN, STORE, KREBS, BETAOX, FAS, RESP, ROS, PHOTO,
             ['G6PP', 'PC', 'PPCK', 'PPS', 'PPC', 'PDH', 'LDH', 'PDC', 'ADH', 'ALDH', 'ACS', 'FACS',
              'EX_lac', 'EX_glc', 'EX_fa', 'EX_etoh', 'EX_ac', 'EX_o2', 'NNT', 'UCP', 'BR']),
         compartments: { c: 1, l: 0.1 },
         potentials: { q: E_PQ, pc: E_PC, fd: E_FD },
-        env: { light: 1, o2: 1, co2: 1 }, medium: { glc__D: 5, hdca: 0.1 }, pmf: PMF_THYLAKOID, kinetics: ION_THYLAKOID, atpDemand: 0.6, growth: 0.1,
+        env: { light: 1, o2: 1, co2: 1 }, medium: { glc__D: 5, hdca: 0.1 }, pmf: PMF_THYLAKOID, atpDemand: 0.6, growth: 0.1,
+        // Its demand outruns dim light, so its phosphorylase keeps the Calvin cycle's gentler switch (half set
+        // at 5% sun) and it draws on its store in twilight
+        kinetics: { ...ION_THYLAKOID, GLGP: { reg: [dark(0.02, 0.05, 2)] } },
         carriers: { q: 2, pc: 1, fd: 0.3 }, start: CALVIN_START,
         // Bennett et al. 2009 (10.1038/nchembio.186), E. coli on glucose: ATP 9.6, ADP 0.56, AMP 0.28 mM;
         // NAD⁺ 2.6, NADH 0.083; NADP⁺ 0.0021, NADPH 0.12

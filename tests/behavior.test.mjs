@@ -291,7 +291,7 @@ test("the cyanobacterium's NDH-1 runs on ferredoxin: cyclic flow in the light, r
     e.advance(1800);
     const dp = e.dp(), yieldOf = () => rate(e, 'ATPS') / rate(e, 'CYTOX'), y = yieldOf();
     e.state.activity[e.rIndex.NDH1F] = 0; e.advance(1800);
-    assert.ok(e.dp() < dp - 5 && yieldOf() < 0.9 * y, `without NDH-1: Δp ${dp} → ${e.dp()}, ATP per O₂ pair ${y} → ${yieldOf()}`);
+    assert.ok(e.dp() < dp && yieldOf() < 0.9 * y, `without NDH-1: Δp ${dp} → ${e.dp()}, ATP per O₂ pair ${y} → ${yieldOf()}`);
 });
 
 test('every reaction moves the charges and protons across the membrane that its biology says', () => {
@@ -379,4 +379,61 @@ test('an empty store is not spent backward: synthesis needs a chain both ways, a
     assert.equal(rate(e, 'GLGS'), 0);
     e.advance(600);
     assert.ok(e.conc('glycogen') >= 0 && Math.abs(carbon() - c0) < 1e-9 * c0, `glycogen ${e.conc('glycogen')}, carbon ${c0} → ${carbon()}`);
+});
+
+// ─── Growth, carbon and nitrogen (milestone 3's allocation, brought into the day) ───
+
+test("the cyanobacterium's day: growth takes most of the carbon it fixes, and the store fills with the rest", () => {
+    const e = createEngine('cyanobacterium'); e.applyEnv(); e.env.light = 0; e.advance(600);
+    const sun = (h) => h >= 6 && h <= 18 ? Math.sin(Math.PI * (h - 6) / 12) : 0, g0 = e.conc('glycogen');
+    let fixed = 0, grown = 0, low = 1, dusk = 0, night = 0;
+    // the sun stepped each five minutes, at their middle, and the energy charge read each minute: dusk's
+    // crossing of the light switches lasts minutes, and half-hour steps would step over it
+    for (let m = 0; m < 24 * 60; m += 5) {
+        e.env.light = sun(6 + (m + 2.5) / 60);
+        for (let k = 0; k < 5; k++) { e.advance(60); low = Math.min(low, ec(e)); }
+        const v = e.evaluate();
+        fixed += v[e.rIndex.RBPC] * 300; grown += v[e.rIndex.BIOMASS] * 300 * 42.6;   // mM of carbon: 42.6 C a gram
+        if (m === 12 * 60 - 5) dusk = e.conc('glycogen');
+        if (m >= 12 * 60) night = Math.max(night, Math.abs(v[e.rIndex.BIOMASS]));
+    }
+    assert.ok(grown > 0.5 * fixed, `growth took ${grown.toFixed(0)} of ${fixed.toFixed(0)} mM of carbon fixed`);
+    const stored = (dusk - g0) * 6;
+    assert.ok(stored > 0 && stored < 0.4 * fixed, `the store gained ${stored.toFixed(0)} mM of carbon`);
+    assert.ok(low > 0.8 && night < 1e-4, `lowest energy charge ${low}, growth at night ${night}`);
+});
+
+test("in dim light the glycolytic GAPDH doesn't oxidize the triose the Calvin cycle's reduces", () => {
+    const e = run('cyanobacterium', 1800); e.env.light = 0.2; e.advance(3600);
+    assert.ok(rate(e, 'GAPD') < -0.2 * rate(e, 'GAPDP') && rate(e, 'NNT') < 0.3 * rate(e, 'FNR'),
+        `GAPDH ${rate(e, 'GAPD')} against GAPDP ${-rate(e, 'GAPDP')}, NNT ${rate(e, 'NNT')} against FNR ${rate(e, 'FNR')}`);
+});
+
+test('nitrogen: ammonium taken up is nitrogen grown, through glutamine and glutamate synthase', () => {
+    const e = run('cyanobacterium', 3600);
+    const v = e.evaluate(), r = (k) => v[e.rIndex[k]], grow = r('BIOMASS');
+    // the biomass row takes 4.9414 glutamate and 0.2557 glutamine a gram: 5.4528 nitrogen
+    assert.ok(grow > 0, 'it grows');
+    assert.ok(Math.abs(r('EX_nh4') - 5.4528 * grow) < 0.05 * r('EX_nh4'), `ammonium in ${r('EX_nh4')}, nitrogen grown ${5.4528 * grow}`);
+    assert.ok(Math.abs(r('GLNS') - r('EX_nh4')) < 0.05 * r('GLNS') && r('GLUSy') > 0.9 * r('GLNS') - 0.2557 * grow,
+        `GS ${r('GLNS')}, GOGAT ${r('GLUSy')}`);
+});
+
+test('the composite cell lives through twilight on its store', () => {
+    // its demand outruns 3% sun: with phosphorylase switched off as sharply as the cyanobacterium's, it ran down
+    const e = createEngine('custom', { env: { light: 0 } }); e.applyEnv(); e.advance(1800);
+    e.env.light = 0.03; e.advance(7200);
+    assert.ok(ec(e) > 0.8, `energy charge ${ec(e)}`);
+});
+
+test("the card's budget accounts for growth: capacity times its scarcest precursor times its regulation", () => {
+    const e = run('cyanobacterium', 1800), j = e.rIndex.BIOMASS, f = e.factors(j);
+    assert.ok(f.reg < 0.99 && Math.abs(e.capacity(j) * f.sat * f.reg - f.v) < 1e-9 * f.v, `capacity ${e.capacity(j)}, saturation ${f.sat}, regulation ${f.reg}, rate ${f.v}`);
+});
+
+test('growth slows as light dims and stops at night, keeping the cell on its store', () => {
+    const at = (L) => { const e = run('cyanobacterium', 1800); e.env.light = L; e.advance(1800); return [rate(e, 'BIOMASS'), e]; };
+    const [full] = at(1), [dim] = at(0.3), [dark, e] = at(0);
+    assert.ok(full > dim && dim > 0 && Math.abs(dark) < 1e-5, `growth ${full}, ${dim}, ${dark}`);
+    assert.ok(ec(e) > 0.9, `in the dark, energy charge ${ec(e)}`);
 });

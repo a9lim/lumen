@@ -65,6 +65,8 @@ M('succ', 'Succinate'); M('fum', 'Fumarate'); M('mal__L', 'Malate');
 M('6pgl', '6-PGL'); M('6pgc', '6-PGA'); M('ru5p__D', 'Ru5P'); M('r5p', 'R5P'); M('xu5p__D', 'Xu5P');
 M('e4p', 'E4P'); M('s7p', 'S7P'); M('s17bp', 'SBP'); M('rb15bp', 'RuBP');
 M('hdca', 'Palmitate');
+// Nitrogen: ammonium (crossing membranes as NH₃, so one pool in the cell), and the amino groups it enters on
+M('nh4', 'NH₄⁺', { permeant: true }); M('glu__L', 'Glutamate'); M('gln__L', 'Glutamine');
 // Glycogen (or starch): one glucosyl unit of the polymer, so its count is glucose stored. A polymer:
 // adding or taking a unit leaves its chains' ends as they were, so its amount enters an enzyme's
 // saturation but not a reaction's equilibrium (engine.js)

@@ -41,15 +41,18 @@ for (const k of [...ACYL.acyl, ...ACYL.enoyl, ...ACYL.hydroxy, ...ACYL.keto]) KM
 // Regulation: each effector multiplies the rate.
 //   inh: 1 / (1 + (x/K)^h)            act: (b + (x/K)^h) / (1 + (x/K)^h), b the basal fraction
 // x is a species' concentration in the reaction's compartment, or a ratio [a, b]
-// of two. light: thioredoxin's switch, b + (1 − b)·L with L = I / (I + 0.05);
-// dark: the reverse, for enzymes light switches off. dp: a floor on Δp below
+// of two. light: thioredoxin's switch, b + (1 − b)·L with L = I²/(I² + 0.05²);
+// dark: for enzymes light switches off, b + (1 − b)(1 − D) with D = I⁴/(I⁴ + K⁴),
+// K 0.01 unless a cell sets it, so they stay off until the light is nearly gone: at
+// dusk the Calvin cycle closes before the night's pathways open, rather than both
+// running half on and cycling CO₂ between them. dp: a floor on Δp below
 // which the enzyme shuts (IF1 on the mitochondrial ATP synthase). brake: holds a
 // reaction against running backward (AtpΘ on the cyanobacterium's ATP synthase:
 // engine.js), half bound at ΔG = dG kJ/mol, b what it leaves.
 const inh = (x, K, h = 1) => ({ type: 'inh', x, K, h });
 const act = (x, K, h = 1, b = 0.1) => ({ type: 'act', x, K, h, b });
 const light = (b = 0.03) => ({ type: 'light', b });
-const dark = (b = 0.1) => ({ type: 'dark', b });
+const dark = (b = 0.1, K = 0.01, h = 4) => ({ type: 'dark', b, K, h });
 
 const P = {};
 const p = (ids, vmax, extra = {}) => { for (const id of [].concat(ids)) P[id] = { vmax, ...extra }; };
@@ -59,7 +62,9 @@ p('HEX1', 2, { reg: [inh('g6p', 2)] });
 p('G6PP', 0.5, { km: { g6p: 2.5 } });
 p(['PGI', 'FBA', 'GAPD', 'PGM', 'ENO'], 50);
 p('PGK', 100);
-// PFK senses the energy charge: ATP inhibits, AMP relieves it; FBPase the mirror (no futile cycle)
+// PFK senses the energy charge: ATP inhibits, AMP relieves it; FBPase the mirror (no futile cycle). The
+// Calvin cycle's FBPase inherits the AMP brake, which a photosynthetic FBPase lacks: it stands in for the
+// cycle's energy homeostasis in deep twilight (AGENTS.md)
 p('PFK', 4, { reg: [inh(['atp', 'adp'], 8, 2), act('amp', 0.02, 1, 0.3)] });
 p('FBP', 4, { reg: [inh('amp', 0.02, 2)] });
 p('PYK', 5, { reg: [act('fdp', 0.3, 1, 0.2)] });
@@ -67,13 +72,26 @@ p('PC', 2, { reg: [act('accoa', 0.05, 1, 0.1)] });
 p('PPCK', 2);
 // PEP synthetase spends two ATP: like FBPase, a low energy charge (AMP) holds it, so it doesn't cycle against PK
 p('PPS', 1, { reg: [inh('amp', 0.02, 2)] });
-p('PPC', 0.3, { reg: [inh('mal__L', 2)] });
+// The carboxylases (PEP carboxylase here, acetyl-CoA carboxylase below) take bicarbonate, a hundred times
+// CO₂'s concentration at the cell's pH: written with CO₂, they bind it at 2 µM
+p('PPC', 0.3, { km: { co2: 0.002 }, reg: [inh('mal__L', 2)] });
 // The store: ADP-glucose pyrophosphorylase, glycogen (or starch) synthesis's committed step, needs 3-PGA, the
-// Calvin cycle's product, so it takes what the cycle makes beyond its own needs and never its intermediates;
+// Calvin cycle's product, so it never takes the cycle's own intermediates, and it binds G6P at millimolar,
+// so it takes the hexose phosphate that accumulates beyond what growth uses (growth binds it at µM);
 // phosphorylase opens as the energy charge falls (AMP), so a cell draws on its store as it needs to (and
-// light switches it off)
-p(['GLGS'], 1, { km: { g6p: 1 }, reg: [act('3pg', 0.1, 2, 0)] });
-p(['GLGP'], 0.5, { reg: [dark(0.02), act('amp', 0.3, 2, 0.02)] });
+// light switches it off: each cell's own switch, cells.js)
+p(['GLGS'], 1, { km: { g6p: 3 }, reg: [act('3pg', 0.1, 2, 0)] });
+p(['GLGP'], 0.5, { reg: [act('amp', 0.3, 2, 0.02)] });
+
+// ─── Nitrogen ───
+// Glutamine synthetase binds ammonium tightly. It answers the cell's carbon-to-nitrogen balance, as PII
+// signals it: it runs while α-KG is plentiful beside glutamine, and glutamine holds it back (Forchhammer &
+// Selim 2020). Glutamate holds back its synthase, so assimilation follows growth's use of the amino
+// groups rather than pumping α-KG into a glutamate pool nothing spends
+p('GLNS', 1, { km: { nh4: 0.1, glu__L: 3, gln__L: 5 }, reg: [inh('gln__L', 1, 2), act(['akg', 'gln__L'], 0.01, 2, 0)] });
+p('GLUSy', 1, { km: { gln__L: 0.5, akg: 0.1, glu__L: 10 }, reg: [inh('glu__L', 5, 2)] });
+// Glutamate dehydrogenase sits near its equilibrium, and has to take its share of α-KG from a busy Krebs cycle
+p('GLUDy', 3, { km: { nh4: 1, akg: 0.2, glu__L: 10 } });
 
 // ─── Fermentation and salvage ───
 p('LDH', 30);
@@ -127,7 +145,11 @@ for (const n of [16, 14, 12, 10, 8, 6, 4]) {
 // (as citrate, through ACC), which the matrix's acetyl-CoA/CoA ratio stands for here
 p('CPT', 0.1, { reg: [inh('malcoa', 0.005), inh(['accoa[m]', 'coa[m]'], 2, 2)] });
 p('FACS', 0.3, { reg: [inh(['accoa', 'coa'], 2, 2)] });
-p('ACC', 1, { reg: [act('cit', 0.5, 1, 0.2), inh('pmtcoa', 0.05)] });
+// Acetyl-CoA carboxylase, fatty-acid synthesis's committed step, is switched on by light (thioredoxin) in
+// plastids and cyanobacteria, so at night it doesn't lock the CoA pool into fatty acids growth isn't using
+// Long-chain acyl-CoA holds it back at a few µM, so fatty acids made wait at the µM growth draws on rather
+// than holding the CoA pool
+p('ACC', 1, { km: { co2: 0.002 }, reg: [act('cit', 0.5, 1, 0.2), inh('pmtcoa', 0.005, 2), light()] });
 for (const n of [4, 6, 8, 10, 12, 14, 16]) p('FAS' + n, 2);
 
 // ─── Housekeeping ───
@@ -136,8 +158,10 @@ p(['PPA', 'PPAm'], 10);
 // The ATP demand dial sets ATPM's Vmax (engine.js); the work it stands for doesn't wait on its products
 p('ATPM', 1, { km: { atp: 0.5, adp: 100, pi: 100 } });
 // The growth dial sets the biomass row's rate; it slows as soon as any one precursor runs short
-// (half-saturation by each precursor's pool: oxaloacetate's is sub-µM, held there by malate dehydrogenase)
-p('BIOMASS', 0, { law: 'demand', kmDemand: { default: 0.005, oaa: 0.0001, e4p: 0.0005, '13dpg': 0.0005 } });
+// (half-saturation by each precursor's pool: oxaloacetate's is sub-µM, held there by malate dehydrogenase;
+// glutamate's and glutamine's are millimolar pools, and nitrogen assimilation is autocatalytic on them, so
+// growth slows well before it would take the glutamate glutamine synthetase needs)
+p('BIOMASS', 0, { law: 'demand', kmDemand: { default: 0.005, oaa: 0.0001, e4p: 0.0005, '13dpg': 0.0005, pmtcoa: 0.0005, glu__L: 2, gln__L: 0.3 } });
 
 // ─── The membrane ───
 p('NDH1', 10);
@@ -186,7 +210,7 @@ p('MPC', 5); p('ANT', 20); p('PIC', 50); p('MAS', 5); p('OAAX', 1);
 
 // ─── Exchange with the medium: gases diffuse (rate constants, /s); the rest are carriers ───
 p(['EX_o2', 'EX_co2'], 50, { law: 'diffusion' });
-p('EX_glc', 2); p('EX_fa', 0.2); p('EX_pi', 2, { km: { pi: 0.1 } });
+p('EX_glc', 2); p('EX_fa', 0.2); p('EX_pi', 2, { km: { pi: 0.1 } }); p('EX_nh4', 1, { km: { nh4: 0.05 } });
 p(['EX_lac', 'EX_etoh', 'EX_ac'], 5, { km: { lac__L: 5, etoh: 5, ac: 5 } });
 // The plastid's export dial sets TPT's Vmax; it binds the stroma's triose at the tens of µM the Calvin
 // cycle leaves, and its Pᵢ at about a millimolar

@@ -30,6 +30,8 @@ const EQ = {
     SDH_Q8: [-73.58, 6.52], FUM: [-3.43, 0.28], MDH: [29.56, 0.30], ECH: [-3.28, 1.69], HACD: [16.89, 1.20],
     THL: [-24.96, 0.86], ACAD_Q8: [-81.12, 6.69], ACC: [-12.01, 3.18], FACS: [-10.73, 6.42], ADK: [-0.19, 0.16],
     PPA: [-17.02, 0.19], ATPH: [-27.37, 0.30], NNT: [-0.13, 0.34], NDH_Q8: [-134.80, 6.21],
+    // Nitrogen, the same conditions (Codex, gaslamp job cx-20261027-155736-43f9): GLNS + GLUSy − GLUDy = ATPH
+    GLNS: [-13.12, 0.83], GLUSy: [-50.60, 0.94], GLUDy: [-36.35, 0.37],
 };
 const g = (k) => EQ[k][0];
 
@@ -62,7 +64,7 @@ export const DG0 = {
 for (const n of [6, 8, 10, 12, 14, 16]) DG0['FAS' + n] = FAS_ROUND;
 for (const n of [16, 14, 12, 10, 8, 6, 4]) { DG0['ECH' + n] = g('ECH'); DG0['HACD' + n] = g('HACD'); DG0['KAT' + n] = g('THL'); }
 // No chemistry, only the proton-motive force's (or nothing): carriers, exchanges, leaks
-for (const k of ['MPC', 'ANT', 'PIC', 'MAS', 'OAAX', 'CPT', 'LEAK', 'UCP', 'ION', 'KHE', 'TPT', 'NTT', 'EX_glc', 'EX_fa', 'EX_o2', 'EX_co2', 'EX_pi', 'EX_lac', 'EX_etoh', 'EX_ac']) DG0[k] = 0;
+for (const k of ['MPC', 'ANT', 'PIC', 'MAS', 'OAAX', 'CPT', 'LEAK', 'UCP', 'ION', 'KHE', 'TPT', 'NTT', 'EX_glc', 'EX_fa', 'EX_o2', 'EX_co2', 'EX_pi', 'EX_nh4', 'EX_lac', 'EX_etoh', 'EX_ac']) DG0[k] = 0;
 
 export const E_NAD = -0.320;                          // V
 export const E_NADP = E_NAD - g('NNT') / (2 * F);     // from NNT's ΔG'°, so the two pools agree
