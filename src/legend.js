@@ -1,15 +1,15 @@
 // Legend — the conditions as label–value rows whose values are the controls:
 // the light, the oxygen, ATP demand, growth (or a plastid's export), the
-// uncoupler where the cell has one, and the slowdown. Drag a value sideways,
+// uncoupler where the cell has one, and the clock. Drag a value sideways,
 // step it with the arrow keys, or click it for a dial under the rows.
-import Cell, { SLOWDOWNS } from './cell.js';
+import Cell, { SPEEDS } from './cell.js';
 import Win from './window.js';
 import { simState } from './state.js';
 
 const pct = (v) => Math.round(v * 100);
 const DRAG_PX = 7;   // px of drag per step
-// The slowdown reads left to right as its number grows: 3× to 300×
-const SLOW = [...SLOWDOWNS].sort((a, b) => a - b);
+/** The clock's speed as it reads: 30× slower, real time, 1,000× faster. */
+export const clockText = (v) => v === 1 ? 'real time' : v < 1 ? `${Math.round(1 / v)}× slower` : `${Math.round(v).toLocaleString('en')}× faster`;
 
 /** Each value: its range, how it reads, how it reads as a mark on Fig. 2, and its getter and setter. */
 const FIELDS = {
@@ -25,8 +25,8 @@ const FIELDS = {
         text: (v) => `${v.toFixed(2)} mM/s`, mark: (v) => `export ${v.toFixed(2)}` },
     ucp: { name: 'Uncoupler', toggle: true, get: () => simState.uncouplingEnabled, set: (v) => { simState.uncouplingEnabled = v; Cell.applySwitches(); },
         text: (v) => v ? 'open' : 'shut', mark: (v) => v ? 'uncoupler' : 'uncoupler shut' },
-    slow: { name: 'Slowdown', list: SLOW, get: () => Win.slow, set: (v) => { Win.slow = v; },
-        text: (v) => `${v}×`, mark: (v) => `slowed ${v}×` },
+    clock: { name: 'Clock', list: SPEEDS, get: () => Win.speed, set: (v) => { Win.speed = v; },
+        text: clockText, mark: (v) => `clock ${clockText(v)}` },
 };
 
 const Legend = {
@@ -49,7 +49,7 @@ const Legend = {
     /** Write the rows for the cell now under the microscope: export instead of growth where it has TPT, the uncoupler where it has UCP. */
     build() {
         const has = Cell.has;
-        const keys = ['light', 'o2', 'atp', has('TPT') ? 'export' : has('BIOMASS') ? 'growth' : null, has('UCP') ? 'ucp' : null, 'slow'].filter(Boolean);
+        const keys = ['light', 'o2', 'atp', has('TPT') ? 'export' : has('BIOMASS') ? 'growth' : null, has('UCP') ? 'ucp' : null, 'clock'].filter(Boolean);
         this.close();
         this.el.innerHTML = keys.map((k) => `<span class="lu-k">${FIELDS[k].name}</span><span><span class="lu-v${FIELDS[k].toggle ? ' tog' : ''}" data-k="${k}" tabindex="0" role="${FIELDS[k].toggle ? 'switch' : 'slider'}"></span></span>`).join('');
         for (const sp of this.el.querySelectorAll('.lu-v')) this._bind(sp);
@@ -71,8 +71,8 @@ const Legend = {
         else if (k === 'o2') this._apply('o2', e.env.o2 > 0 ? 0 : 1);
         else if (k === 'ucp' && Cell.has('UCP')) this._apply('ucp', !simState.uncouplingEnabled);
     },
-    /** , and . : the chemistry faster (−) or slower (+). */
-    stepSlow(d) { const i = SLOW.indexOf(Win.slow); this._apply('slow', SLOW[Math.max(0, Math.min(SLOW.length - 1, i + d))]); },
+    /** , and . : the clock slower (−) or faster (+). */
+    stepClock(d) { this._step('clock', d); },
 
     close() {
         if (!this.open) return;

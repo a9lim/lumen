@@ -8,8 +8,8 @@
 //   the cell's ratio. The slab is the cut's length (fixed per specimen, from
 //   its complexes' footprints) by the band's 16.5 nm by 20 nm deep.
 // - Each drawn complex is a representative centre: it turns over at its
-//   turnover number times the share of its capacity in use, slowed by the
-//   caption's factor. Its turnovers are what the scene draws: electrons down
+//   turnover number times the share of its capacity in use, at the clock's
+//   speed (Win.speed, model seconds a wall second). Its turnovers are what the scene draws: electrons down
 //   the chain, photons, protons crossing, ATP synthase's thirds of a turn, O₂.
 //   A chain's entry (NDH-1, SDH, PSII, cyclic PSI) sends an electron; it
 //   waits on its carrier at each later complex until that complex turns over,
@@ -21,7 +21,8 @@
 //   drawn pool in the slab's compartment: coupling between a pool and an
 //   enzyme, not one molecule's journey. A reaction's forward and backward
 //   events pair up: the paired share is exchange (a thread, the pool as it
-//   was), and only its net share changes a molecule.
+//   was), and only its net share changes a molecule. Past MAX_EVENTS a
+//   second, one in several is drawn.
 // - The lumen's protons are drawn one per 2 mV of Δp, not counted: almost all
 //   translocated protons are bound to buffers.
 import { store } from './state.js';
@@ -36,6 +37,7 @@ const NA = 6.02214076e23;
 const BAND_NM = 16.5, DEPTH_NM = 20, GAP_NM = 3;
 export const MV_PER = 2;                 // mV of Δp per proton drawn in the lumen
 const MAX_RATE = 8;                      // drawn turnovers per second per centre, at most (past it, one in w)
+const MAX_EVENTS = 3;                    // drawn coupling events per second per reaction, pool and direction, at most
 const CREDIT_WAIT = 0.6;                 // wall s a later complex's turnover waits for a drawn electron
 // Electron chains sent by an entry complex's turnover (each electron drawn is a pair), and the
 // later complexes it must wait for, by the segment it enters them on
@@ -70,7 +72,7 @@ export function slabVolume(specId) {
 }
 
 const Win = {
-    engine: null, specId: 'thylakoid', slow: 30, V: 0, perMM: 0, comp: 'c',
+    engine: null, specId: 'thylakoid', speed: 1 / 30, V: 0, perMM: 0, comp: 'c',
     rng: Math.random, pumps: [], credits: [], thin: {}, rate: {},
 
     /** Look through the window at a new engine (a preset or a reset), at the specimen's slab. */
@@ -123,7 +125,7 @@ const Win = {
         this.read();
         if (dt <= 0) return;
         const pos = Membrane.pos, r = this.rng;
-        // Representative centres: turnover number × the share of capacity in use, slowed
+        // Representative centres: turnover number × the share of capacity in use, at the clock's speed
         this.thin = {}; this.rate = {};
         for (const [key, rids] of Object.entries(COMPLEX)) {
             if (!pos[key]) continue;
@@ -132,7 +134,7 @@ const Win = {
                 if (j == null || !KCAT[rid]) continue;
                 const vmax = this._vmax(rid), vf = e.state.vf[j], vb = e.state.vb[j];
                 if (!vmax) continue;
-                const net = vf - vb, k = KCAT[rid] * Math.abs(net) / vmax / this.slow * (ELECTRONS[rid] || 2) / 2;
+                const net = vf - vb, k = KCAT[rid] * Math.abs(net) / vmax * this.speed * (ELECTRONS[rid] || 2) / 2;
                 this.rate[rid] = Math.sign(net) * k;
                 if (k <= 0) continue;
                 // past the cap, one turnover in w is drawn and stands for w
@@ -170,11 +172,11 @@ const Win = {
         const e = this.engine, r = this.rng;
         let made = 0;
         for (const rid of ['ROSI', 'ROSQ']) { const j = e.rIndex[rid]; if (j != null) made += Math.max(0, e.state.v[j]) * this._nu(j, 'o2s') * this._volFactor(e.reactions[j]); }
-        store.rosProduced += poisson(r, made * this.perMM / this.slow * dt);
+        store.rosProduced += poisson(r, made * this.perMM * this.speed * dt);
         const jS = e.rIndex.SOD, sup = e.conc('o2s', this.comp);
         const kClear = jS != null && sup > 0 ? -this._nu(jS, 'o2s') * e.state.vf[jS] * this._volFactor(e.reactions[jS]) / sup : 0;   // per model s
         // each radical cleared independently: probability 1 − e^(−k dt) this frame
-        const active = store.rosProduced - store.rosScavenged, pc = 1 - Math.exp(-kClear / this.slow * dt);
+        const active = store.rosProduced - store.rosScavenged, pc = 1 - Math.exp(-kClear * this.speed * dt);
         let gone = 0;
         for (let i = 0; i < Math.min(active, 200); i++) if (r() < pc) gone++;
         store.rosScavenged += active > 200 ? Math.round(active * pc) : gone;
@@ -259,7 +261,7 @@ const Win = {
                 if (sp.comp !== comp || !(sp.id in POOLS)) continue;
                 // forward makes ν of the charged form; backward the reverse
                 for (const [rate, sgn] of [[vf, 1], [vb, -1]]) {
-                    const n = poisson(r, Math.abs(rate * nu) * this.perMM / this.slow * dt * this._volFactor(R));
+                    const n = poisson(r, Math.min(MAX_EVENTS, Math.abs(rate * nu) * this.perMM * this.speed * this._volFactor(R)) * dt);
                     const major = (sgn > 0) === (vf >= vb);
                     for (let k = 0; k < n; k++) Renderer.mapEvent(sp.id, Math.sign(nu) * sgn * (major && r() < net ? 1 : 0.5), R.id);
                 }

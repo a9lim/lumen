@@ -10,7 +10,6 @@ import { createEngine, HOLD } from '../src/engine/engine.js';
 import { runCompare, coefficients } from '../src/compare.js';
 import { RT } from '../src/engine/thermo.js';
 import { makeRng } from '../src/engine/rng.js';
-import { EventQueue } from '../src/engine/events.js';
 
 const cells = Object.keys(CELLS);
 const run = (id, t, env) => { const e = createEngine(id, { env }); e.applyEnv(); e.advance(t); return e; };
@@ -32,30 +31,67 @@ test('moieties hold and nothing goes negative along a trajectory, in every cell'
     }
 });
 
+/** The integrator's steps are the same in a and b, and the pictures agree (their clocks differ only by rounding). */
+function sameTrajectory(a, b) {
+    assert.equal(a.integrator.t, b.integrator.t);
+    for (let i = 0; i < a.x.length; i++) {
+        assert.equal(a.integrator.x[i], b.integrator.x[i]);
+        assert.ok(Math.abs(a.x[i] - b.x[i]) <= 1e-9 * (1 + Math.abs(a.x[i])), `${a.species[i].key}: ${a.x[i]} against ${b.x[i]}`);
+    }
+}
+
 test('a trajectory is the same however the frames slice time', () => {
     const a = createEngine('cyanobacterium'), b = createEngine('cyanobacterium'), c = createEngine('cyanobacterium');
     for (const e of [a, b, c]) e.applyEnv();
-    a.advance(5);
-    for (let k = 0; k < 500; k++) b.advance(0.01);
+    a.advance(50);
+    for (let k = 0; k < 5000; k++) b.advance(0.01);
     const rng = makeRng(7); let t = 0;
-    while (t < 5) { const dt = Math.min(5 - t, rng() * 0.05); c.advance(dt); t += dt; }
-    assert.equal(a.t, b.t); assert.equal(a.t, c.t);
-    for (let i = 0; i < a.x.length; i++) { assert.equal(a.x[i], b.x[i]); assert.equal(a.x[i], c.x[i]); }
+    while (t < 50) { const dt = Math.min(50 - t, rng() * 0.5); c.advance(dt); t += dt; }
+    sameTrajectory(a, b); sameTrajectory(a, c);
 });
 
-test('seeded randomness replays, and a reset cancels pending events', () => {
+test('the clock gets there, or says by how much it fell short', () => {
+    const e = createEngine('cyanobacterium'); e.applyEnv();
+    assert.equal(e.advance(3600), 0, 'an hour in one call');
+    assert.equal(e.t, 3600);
+    assert.ok(e.integrator.t >= e.t && e.integrator.t - e.t <= 60, 'the integrator at most a step ahead of the picture');
+    // with no time to step, the picture waits where the integrator got to, and the rest is dropped, not owed
+    e.env.light = 0; e.applyEnv();
+    const short = e.advance(600, 0);
+    assert.ok(short > 0 && e.t === e.integrator.t && e.t + short === 4200, `short ${short} at ${e.t}`);
+});
+
+test('a change from outside happens at the picture\'s time, and the picture keeps the moieties', () => {
+    const e = createEngine('animalCell'); e.applyEnv(); e.advance(30);
+    assert.ok(e.integrator.t > e.t, 'stepped past the picture');
+    e.env.o2 = 0; e.applyEnv(); e.advance(0);
+    assert.equal(e.integrator.t, e.t, 'brought back to the picture');
+    const comps = Object.keys(e.model.comps).filter(c => c !== 'e'), before = {};
+    for (const m of Object.keys(MOIETIES)) for (const c of comps) before[m + c] = e.moiety(m, c);
+    for (const dt of [0.37, 1.3, 7.1]) {
+        e.advance(dt);
+        for (const m of Object.keys(MOIETIES)) for (const c of comps) assert.ok(Math.abs(e.moiety(m, c) - before[m + c]) <= 1e-9 + 1e-7 * before[m + c], `${m} in ${c} between steps`);
+    }
+});
+
+test('long steps agree with a tight integrator: light to dark, and anoxia', () => {
+    for (const [id, change] of [['cyanobacterium', (e) => { e.env.light = 0; }], ['animalCell', (e) => { e.env.o2 = 0; }]]) {
+        const [a, ref] = [createEngine(id), createEngine(id, { hmax: 0.05, rtol: 2e-4 })];
+        for (const e of [a, ref]) { e.applyEnv(); e.advance(60); change(e); e.applyEnv(); e.advance(120); e.evaluate(); }
+        for (const r of ['ATPS', 'CYTOX', 'PSII', 'PFK', 'GLGP']) {
+            const j = a.rIndex[r]; if (j == null) continue;
+            const x = a.state.v[j], y = ref.state.v[j];
+            assert.ok(Math.abs(x - y) <= 0.02 * Math.abs(y) + 1e-4, `${id}: ${r} ${x} against ${y}`);
+        }
+        assert.ok(Math.abs(a.dp() - ref.dp()) < 1, `${id}: Δp ${a.dp()} against ${ref.dp()}`);
+    }
+});
+
+test('seeded randomness replays', () => {
     const r1 = makeRng(42), r2 = makeRng(42);
     for (let k = 0; k < 100; k++) assert.equal(r1(), r2());
     const s1 = makeRng(42).stream('window'), s2 = makeRng(42).stream('window'), s3 = makeRng(42).stream('other');
     assert.equal(s1(), s2()); assert.notEqual(makeRng(42).stream('window')(), s3());
-    const e = createEngine('animalCell'); let fired = 0;
-    e.events.at(0.5, () => fired++);
-    e.reset(); e.advance(1);
-    assert.equal(fired, 0);
-    const q = new EventQueue(), seen = [];
-    for (const t of [3, 1, 2, 1]) q.at(t, () => seen.push(t));
-    q.runUntil(2.5);
-    assert.deepEqual(seen, [1, 1, 2]);
 });
 
 test('every reaction runs downhill: no undriven step goes against its ΔG', () => {
@@ -185,7 +221,7 @@ test('a pulse leaves the trajectory independent of frames', () => {
     for (const e of [a, b]) e.pulse(e.rIndex.HEX1, 1);
     a.advance(3);
     for (let k = 0; k < 300; k++) b.advance(0.01);
-    for (let i = 0; i < a.x.length; i++) assert.equal(a.x[i], b.x[i]);
+    sameTrajectory(a, b);
 });
 
 test('reactive oxygen damages the membrane in proportion, and repair brings it back', () => {

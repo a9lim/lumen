@@ -1,7 +1,7 @@
 // Entry point — wires the cell, the scene and the legend, then runs one
-// loop: the model clock (wall time slowed by the window's factor), the
-// window's sampling, flux, particles, Fig. 2's 5 Hz samples, the draw, and
-// the live caption.
+// loop: the model clock (wall time at the clock's speed), the window's
+// sampling, flux, particles, Fig. 2's 5 Hz samples, the draw, and the live
+// caption.
 //
 // Lumen opens on a living frame: the cyanobacterium, already running, after
 // a silent warm-up of its chemistry so the lines carry flux and the lumen
@@ -22,6 +22,7 @@ import Particles from './src/particles.js';
 import { drawLadder } from './src/ladder.js';
 import Cell from './src/cell.js';
 import Win from './src/window.js';
+import { clockText } from './src/legend.js';
 
 const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 const dom = cacheDOMElements();
@@ -74,16 +75,22 @@ function captionText() {
     // the drawn ATP synthase's turns a second (negative backward): the model's rate at its centre, a third of a turn per ATP
     const turns = (Win.rate.ATPS || 0) / 3, a = Math.abs(turns);
     const parts = [`Δp ${Math.round(Cell.engine.dp())} mV`];
-    if (Membrane.pos.atpSyn) parts.push(`ATP synthase ${a < 0.005 ? '0' : (turns < 0 ? '−' : '') + (a >= 0.1 ? a.toFixed(1) : a.toFixed(2))} turns/s`);
+    if (Membrane.pos.atpSyn) parts.push(`ATP synthase ${a < 0.005 ? '0' : (turns < 0 ? '−' : '') + (a >= 100 ? Math.round(a).toLocaleString('en') : a >= 0.1 ? a.toFixed(1) : a.toFixed(2))} turns/s`);
     // Past the window's cap a centre is drawn one turnover in w (window.js)
     const w = Object.values(Win.thin);
-    if (w.length) parts.push(`1 in ${Math.max(...w)} turnovers drawn`);
+    if (w.length) parts.push(`1 in ${Math.max(...w).toLocaleString('en')} turnovers drawn`);
+    // Where the chemistry can't keep up with the clock, the speed it is running at
+    const pace = kept * Win.speed;
+    if (kept < 0.8) parts.push(`clock ${clockText(pace >= 1 ? Math.round(pace) : pace)}`);
     // each pair kept on one line, broken only after a ·
     return parts.map((p) => p.replace(/ /g, '\u00a0')).join(' · ');
 }
 
 // ── Loop ──
-let last = performance.now(), traceT = 0, dashT = 0, ready = false;
+// The chemistry gets ENGINE_MS of each frame; what it can't reach in that is dropped, and kept (the share
+// of the clock's model time it reached, smoothed over KEPT_TAU) says how fast the clock really runs
+const ENGINE_MS = 8, KEPT_TAU = 1;
+let last = performance.now(), traceT = 0, dashT = 0, ready = false, kept = 1;
 Promise.race([_loadTextFonts(), new Promise(r => setTimeout(r, 1500))]).then(() => { ready = true; Renderer.themeChanged(); drawSpecimenIcons(); Trace.draw(dom.trace); });
 
 function frame(now) {
@@ -92,8 +99,12 @@ function frame(now) {
     last = now;
     if (!frozen) {
         simState.time += dt;
-        // The model clock: the frame's wall time, slowed
-        if (simState.autoPlay) { Cell.engine.advance(dt / Win.slow); Trace.tick(dt); traceT += dt; }
+        // The model clock: the frame's wall time at the clock's speed, as far as the chemistry gets
+        if (simState.autoPlay && dt > 0) {
+            const want = dt * Win.speed, got = want - Cell.engine.advance(want, ENGINE_MS);
+            kept += (got / want - kept) * Math.min(1, dt / KEPT_TAU);
+            Trace.tick(dt); traceT += dt;
+        }
         Win.sample(simState.autoPlay ? dt : 0);
         updateFlux(dt);
         Renderer.update(dt);

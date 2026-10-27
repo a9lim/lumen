@@ -15,7 +15,8 @@ export const CELL_OF = {
     cyanobacterium: 'cyanobacterium', animalCell: 'animalCell', obligateAnaerobe: 'obligateAnaerobe',
     plantChloroplast: 'plantChloroplast', archaeon: 'archaeon', custom: 'custom',
 };
-export const SLOWDOWNS = [300, 100, 30, 10, 3];
+// The clock's speeds, model seconds a wall second: from 300× slower than life to 1,000× faster
+export const SPEEDS = [1 / 300, 1 / 100, 1 / 30, 1 / 10, 1 / 3, 1, 3, 10, 30, 100, 300, 1000];
 // The fluxes a held enzyme's control is reported over, besides its own
 export const SYSTEM = [['EX_glc', 'glucose uptake'], ['RBPC', 'carbon fixation'], ['PSII', 'water splitting'], ['CYTOX', 'O₂ use'], ['ATPS', 'ATP synthase'], ['BIOMASS', 'growth'], ['TPT', 'export']];
 

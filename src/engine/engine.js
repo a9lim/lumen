@@ -5,10 +5,17 @@
 // turning over small pools make the system stiff. Rosenbrock steps keep
 // every linear conservation law exactly, so the moieties never drift.
 //
-// advance(dt) takes whole steps until the clock would pass the target, and a
-// step's size depends only on the state, so a trajectory is the same however
-// the frames slice time: frame rate, viewport and hidden tabs can't change
-// the chemistry, only how much of it a frame shows.
+// Two clocks: the integrator's and the picture's. The integrator takes whole
+// steps, each as long as accuracy allows (up to HMAX), and a step's size
+// depends only on the state, so its trajectory is the same however frames
+// slice time: frame rate, the clock's speed and hidden tabs can't change the
+// chemistry, only how much of it a frame shows. advance(dt) steps the
+// integrator past the picture's new time and shows the state there on the
+// straight line between its last two steps (dense output, which keeps every
+// conservation law and every concentration's sign). Anything changed from
+// outside (the state, the environment, a dial, a switch, a pulse) happens at
+// the picture's time: the integrator is brought back to the picture and
+// starts again with short steps.
 //
 // Units: mM, seconds, mV, kJ/mol. A reaction's rate is in mM/s of its home
 // compartment, moved as an amount (rate × its volume) into each species'
@@ -29,7 +36,6 @@ import { PARAMS, KM, KM_DEFAULT } from './rates.js';
 import { dg0, F, RT } from './thermo.js';
 import { MOIETIES } from './species.js';
 import { makeRng } from './rng.js';
-import { EventQueue } from './events.js';
 
 const V_MEDIUM = 50;       // the medium's volume, relative to the cytosol: finite, so substrates run out
 const AIR_O2 = 0.25;       // mM O₂ in air-saturated water, 25 °C
@@ -47,6 +53,9 @@ const K_DMG = 40, K_REP = 0.05, REPAIR_ATP = 2, LEAK_DMG = 4, ACO_DMG = 0.8;
 // metabolic control analysis against a paired baseline (cell.js). Being functions of model time,
 // they leave a trajectory independent of frames, and a paused clock holds them.
 export const PULSE_UP = 4, PULSE_DOWN = 0.9, PULSE_TAU = 1.5, PULSE_MAX = 20, HOLD = 0.1;
+// Steps: error-controlled (RTOL, ATOL) up to HMAX model seconds; while a pulse fades, H_PULSE at most,
+// since a step holds the pulse's factor where it started; H0 after an intervention
+const RTOL = 2e-3, ATOL = 1e-6, HMAX = 60, H_PULSE = PULSE_TAU / 30, H0 = 1e-3, HMIN = 1e-9;
 /** mV per pH unit: 2.303 RT/F. */
 export const ZMV = RT * Math.LN10 / F * 1000;
 
@@ -114,11 +123,18 @@ export function createEngine(cellId, opts = {}) {
         return a == null ? null : { ...e, a };
     }
 
+    // The picture's state at its time t (what every reader sees), and the integrator's: its state at
+    // its own time, ahead of the picture by less than a step, and the step before it (p), to draw between
     const state = {
-        x: new Float64Array(nS), t: 0, h: 1e-3, damage: 0,
+        x: new Float64Array(nS), t: 0, damage: 0,
         activity: new Float64Array(nR).fill(1),
         v: new Float64Array(nR), vf: new Float64Array(nR), vb: new Float64Array(nR),
     };
+    const I = { x: new Float64Array(nS), t: 0, damage: 0, h: H0, xp: new Float64Array(nS), tp: 0, dp: 0 };
+    // The time and damage the rates are read at: the integrator's while it steps, the picture's otherwise
+    const now = { t: 0, damage: 0 };
+    // A tighter integrator, for checking this one against (tests)
+    const rtol = opts.rtol ?? RTOL, hmax = opts.hmax ?? HMAX;
 
     // ─── Rates ───
     const lightOn = () => env.light / (env.light + 0.05);
@@ -144,7 +160,7 @@ export function createEngine(cellId, opts = {}) {
     function pulseFactor(j, t) {
         const p = pulses.get(j);
         if (!p) return 1;
-        const f = p.held ? 1 : Math.exp(-(t - p.t0) / PULSE_TAU);
+        const f = p.held ? 1 : Math.exp(-Math.max(0, t - p.t0) / PULSE_TAU);
         return (1 + p.up * f) * (1 - p.down * f);
     }
 
@@ -152,13 +168,13 @@ export function createEngine(cellId, opts = {}) {
     let RF = 0, RB = 0;
     function rate1(j, x) {
         const c = RX[j], psi = psiOf(x), ph = phOf(x), dp = psi + ph;
-        let V = c.vmax * state.activity[j] * (pulses.size ? pulseFactor(j, state.t) : 1);
-        const act = state.activity[j] * (pulses.size ? pulseFactor(j, state.t) : 1);
+        const act = state.activity[j] * (pulses.size ? pulseFactor(j, now.t) : 1);
+        let V = c.vmax * act;
         if (c.r.demand === 'atp') V = dial.atp * act;
         else if (c.r.demand === 'export') V = dial.export * act;
         else if (c.r.demand === 'growth') V = dial.growth / 3600 * RHO * act;
-        else if (c.r.demand === 'repair') V = K_REP * REPAIR_ATP * state.damage * act;
-        if (c.dmg) V *= c.dmg === 'leak' ? 1 + LEAK_DMG * state.damage : 1 - ACO_DMG * state.damage;
+        else if (c.r.demand === 'repair') V = K_REP * REPAIR_ATP * now.damage * act;
+        if (c.dmg) V *= c.dmg === 'leak' ? 1 + LEAK_DMG * now.damage : 1 - ACO_DMG * now.damage;
         if (c.light) V *= env.light;
         if (V === 0) { RF = RB = 0; return; }
         // a conductance: the flux follows what drives it, mV (Δp for a proton, Δψ for a charge alone, ΔpH for an exchange)
@@ -250,13 +266,17 @@ export function createEngine(cellId, opts = {}) {
     // ─── ROS2 with an embedded first-order (linearly implicit Euler) error estimate ───
     const f0 = new Float64Array(nS), f1 = new Float64Array(nS), y = new Float64Array(nS);
     const k1 = new Float64Array(nF), k2 = new Float64Array(nF);
-    const RTOL = 2e-3, ATOL = 1e-6, HMAX = 0.05, HMIN = 1e-9;
+    /** One step of the integrator from its state: as long as the error allows, retried shorter if not. */
     function step() {
-        const x = state.x;
+        const x = I.x;
+        now.t = I.t; now.damage = I.damage;
         deriv(x, f0);
         jacobian(x);
+        let fading = false;
+        for (const p of pulses.values()) if (!p.held) { fading = true; break; }
+        I.h = Math.min(I.h, hmax, fading ? H_PULSE : Infinity);
         for (;;) {
-            const h = state.h;
+            const h = I.h;
             factor(h);
             for (let k = 0; k < nF; k++) k1[k] = f0[free[k]];
             solve(k1);
@@ -271,50 +291,92 @@ export function createEngine(cellId, opts = {}) {
                 y[i] = yn;
                 if (yn < -ATOL && i !== iQ && i !== iHl) neg = true;   // Δψ's charge and ΔpH's protons may go either way
                 const e = h * 0.5 * (k1[k] + k2[k]);
-                err = Math.max(err, Math.abs(e) / (ATOL + RTOL * Math.max(Math.abs(x[i]), Math.abs(yn))));
+                err = Math.max(err, Math.abs(e) / (ATOL + rtol * Math.max(Math.abs(x[i]), Math.abs(yn))));
             }
             if ((neg || err > 1 || !Number.isFinite(err)) && h > HMIN) {
-                state.h = Math.max(HMIN, h * (neg || !Number.isFinite(err) ? 0.25 : Math.max(0.2, 0.9 / Math.sqrt(err))));
+                I.h = Math.max(HMIN, h * (neg || !Number.isFinite(err) ? 0.25 : Math.max(0.2, 0.9 / Math.sqrt(err))));
                 continue;
             }
             for (let k = 0; k < nF; k++) { const i = free[k]; x[i] = y[i] < 0 && i !== iQ && i !== iHl ? 0 : y[i]; }
-            // Damage, a slow variable outside the chemistry: made by reactive oxygen, cleared only as
-            // fast as repair actually spends its ATP
+            // Damage, a slow variable outside the chemistry: made by reactive oxygen (a per second, of what
+            // is undamaged), cleared only as fast as repair spends its ATP (k per second, of what is
+            // damaged), solved exactly over the step with both held
             if (rosIdx.length) {
                 let ros = 0; for (const i of rosIdx) ros += x[i];
-                let fixed = 0;
-                if (jRepair != null) { rate1(jRepair, x); fixed = (RF - RB) / REPAIR_ATP; }
-                state.damage = Math.min(1, Math.max(0, state.damage + h * (K_DMG * ros * (1 - state.damage) - fixed)));
+                const a = K_DMG * ros;
+                let k = 0;
+                if (jRepair != null) { now.damage = 1; rate1(jRepair, x); k = (RF - RB) / REPAIR_ATP; }
+                const d = I.damage, s = a + k, eq = s > 0 ? a / s : d;
+                I.damage = Math.min(1, Math.max(0, eq + (d - eq) * Math.exp(-s * h)));
             }
-            state.t += h;
-            state.h = Math.min(HMAX, h * Math.min(3, 0.9 / Math.sqrt(Math.max(err, 1e-6))));
+            I.t += h;
+            I.h = Math.min(hmax, h * Math.min(3, 0.9 / Math.sqrt(Math.max(err, 1e-6))));
             return h;
         }
     }
 
+    // ─── The picture and the integrator ───
+    // What the picture last showed, so a change from outside is noticed before the next step
+    const seen = { x: new Float64Array(nS), activity: new Float64Array(nR), damage: 0, env: [], dial: [] };
+    function remember() {
+        seen.x.set(state.x); seen.activity.set(state.activity); seen.damage = state.damage;
+        seen.env = Object.values(env); seen.dial = Object.values(dial);
+    }
+    function touched() {
+        if (state.damage !== seen.damage) return true;
+        for (let i = 0; i < nS; i++) if (state.x[i] !== seen.x[i]) return true;
+        for (let j = 0; j < nR; j++) if (state.activity[j] !== seen.activity[j]) return true;
+        const ev = Object.values(env), dv = Object.values(dial);
+        return ev.length !== seen.env.length || dv.length !== seen.dial.length || ev.some((v, k) => v !== seen.env[k]) || dv.some((v, k) => v !== seen.dial[k]);
+    }
+    /** Bring the integrator back to the picture: whatever changed, changed now. */
+    function pin() {
+        I.x.set(state.x); I.t = state.t; I.damage = state.damage; I.h = H0;
+        I.xp.set(I.x); I.tp = I.t; I.dp = I.damage;
+        remember();
+    }
+    /** Show the state at time t, on the line between the integrator's last two steps. */
+    function show(t) {
+        const span = I.t - I.tp, th = span > 0 ? (t - I.tp) / span : 1;
+        for (let i = 0; i < nS; i++) state.x[i] = I.xp[i] + th * (I.x[i] - I.xp[i]);
+        state.damage = I.dp + th * (I.damage - I.dp);
+        state.t = t;
+        remember();
+    }
+
     const rosIdx = ['o2s', 'h2o2'].flatMap(id => ['c', 'm'].map(c => idx(id, c))).filter(i => i != null);
     const jRepair = R.findIndex(r => r.id === 'REPAIR') >= 0 ? R.findIndex(r => r.id === 'REPAIR') : null;
-    const events = new EventQueue();
     const rng = makeRng(opts.seed ?? 1);
-    let target = 0;
+    const clock = typeof performance !== 'undefined' ? () => performance.now() : () => Date.now();
 
     const engine = {
-        model, cell, env, dial, state, events, rng, pmf, vol,
+        model, cell, env, dial, state, rng, pmf, vol,
         get t() { return state.t; },
         get x() { return state.x; },
+        /** The integrator's own clock and state (the picture is at engine.t, at most a step behind). */
+        get integrator() { return { t: I.t, x: I.x, h: I.h }; },
         index: model.index,
         rIndex: Object.fromEntries(R.map((r, j) => [r.id, j])),
         species: S, reactions: R,
 
-        /** Advance the model clock by dt seconds: whole steps only, so the trajectory is frame-independent. */
-        advance(dt) {
-            target += dt;
-            let n = 0;
-            while (state.t + state.h <= target && n < 5000) {
-                step(); events.runUntil(state.t); n++;
-                for (const [j, p] of pulses) if (!p.held && state.t - p.t0 > 8 * PULSE_TAU) pulses.delete(j);
+        /**
+         * Advance the picture's clock by dt model seconds, stepping the integrator past it. Given ms, it
+         * stops stepping after that much wall time and the picture waits where the integrator got to.
+         * Returns the model seconds it fell short by: 0 when it got there.
+         */
+        advance(dt, ms = Infinity) {
+            if (touched()) pin();
+            const end = state.t + dt, t0 = ms < Infinity ? clock() : 0;
+            while (I.t < end) {
+                if (ms < Infinity && clock() - t0 > ms) break;
+                I.xp.set(I.x); I.tp = I.t; I.dp = I.damage;
+                step();
+                for (const [j, p] of pulses) if (!p.held && I.t - p.t0 > 8 * PULSE_TAU) pulses.delete(j);
             }
-            return n;
+            const short = Math.max(0, end - I.t);
+            show(short ? I.t : end);
+            now.t = state.t; now.damage = state.damage;
+            return short;
         },
         /** Run until nothing changes by more than tol per second (or maxT): returns the time it took. */
         settle(maxT = 600, tol = 1e-3) {
@@ -328,8 +390,8 @@ export function createEngine(cellId, opts = {}) {
             }
             return state.t - t0;
         },
-        /** Evaluate every rate at the current state (net, forward, backward). */
-        evaluate() { rates(state.x, state.v, state.vf, state.vb); return state.v; },
+        /** Evaluate every rate at the picture's state (net, forward, backward). */
+        evaluate() { now.t = state.t; now.damage = state.damage; rates(state.x, state.v, state.vf, state.vb); return state.v; },
         /** Concentration of a species, mM, by id and compartment; 0 if the cell has none. */
         conc(id, comp = 'c') { const i = idx(id, comp); return i == null ? 0 : state.x[i]; },
         set(id, comp, value) { const i = idx(id, comp); if (i != null) state.x[i] = value; },
@@ -340,6 +402,7 @@ export function createEngine(cellId, opts = {}) {
         /** Why a reaction runs as it does: its factors, ΔG (kJ/mol) and its kinetic law ('cm', 'leak', 'diffusion', 'demand'). */
         factors(j) {
             const c = RX[j], x = state.x, psi = psiOf(x), ph = phOf(x), dp = psi + ph;
+            now.t = state.t; now.damage = state.damage;
             rate1(j, x);
             // ln Q exactly: a missing substrate makes ΔG +∞, a missing product −∞
             let lnQ = 0;
@@ -359,6 +422,7 @@ export function createEngine(cellId, opts = {}) {
          * stacks on what is left of the first. hold instead sustains ×(1 ± HOLD) until release().
          */
         pulse(j, sign = 1, hold = false) {
+            pin();
             const t = state.t;
             if (hold) { pulses.set(j, { up: sign > 0 ? HOLD : 0, down: sign < 0 ? HOLD : 0, t0: t, held: true }); return; }
             const old = pulses.get(j);
@@ -369,21 +433,27 @@ export function createEngine(cellId, opts = {}) {
         },
         /** Whether any pulse is held. */
         holding() { for (const p of pulses.values()) if (p.held) return true; return false; },
-        /** Everything that makes the trajectory, to start a paired run from (a baseline). */
+        /** Everything that makes the trajectory from the picture's moment, to start a paired run from (a baseline). */
         snapshot() {
             return {
-                x: Float64Array.from(state.x), t: state.t, h: state.h, damage: state.damage, activity: Float64Array.from(state.activity),
-                target, env: { ...env }, dial: { ...dial },
+                x: Float64Array.from(state.x), t: state.t, damage: state.damage, activity: Float64Array.from(state.activity),
+                env: { ...env }, dial: { ...dial },
                 pulses: [...pulses].filter(([, p]) => !p.held).map(([j, p]) => [j, { ...p }]),   // the fading ones, not the held
             };
         },
         restore(snap) {
-            state.x.set(snap.x); state.t = snap.t; state.h = snap.h; state.damage = snap.damage; state.activity.set(snap.activity);
-            target = snap.target; Object.assign(env, snap.env); Object.assign(dial, snap.dial);
+            state.x.set(snap.x); state.t = snap.t; state.damage = snap.damage; state.activity.set(snap.activity);
+            Object.assign(env, snap.env); Object.assign(dial, snap.dial);
             pulses.clear(); for (const [j, p] of snap.pulses || []) pulses.set(j, { ...p });
+            pin();
         },
         /** Let a held pulse fade from now. */
-        release(j) { const p = pulses.get(j); if (p && p.held) { p.held = false; p.t0 = state.t; } },
+        release(j) {
+            const p = pulses.get(j);
+            if (!p || !p.held) return;
+            pin();
+            p.held = false; p.t0 = state.t;
+        },
         /** The multiplier pulses put on reaction j now. */
         pulseNow(j) { return pulseFactor(j, state.t); },
         /**
@@ -392,6 +462,7 @@ export function createEngine(cellId, opts = {}) {
          */
         effectors(j) {
             const c = RX[j], x = state.x, dp = dpOf(x);
+            now.t = state.t; now.damage = state.damage;
             return c.regs.map(e => {
                 let f;
                 if (e.type === 'light') f = e.b + (1 - e.b) * lightOn();
@@ -424,10 +495,11 @@ export function createEngine(cellId, opts = {}) {
         },
         /** Fill the pools and metabolites to the cell's starting state. */
         reset() {
-            state.x.fill(0); state.t = 0; target = 0; state.h = 1e-3; state.damage = 0; events.clear(); pulses.clear();
+            state.x.fill(0); state.t = 0; state.damage = 0; pulses.clear();
             for (let j = 0; j < nR; j++) state.activity[j] = R[j].off ? 0 : 1;
             initialState(engine);
             this.applyEnv();
+            pin();
         },
         /** The total of a moiety in a compartment, mM. */
         moiety(name, comp) {

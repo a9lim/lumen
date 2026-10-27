@@ -16,7 +16,7 @@ import { drawLocator } from './locator.js';
 import { hasLadder } from './ladder.js';
 import { LINE_REACTIONS } from './mapbind.js';
 import Cell from './cell.js';
-import Legend from './legend.js';
+import Legend, { clockText } from './legend.js';
 import Trace from './trace.js';
 import * as K from './complexes.js';
 
@@ -142,8 +142,8 @@ export function bindEvents(dom, hooks) {
     Legend.init(dom.conds, dom.dialBox, (k, v, label) => {
         touched();
         if (k === 'light') updateTheme(dom.themeBtn);
-        if (k === 'slow') showToast('Chemistry slowed ' + v + '×');
-        else mark(label, k);
+        if (k === 'clock') showToast('Clock ' + clockText(v));
+        mark(label, k);
     });
 
     // ── Knockouts: a line's switch takes out its enzymes; the plate's key is their face ──
@@ -206,8 +206,8 @@ export function bindEvents(dom, hooks) {
     const zoomAt = (f) => Renderer.camera.zoomBy(f, Renderer.W / 2, Renderer.H / 2);
     const shortcuts = [
         { key: 'Space', label: 'Play or pause', group: 'Simulation', action: () => document.querySelector('[data-colophon="play"]')?.click() },
-        { key: ',', label: 'Faster chemistry', group: 'Simulation', action: () => Legend.stepSlow(-1) },
-        { key: '.', label: 'Slower chemistry', group: 'Simulation', action: () => Legend.stepSlow(1) },
+        { key: ',', label: 'Clock slower', group: 'Simulation', action: () => Legend.stepClock(-1) },
+        { key: '.', label: 'Clock faster', group: 'Simulation', action: () => Legend.stepClock(1) },
         { key: 'R', label: 'Reset', group: 'Simulation', action: () => dom.resetBtn.click() },
         { key: 'G', label: 'Add glucose', group: 'Simulation', action: addGlucose },
         { key: 'F', label: 'Add fatty acid', group: 'Simulation', action: addFat },
@@ -245,7 +245,7 @@ export function bindEvents(dom, hooks) {
             { label: 'Light, oxygen, uncoupler', value: 'L / O / U' },
             { label: 'Add substrate', value: 'Glucose (G) / fatty acid (F)' },
             { label: 'Play / pause', value: 'Space' },
-            { label: 'Chemistry faster / slower', value: ', and .' },
+            { label: 'Clock slower / faster', value: ', and .' },
             { label: 'Zoom / pan', value: '= / - / 0, scroll, drag' },
             { label: 'Legend', value: 'S; V turns Fig. 2 to the ladder' },
         ],
@@ -264,7 +264,7 @@ export function bindEvents(dom, hooks) {
 
     // ── Info tips and the reference overlay ──
     registerInfoTips({
-        conditions: { title: 'Conditions', body: 'ATP demand is the work the model doesn’t draw (ion pumps, motility, turnover); growth draws a new cell’s precursors from the map, and a plastid exports triose phosphate instead. The slowdown changes how much chemistry a second shows, not the chemistry.' },
+        conditions: { title: 'Conditions', body: 'ATP demand is the work the model doesn’t draw (ion pumps, motility, turnover); growth draws a new cell’s precursors from the map, and a plastid exports triose phosphate instead. The clock changes how much chemistry a second shows, not the chemistry.' },
         inspector: { title: 'Enzyme', body: 'Rate = capacity × thermodynamics (1 − e^(ΔG/RT)) × saturation × regulation, each bar the running product on a log scale, hatched where a factor cut it. Hold keeps it 10% up while a held and an unheld copy of the cell run to a steady state; each flux’s response is its control coefficient C (Kacser & Burns 1973).' },
         trace: { title: 'Fig. 2', body: 'Trace: Δp, the ATP share of the adenylates, the reduced share of the main carrier and the headline flux, with an arrow for each change you made. Ladder: every carrier at its midpoint potential, each electron in flight a bead on it.' },
     });

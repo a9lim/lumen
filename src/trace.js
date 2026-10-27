@@ -2,15 +2,23 @@
 // the reduced share of the cell's main carrier (NADPH where it photosynthesizes,
 // NADH elsewhere) and its headline flux, sampled at 5 Hz while the chemistry
 // runs, with an arrow for each thing you did, as additions are marked on an
-// oxygen-electrode trace. Time is wall time (the slowdown applies), so it
-// stops while paused. This is the bench's first register (VISION.md).
+// oxygen-electrode trace. Its span is two minutes of watching, so it stops
+// while paused; the axis says how much of the cell's time they held, which
+// the clock's speed sets (and a change of speed bends).
 import Cell from './cell.js';
+import Win from './window.js';
 import { poolShares } from './dashboard.js';
 import * as K from './complexes.js';
 
-const SPAN = 120;        // s of wall time shown
+const SPAN = 120;        // s of watching shown
 const EVERY = 0.2;       // s between samples
 const N = Math.round(SPAN / EVERY) + 2;
+
+/** A span of model time as the axis reads it: 0.4 s, 12 s, 2 min, 3.3 h, 33 h, 2.1 d. */
+function spanText(s) {
+    const [v, u] = s < 60 ? [s, 's'] : s < 3600 ? [s / 60, 'min'] : s < 172800 ? [s / 3600, 'h'] : [s / 86400, 'd'];
+    return `−${v < 10 ? +v.toPrecision(2) : Math.round(v)} ${u}`;
+}
 
 /** The rows for the cell now under the microscope. */
 function rowsFor() {
@@ -29,7 +37,7 @@ function rowsFor() {
 }
 
 const Trace = {
-    t: 0, rows: [], data: [], times: new Float64Array(N), head: 0, count: 0, marks: [], _acc: 0, dirty: false,
+    t: 0, rows: [], data: [], times: new Float64Array(N), model: new Float64Array(N), head: 0, count: 0, marks: [], _acc: 0, dirty: false,
 
     /** A fresh trace for a new cell (a preset or a reset). */
     reset() {
@@ -44,9 +52,21 @@ const Trace = {
         this.t += dt; this._acc += dt;
         if (this._acc < EVERY) return;
         this._acc = 0;
-        this.times[this.head] = this.t;
+        this.times[this.head] = this.t; this.model[this.head] = Cell.engine.t;
         this.rows.forEach((r, i) => { this.data[i][this.head] = r.get(); });
         this.head = (this.head + 1) % N; if (this.count < N) this.count++;
+    },
+
+    /**
+     * Model seconds since the trace's clock read t seconds less: from the sample nearest then, and
+     * before the first sample at the clock's speed now.
+     */
+    ago(t) {
+        const e = Cell.engine, want = this.t - t;
+        if (!e || !this.count) return t * Win.speed;
+        let best = (this.head - 1 + N) % N;
+        for (let k = 0; k < this.count; k++) { const at = (this.head - 1 - k + N) % N; if (this.times[at] < want) break; best = at; }
+        return Math.max(0, e.t - this.model[best] + Math.max(0, this.times[best] - want) * Win.speed);
     },
 
     /** An arrow for something you did; a run of the same change (a drag) moves one arrow. */
@@ -113,11 +133,11 @@ const Trace = {
             ends[line] = lx + tw;
             c.fillStyle = P.text2; c.textAlign = 'left'; c.fillText(m.label, lx, line ? top - 22.5 : top - 11.5);
         }
-        // The time axis
+        // The time axis: how long ago in the cell's time, at two minutes and one minute of watching
         c.font = `${fs - 1}px ${_FONT.text}`; c.fillStyle = P.muted;
-        for (const [t, s, a] of [[SPAN, '−2 min', 'left'], [SPAN / 2, '−1 min', 'center'], [0, 'now', 'right']]) {
+        for (const [t, a] of [[SPAN, 'left'], [SPAN / 2, 'center'], [0, 'right']]) {
             const x = x1 - t / SPAN * (x1 - x0);
-            c.textAlign = a; c.fillText(s, x, h - 2);
+            c.textAlign = a; c.fillText(t ? spanText(this.ago(t)) : 'now', x, h - 2);
             c.fillStyle = K.rgba(P.text, 0.3); c.fillRect(Math.round(x) - (a === 'right' ? 1 : 0), h - axis, 1, 3); c.fillStyle = P.muted;
         }
     },
