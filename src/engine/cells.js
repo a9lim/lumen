@@ -5,7 +5,7 @@
 // the chemistry (the window onto the cell has its own, in window.js).
 //
 // Each cell is an archetype, an abstract model of a form of life rather than
-// a species (VISION.md, decision 14). Measured values come from a
+// a species. Measured values come from a
 // representative of it: Synechocystis for the cyanobacterium, Halobacterium
 // for the halophile, E. coli for the composite.
 //
@@ -107,7 +107,7 @@ export const CELLS = {
         // it stands for the regulation at the cycle's branch point, where in cyanobacteria PirC holds
         // phosphoglycerate mutase until PII releases it, reading the cell's carbon and nitrogen rather than
         // RuBP (Orthwein et al. 2021, 10.1073/pnas.2019988118). Below about a fifth of full sun, where light
-        // limits the cycle and RuBP is low, it stops growth and the store takes the carbon (AGENTS.md).
+        // limits the cycle and RuBP is low, it stops growth and the store takes the carbon (docs/ROADMAP.md).
         // The Krebs cycle serves growth as much as respiration: citrate synthase gives way as α-KG accumulates
         // (as E. coli's does) and α-KG dehydrogenase is a minor activity, so α-KG goes to nitrogen; growth
         // itself runs in the light and slows as the energy charge falls, so at night it keeps itself on its

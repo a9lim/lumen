@@ -199,7 +199,7 @@ R('GPX', 'GPx', 'Glutathione peroxidase', 'h2o2 + nadph + h -> 2 h2o + nadp', { 
 R('REPAIR', 'repair', 'Membrane repair', 'atp + h2o -> adp + pi + h', { at: 'mito', demand: 'repair' });
 
 // ─── Between the cytosol and the matrix (cells that have one), lumped:
-// their carriers' anatomy and charges wait for milestone 3 ───
+// their anatomy isn't drawn yet (docs/ROADMAP.md, transport) ───
 // z: charge moved to the lumen side (here the cytosol's) besides what the equation's lumen species
 // carry, for carriers whose charges cross between the cytosol and the matrix (engine.js)
 // The pyruvate and phosphate carriers symport a proton electroneutrally, so only ΔpH drives them;

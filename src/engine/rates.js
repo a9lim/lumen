@@ -64,7 +64,7 @@ p(['PGI', 'FBA', 'GAPD', 'PGM', 'ENO'], 50);
 p('PGK', 100);
 // PFK senses the energy charge: ATP inhibits, AMP relieves it; FBPase the mirror (no futile cycle). The
 // Calvin cycle's FBPase inherits the AMP brake, which a photosynthetic FBPase lacks: it stands in for the
-// cycle's energy homeostasis in deep twilight (AGENTS.md)
+// cycle's energy homeostasis in deep twilight (docs/ROADMAP.md)
 p('PFK', 4, { reg: [inh(['atp', 'adp'], 8, 2), act('amp', 0.02, 1, 0.3)] });
 p('FBP', 4, { reg: [inh('amp', 0.02, 2)] });
 p('PYK', 5, { reg: [act('fdp', 0.3, 1, 0.2)] });

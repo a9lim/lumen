@@ -1,6 +1,6 @@
 // The engine along trajectories, headless: the integrator's guarantees
 // (conservation, positivity, frame independence, accuracy), thermodynamics
-// at work, and the archetypes' classic behaviours (VISION.md) whose failure
+// at work, and the archetypes' classic behaviours whose failure
 // wouldn't show on the plate.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -226,7 +226,7 @@ test('anoxia stops O₂ reduction at once, fermentation takes over, and O₂ bri
     assert.ok(rate(e, 'CYTOX') > 0.5, 'respiration recovers');
 });
 
-// ─── The night and the day (VISION.md, milestone 2): each archetype against its qualitative targets ───
+// ─── The night and the day: each archetype against its qualitative targets ───
 
 /** The cell after 10 minutes in full sun, its store set to a dusk's (glucosyl mM). */
 const dusk = (id, store) => { const e = run(id, 600); e.set('glycogen', 'c', store); return e; };
