@@ -9,7 +9,7 @@ It is a submodule of the a9l.im repository (`projects/lumen`). The root `AGENTS.
 Preview through the parent build (serve `dist/`, open `/lumen/`), or from the working tree with `node docs/sim-overhaul/serve.mjs 8791` in the parent; the parent's `docs/sim-overhaul/check.mjs` takes screenshots and reports console errors, overflow and fps. There is no linter.
 
 ```bash
-node --test tests/                     # headless, Node 22+, no install; about 13 s
+node --test 'tests/*.test.mjs'        # headless, Node 22+, no install; about 13 s
 for f in main.js colors.js src/*.js src/engine/*.js; do node --check "$f"; done
 git diff --check
 ```
@@ -61,7 +61,7 @@ src/ui.js          DOM cache, presets, the legend's wiring, colophon, shortcuts 
 src/theme.js       three-state theme (light, dark, follows sunlight); not stored
 src/info.js        ENZYMES / METABOLITES tooltip data
 src/reference.js   REFERENCE overlay pages (HTML + KaTeX)
-tests/             node --test tests/ (above)
+tests/             the suite (above)
 tools/bigg.mjs     regenerates src/engine/formulas.js from BiGG (network access)
 ```
 
