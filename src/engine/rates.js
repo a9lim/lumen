@@ -12,8 +12,8 @@
 // Every number here is illustrative unless it says otherwise: magnitudes
 // chosen so the network runs at a plausible pace (a few mM/s through central
 // metabolism), not fitted to an organism. Vmax is mM/s in the reaction's home
-// compartment; Km is mM. VISION.md: parameters keep a provenance tag, and
-// SABIO-RK's measured constants replace these over time.
+// compartment; Km is mM. Parameters keep a provenance tag, and SABIO-RK's
+// measured constants replace these over time.
 
 /**
  * Each drawn complex's turnover at full capacity, s⁻¹ (illustrative): the

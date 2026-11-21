@@ -1,4 +1,4 @@
-// Window — panel a as a window onto the cell (VISION.md: the window). The
+// Window — panel a as a window onto the cell. The
 // engine's concentrations and rates are authoritative; this samples what a
 // fixed slab of the cut would show, and writes it into `store`, the picture's
 // state, which nothing in the engine reads (display noise never feeds back).

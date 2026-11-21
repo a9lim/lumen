@@ -1,5 +1,5 @@
 // Network — every reaction the engine knows, as data. Each one is a single
-// enzyme's reaction (VISION.md: identities first): hexokinase and glucose-6-
+// enzyme's reaction (identities first): hexokinase and glucose-6-
 // phosphatase, PFK and FBPase, PK and PC + PEPCK, the two GAPDHs, β-oxidation
 // and fatty-acid synthesis are all separate rows, never one row run backward.
 //

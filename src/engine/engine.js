@@ -48,7 +48,7 @@ const GAMMA = 1 + Math.SQRT1_2;   // ROS2's γ: L-stable
 // clears it at K_REP per s for REPAIR_ATP mM of ATP per unit; peroxidised lipid lets protons
 // through (the leak grows up to LEAK_DMG-fold) and aconitase's iron–sulfur cluster is lost
 const K_DMG = 40, K_REP = 0.05, REPAIR_ATP = 2, LEAK_DMG = 4, ACO_DMG = 0.8;
-// The verb (VISION.md): a pulse multiplies an enzyme's activity by 1 + PULSE_UP at its peak, an
+// The verb: a pulse multiplies an enzyme's activity by 1 + PULSE_UP at its peak, an
 // inhibition by 1 − PULSE_DOWN; each fades with PULSE_TAU model seconds; pulses stack (up to
 // PULSE_MAX). A hold is the small sustained perturbation, HOLD up or down, kept until let go, for
 // metabolic control analysis against a paired baseline (cell.js). Being functions of model time,
@@ -203,7 +203,7 @@ export function createEngine(cellId, opts = {}) {
         if (c.law === 'leak') { const drive = -(c.z * psi + c.nH * ph); RF = V * Math.max(drive, 0); RB = V * Math.max(-drive, 0); return; }
         if (c.law === 'diffusion') { RF = V * x[c.sub[0][0]]; RB = V * x[c.pro[0][0]]; return; }
         if (c.law === 'demand') {
-            // Liebig: the scarcest precursor sets the pace (VISION.md: one row, every ingredient together),
+            // Liebig: the scarcest precursor sets the pace (one row, every ingredient together),
             // and its regulation what the cell lets it take
             let m = 1;
             for (const [i, , , Kd] of c.sub) { const s = Math.max(x[i], 0); m = Math.min(m, s / (Kd + s)); }

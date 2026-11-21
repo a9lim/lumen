@@ -7,8 +7,8 @@
 // quinone (plasto-, mena-): only its two hydrogens matter to the balances.
 //
 // Moieties are the conserved groups, written out independently of the
-// network so the tests can check the network keeps them (VISION.md: null-space
-// discovery alone can't catch a network that has quietly lost one).
+// network so the tests can check the network keeps them (null-space discovery
+// alone can't catch a network that has quietly lost one).
 //
 // kind: 'met' a metabolite, 'cof' a cofactor pool, 'car' a membrane carrier,
 // 'gas' (crosses membranes freely and lives in the cell's main compartment),

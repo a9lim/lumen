@@ -1,4 +1,4 @@
-// Compare — the sustained verb's paired baseline (VISION.md: the verb).
+// Compare — the sustained verb's paired baseline.
 // Holding an enzyme sustains a small perturbation, its activity ×(1 ± HOLD).
 // The comparison starts two copies of the cell from that moment, one held and
 // one not, and runs both to a steady state. There each flux's response gives

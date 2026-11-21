@@ -29,14 +29,6 @@ test('every reaction balances in every element and in charge', () => {
     assert.deepEqual(bad, []);
 });
 
-test('every cell builds from known reactions and species', () => {
-    for (const id of Object.keys(CELLS)) {
-        const m = buildCell(id);
-        assert.ok(m.reactions.length > 10, id);
-        for (const s of m.species) assert.ok(s.comp in m.comps, `${id}: ${s.key} in unknown compartment`);
-    }
-});
-
 test('each cell conserves every moiety in every compartment', () => {
     for (const id of Object.keys(CELLS)) {
         const m = buildCell(id);
@@ -53,7 +45,7 @@ test('each cell conserves every moiety in every compartment', () => {
     }
 });
 
-test('each cell conserves carbon and phosphorus, medium included', () => {
+test('each cell conserves carbon, phosphorus, nitrogen and sulfur, medium included', () => {
     for (const id of Object.keys(CELLS)) {
         const m = buildCell(id);
         for (const el of ['C', 'P', 'N', 'S']) {

@@ -23,9 +23,3 @@ Thumbs.db
 
 # Worktrees
 .worktrees/
-
-# The third pass's proposal bundles the engine at build time
-docs/third-pass/data/engine.js
-
-# Round three's proposal bundles the engine at build time too
-docs/round-3/data/engine.js
